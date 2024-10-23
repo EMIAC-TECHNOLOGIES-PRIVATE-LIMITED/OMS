@@ -1,0 +1,278 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StatusLogin {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderPaymentStatus {
+  RECEIVED
+  PARTIALLY_RECEIVED
+  PENDING
+  NOT_RECEIVED
+}
+
+enum VendorPaymentStatus {
+  HOLD
+  UNPAID
+  PAID
+  PARTIALLY_PAID
+  CANCEL
+}
+
+enum OrderStatus {
+  PENDING
+  GIVEN
+  PUBLISH
+  NOT_PUBLISH
+  CANCEL
+  REPLACEMENT
+  NEED_UPDATE
+}
+
+enum VendorInvoiceStatus {
+  PENDING
+  ASK
+  RECEIVED
+  GIVEN
+  PAID
+}
+
+enum SiteType {
+  NORMAL
+  CASINO
+  ADULT
+  CBD
+}
+
+enum Follow {
+  Do_follow
+  No_follow
+  Sponsored
+}
+
+enum PriceType {
+  Paid
+  Free
+  Exchange
+}
+
+enum Posting {
+  Yes
+  No
+}
+
+enum WebsiteType {
+  Default
+  PR
+  Language
+}
+
+enum WebsiteStatus {
+  Normal
+  Blacklist
+  Disqualified
+}
+
+enum WebsiteQuality {
+  Pure
+  Almost_Pure
+  Multi
+}
+
+model User {
+  userId      Int         @id @default(autoincrement())
+  name        String
+  email       String      @unique
+  password    String
+  role        Role        @relation("UserRole", fields: [roleId], references: [type]) 
+  roleId      String
+  clients     Client[]    @relation("Sales")
+  lastLogin   String
+  lastLogout  String
+  loginId     Int
+  statusLogin StatusLogin @default(ACTIVE)
+  superAppID  Int
+  secureKey   String
+  sites       Site[]      @relation("UserSites") // Added relation to Site model
+}
+
+model Role {
+  type       String   @id @unique
+  permission String[]
+  users      User[]   @relation("UserRole")
+}
+
+model Client {
+  clientId            Int      @id @default(autoincrement())
+  name                String
+  linkSell            Int
+  contentSell         Int
+  totalAmountReceived Int
+  totalOrders         Int
+  salesPersonId       Int
+  phone               String
+  email               String
+  fbId                String
+  contactedId         String
+  siteName            String
+  source              String
+  userId              Int
+  clientClientName    String
+  clientProjects      String
+  clientCreatedAt     DateTime @default(now())
+  clientUpdatedAt     DateTime @updatedAt
+  orders              Order[]  @relation("ClientOrders")
+  salesPerson         User     @relation("Sales", fields: [salesPersonId], references: [userId])
+}
+
+model Order {
+  orderId                    Int                 @id @default(autoincrement())
+  clientId                   Int
+  client                     Client              @relation("ClientOrders", fields: [clientId], references: [clientId])
+  orderDate                  DateTime
+  publishStatus              Boolean
+  publishDate                DateTime
+  publishLink                String
+  transactionAmount          Int
+  receivedAmount             Int
+  accountType                String
+  accountId                  Int
+  proposedAmount             Int
+  contentAmount              Int
+  website                    String
+  websiteRemark              String
+  vendorEmail                String
+  vendorName                 String
+  siteCost                   Int
+  vendorContactedFrom        String
+  remark                     String
+  vendorWebsiteRemark        String
+  clientAmountReceived       Int
+  clientAmountReceivedDate   String
+  clientAmountReceivedStatus OrderPaymentStatus  @default(NOT_RECEIVED)
+  vendorPaymentAmount        Int
+  vendorAccountType          String
+  vendorPaymentStatus        VendorPaymentStatus
+  vendorPaymentDate          String
+  vendorTransactionId        String
+  orderedBy                  Int
+  orderedUpdatedBy           Int
+  orderOperatedBy            Int
+  orderOperatedUpdateBy      Int
+  userId                     Int
+  paypalId                   String
+  status                     OrderStatus         @default(PENDING)
+  contentDoc                 String
+  vendorInvoiceStatus        VendorInvoiceStatus @default(PENDING)
+  paymentRemark              String
+  actualReceivedAmount       Int
+  actualPaidAmount           Int
+  siteType                   SiteType            @default(NORMAL)
+  websiteType                String
+  invoiceNo                  String              @default("0")
+  invoiceStatus              String
+  priceWithGST               Int
+  indexedUrl                 String
+  statusUpdateDatetime       DateTime
+}
+
+model Vendor {
+  vendorId      Int    @id @default(autoincrement())
+  name          String
+  phone         String
+  email         String
+  contactedFrom String
+  bankName      String
+  accountNumber String
+  ifscCode      String
+  paypalId      String
+  userId        Int
+  timestamp     String
+  skypeId       String
+  upiId         String
+}
+
+model Site {
+  siteId                       Int                 @id @default(autoincrement())
+  website                      String
+  niche                        String?
+  siteCategory                 String?
+  da                           Int
+  pa                           Int
+  person                       String
+  personId                     Int
+  price                        Int
+  sailingPrice                 Int?
+  discount                     Int?
+  adult                        Int?
+  casinoAdult                  Int?
+  contact                      String?
+  contactFrom                  String?
+  webCategory                  String?
+  follow                       Follow              @default(Do_follow)
+  priceCategory                PriceType           @default(Paid)
+  traffic                      BigInt?
+  spamScore                    Int?
+  cbdPrice                     Int?
+  remark                       String?
+  contactFromId                String?
+  vendorCountry                String?
+  phoneNumber                  BigInt?
+  sampleUrl                    String?
+  bankDetails                  String?
+  dr                           Int?
+  userId                       Int
+  timestamp                    DateTime            @default(now()) @updatedAt
+  webIp                        String?
+  webCountry                   String?
+  linkInsertionCost            String?
+  tat                          String?
+  socialMediaPosting           Posting             @default(No)
+  semrushTraffic               BigInt?
+  semrushFirstCountryName      String?
+  semrushFirstCountryTraffic   BigInt?
+  semrushSecondCountryName     String?
+  semrushSecondCountryTraffic  BigInt?
+  semrushThirdCountryName      String?
+  semrushThirdCountryTraffic   BigInt?
+  semrushFourthCountryName     String?
+  semrushFourthCountryTraffic  BigInt?
+  semrushFifthCountryName      String?
+  semrushFifthCountryTraffic   BigInt?
+  similarWebTraffic            BigInt?
+  vendorInvoiceStatus          VendorInvoiceStatus @default(PENDING)
+  mainCategory                 String?
+  siteUpdateDate               String?
+  websiteType                  WebsiteType         @default(Default)
+  language                     String?
+  gst                          String?
+  disclaimer                   String?
+  anchorText                   String?
+  bannerImagePrice             Int?
+  cpUpdateDate                 DateTime?
+  pureCategory                 String?
+  availability                 String?
+  indexedUrl                   String?
+  websiteStatus                WebsiteStatus       @default(Normal)
+  websiteQuality               WebsiteQuality?
+  numOfLinks                   Int?
+  semrushUpdationDate          DateTime?
+  organicTraffic               BigInt
+  organicTrafficLastUpdateDate DateTime
+  createdAt                    DateTime            @default(now())
+  user                         User                @relation("UserSites", fields: [userId], references: [userId]) // Updated relation with name
+}
