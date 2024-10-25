@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -94,26 +91,84 @@ enum WebsiteQuality {
 }
 
 model User {
-  userId      Int         @id @default(autoincrement())
-  name        String
-  email       String      @unique
-  password    String
-  role        Role        @relation("UserRole", fields: [roleId], references: [type]) 
-  roleId      String
-  clients     Client[]    @relation("Sales")
-  lastLogin   String
-  lastLogout  String
-  loginId     Int
-  statusLogin StatusLogin @default(ACTIVE)
-  superAppID  Int
-  secureKey   String
-  sites       Site[]      @relation("UserSites") // Added relation to Site model
+  id                  Int                  @id @default(autoincrement())
+  name                String
+  email               String               @unique
+  suspended           Boolean              @default(false)
+  password            String
+  roleId              Int
+  role                Role                 @relation(fields: [roleId], references: [id])
+  lastLogin           String               @default("")
+  lastLogout          String               @default("")
+  loginId             Int                  @default(0)
+  statusLogin         StatusLogin          @default(ACTIVE)
+  superAppID          Int                  @default(0)
+  secureKey           String               @default("")
+  permissionOverrides PermissionOverride[]
+  resourceOverrides   ResourceOverride[]
+  clients             Client[]             @relation("UserClients")
+  sites               Site[]               @relation("UserSites")
+
+  @@index([roleId])
 }
 
 model Role {
-  type       String   @id @unique
-  permission String[]
-  users      User[]   @relation("UserRole")
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  permissions Permission[] @relation("RolePermissions")
+  resources   Resource[]   @relation("RoleResources")
+  users       User[]
+}
+
+model Permission {
+  id          Int                  @id @default(autoincrement())
+  description String               @unique
+  roles       Role[]               @relation("RolePermissions")
+  overrides   PermissionOverride[]
+}
+
+model Resource {
+  id          Int                @id @default(autoincrement())
+  tableId     String
+  columns     String[]
+  description String
+  roles       Role[]             @relation("RoleResources")
+  overrides   ResourceOverride[]
+}
+
+model PermissionOverride {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id])
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  granted      Boolean
+
+  @@unique([userId, permissionId])
+  @@index([userId, permissionId])
+}
+
+model ResourceOverride {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  resourceId Int
+  resource   Resource @relation(fields: [resourceId], references: [id])
+  granted    Boolean
+
+  @@unique([userId, resourceId])
+  @@index([userId, resourceId])
+}
+
+model MasterData {
+  id              Int    @id @default(autoincrement())
+  orderNumber     Int
+  clientName      String
+  clientEmail     String
+  contentCategory String
+  contentLink     String
+  houseCost       Int
+  priceQuoted     Int
 }
 
 model Client {
@@ -136,7 +191,9 @@ model Client {
   clientCreatedAt     DateTime @default(now())
   clientUpdatedAt     DateTime @updatedAt
   orders              Order[]  @relation("ClientOrders")
-  salesPerson         User     @relation("Sales", fields: [salesPersonId], references: [userId])
+  salesPerson         User     @relation("UserClients", fields: [salesPersonId], references: [id])
+
+  @@index([salesPersonId])
 }
 
 model Order {
@@ -188,6 +245,8 @@ model Order {
   priceWithGST               Int
   indexedUrl                 String
   statusUpdateDatetime       DateTime
+
+  @@index([clientId])
 }
 
 model Vendor {
@@ -274,5 +333,7 @@ model Site {
   organicTraffic               BigInt
   organicTrafficLastUpdateDate DateTime
   createdAt                    DateTime            @default(now())
-  user                         User                @relation("UserSites", fields: [userId], references: [userId]) // Updated relation with name
+  user                         User                @relation("UserSites", fields: [userId], references: [id])
+
+  @@index([userId])
 }
