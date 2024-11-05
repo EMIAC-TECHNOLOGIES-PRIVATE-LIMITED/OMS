@@ -13,77 +13,80 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getPermissions = getPermissions;
-const prismaClient_1 = __importDefault(require("./prismaClient"));
+const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
+const permissionsMap_1 = __importDefault(require("../constants/permissionsMap"));
+const resourcesMap_1 = __importDefault(require("../constants/resourcesMap"));
 function getPermissions(userId) {
     return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const user = yield prismaClient_1.default.user.findUnique({
-                where: { id: userId },
-                include: {
-                    role: {
-                        include: {
-                            permissions: true, // Get all permissions assigned to the role
-                            resources: true, // Get all resources assigned to the role
-                        },
-                    },
-                    permissionOverrides: {
-                        include: {
-                            permission: true, // Get the permission details for each override
-                        },
-                    },
-                    resourceOverrides: {
-                        include: {
-                            resource: true, // Get the resource details for each override
-                        },
+        const user = yield prismaClient_1.default.user.findUnique({
+            where: { id: userId },
+            include: {
+                role: {
+                    include: {
+                        permissions: true,
+                        resources: true,
                     },
                 },
-            });
-            if (!user) {
-                throw new Error('User not found');
+                permissionOverrides: { include: { permission: true } },
+                resourceOverrides: { include: { resource: true } },
+            },
+        });
+        if (!user) {
+            throw new Error('User not found');
+        }
+        // Step 1: Initialize permissions and resources based on the user's role
+        const permissionsMap = new Map();
+        user.role.permissions.forEach(permission => {
+            const key = permission.key;
+            if (key in permissionsMap_1.default) {
+                permissionsMap.set(key, permissionsMap_1.default[key]);
             }
-            // Build a map of permissions, starting with role permissions
-            const permissionsMap = new Map();
-            user.role.permissions.forEach(permission => {
-                permissionsMap.set(permission.id, permission);
-            });
-            // Apply permission overrides
-            user.permissionOverrides.forEach(override => {
+        });
+        const resourcesMap = new Map();
+        user.role.resources.forEach(resource => {
+            const resourceKey = resource.key;
+            if (resourceKey in resourcesMap_1.default) {
+                resourcesMap.set(resourceKey, resourcesMap_1.default[resourceKey]);
+            }
+        });
+        // Step 2: Apply permission overrides
+        user.permissionOverrides.forEach(override => {
+            const key = override.permission.key;
+            if (key in permissionsMap_1.default) {
                 if (override.granted) {
-                    // Grant the permission (add or update)
-                    permissionsMap.set(override.permission.id, override.permission);
+                    // Grant the permission
+                    permissionsMap.set(key, permissionsMap_1.default[key]);
                 }
                 else {
-                    // Revoke the permission (remove it)
-                    permissionsMap.delete(override.permission.id);
+                    // Revoke the permission
+                    permissionsMap.delete(key);
                 }
-            });
-            const allowedPermissions = Array.from(permissionsMap.values());
-            // Repeat the same process for resources
-            const resourcesMap = new Map();
-            user.role.resources.forEach(resource => {
-                resourcesMap.set(resource.id, resource);
-            });
-            // Apply resource overrides
-            user.resourceOverrides.forEach(override => {
+            }
+        });
+        // Convert permissionsMap to array format for JWT payload
+        const allowedPermissions = Array.from(permissionsMap.entries()).map(([key, description]) => ({ key, description }));
+        // Step 3: Apply resource overrides
+        user.resourceOverrides.forEach(override => {
+            const resourceKey = override.resource.key;
+            if (resourceKey in resourcesMap_1.default) {
                 if (override.granted) {
-                    // Grant the resource (add or update)
-                    resourcesMap.set(override.resource.id, override.resource);
+                    // Grant access to the resource
+                    resourcesMap.set(resourceKey, resourcesMap_1.default[resourceKey]);
                 }
                 else {
-                    // Revoke the resource (remove it)
-                    resourcesMap.delete(override.resource.id);
+                    // Revoke access to the resource
+                    resourcesMap.delete(resourceKey);
                 }
-            });
-            const allowedResources = Array.from(resourcesMap.values());
-            // Return the allowed permissions and resources
-            return {
-                permissions: allowedPermissions,
-                resources: allowedResources,
-            };
-        }
-        catch (error) {
-            console.error('Error getting user permissions and resources:', error);
-            throw error;
-        }
+            }
+        });
+        // Convert resourcesMap to array format for JWT payload
+        const allowedResources = Array.from(resourcesMap.entries()).map(([key, columns]) => ({ key, columns }));
+        console.log("Get Permission Function Called");
+        console.log("Permissions assigned:", allowedPermissions);
+        console.log("Resources assigned:", allowedResources);
+        return {
+            permissions: allowedPermissions,
+            resources: allowedResources,
+        };
     });
 }

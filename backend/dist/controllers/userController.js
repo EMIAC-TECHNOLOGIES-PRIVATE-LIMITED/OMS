@@ -31,6 +31,16 @@ function signUpController(req, res) {
             return res.status(400).json({ errors: result.error.errors });
         }
         const body = result.data;
+        const userExist = yield prismaClient_1.default.user.findUnique({
+            where: {
+                email: body.email
+            }
+        });
+        if (userExist) {
+            return res.status(501).json({
+                message: "Email Id already in use. "
+            });
+        }
         const availableRoles = yield (0, getAvailabeRoles_1.getAvailableRoles)();
         const roleIDs = availableRoles.map(role => role.id);
         if (!roleIDs.includes(body.roleId)) {
@@ -66,37 +76,33 @@ function signInController(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const result = signinSchema_1.signinSchema.safeParse(req.body);
         if (!result.success) {
-            return res.status(400).json({ error: "Invalid types of credentials entered" });
+            return res.status(400).json({ errors: result.error.errors });
         }
         const body = result.data;
         try {
             const userFound = yield prismaClient_1.default.user.findUnique({
-                where: {
-                    email: body.email
-                },
-                include: {
-                    role: true, // Include the user's role
-                }
+                where: { email: body.email },
+                include: { role: true },
             });
             if (!userFound) {
-                return res.status(401).json({ error: "Invalid email or password entered" });
+                return res.status(401).json({ error: "Invalid email or password" });
             }
-            const success = yield bcrypt_1.default.compare(body.password, userFound.password);
-            if (!success) {
-                return res.status(401).json({ error: "Invalid email or password entered" });
+            const passwordMatch = yield bcrypt_1.default.compare(body.password, userFound.password);
+            if (!passwordMatch) {
+                return res.status(401).json({ error: "Invalid email or password" });
             }
             const accessData = yield (0, getPermissions_1.getPermissions)(userFound.id);
             console.log(accessData);
             const token = jsonwebtoken_1.default.sign({
                 email: userFound.email,
                 userId: userFound.id,
-                role: userFound.role.name, // Include the user's role in the token
+                role: userFound.role.name,
                 permissions: accessData.permissions,
                 resources: accessData.resources,
-            }, jwtSecret);
+            }, process.env.JWT_SECRET, { expiresIn: '1h' });
             return res.status(200).json({
                 message: 'User logged in successfully',
-                token
+                token,
             });
         }
         catch (error) {

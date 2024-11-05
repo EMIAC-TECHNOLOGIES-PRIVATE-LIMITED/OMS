@@ -1,105 +1,140 @@
-// seed.mjs
+// prisma/seed.ts
 
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
   try {
+    // Clear existing data
+    await prisma.site.deleteMany();
+    await prisma.permissionOverride.deleteMany();
+    await prisma.resourceOverride.deleteMany();
+    await prisma.permission.deleteMany();
+    await prisma.resource.deleteMany();
+    await prisma.role.deleteMany();
 
-    // Upsert Permissions
-    await prisma.permission.upsert({
-      where: { description: 'access /sales route' },
-      update: {},
-      create: { description: 'access /sales route' },
+    // Create Permissions using the new `key` field
+    await prisma.permission.createMany({
+      data: [
+        { key: 'VIEW_SITES_ROUTE', description: 'Permission to view sites route' },
+        // Add other permissions if needed
+      ],
     });
 
-    await prisma.permission.upsert({
-      where: { description: 'access /content route' },
-      update: {},
-      create: { description: 'access /content route' },
+    // Retrieve the created permission
+    const [sitesPermission] = await prisma.permission.findMany({
+      where: { key: 'VIEW_SITES_ROUTE' },
     });
 
-    // Upsert Resources
-    await prisma.resource.upsert({
-      where: { description: 'sales master data view' },
-      update: {},
-      create: {
-        tableId: 'MasterData',
-        columns: ['orderNumber', 'clientName', 'clientEmail', 'houseCost', 'priceQuoted'],
-        description: 'sales master data view',
-      },
-    });
-
-    await prisma.resource.upsert({
-      where: { description: 'content master data view' },
-      update: {},
-      create: {
-        tableId: 'MasterData',
-        columns: ['orderNumber', 'clientName', 'clientEmail', 'contentCategory', 'contentLink'],
-        description: 'content master data view',
-      },
-    });
-
-    await prisma.resource.upsert({
-      where: { description: 'admin master data view' },
-      update: {},
-      create: {
-        tableId: 'MasterData',
-        columns: [
-          'orderNumber',
-          'clientName',
-          'clientEmail',
-          'contentCategory',
-          'contentLink',
-          'houseCost',
-          'priceQuoted',
-        ],
-        description: 'admin master data view',
-      },
-    });
-
-    // Retrieve Permissions and Resources
-    const salesPermission = await prisma.permission.findUnique({
-      where: { description: 'access /sales route' },
-    });
-
-    const contentPermission = await prisma.permission.findUnique({
-      where: { description: 'access /content route' },
-    });
-
-    const salesResource = await prisma.resource.findUnique({
-      where: { description: 'sales master data view' },
-    });
-
-    const contentResource = await prisma.resource.findUnique({
-      where: { description: 'content master data view' },
-    });
-
-    const adminResource = await prisma.resource.findUnique({
-      where: { description: 'admin master data view' },
-    });
-
-    // Upsert Roles
-    await prisma.role.upsert({
-      where: { name: 'admin' },
-      update: {
-        permissions: {
-          connect: [
-            { id: salesPermission.id },
-            { id: contentPermission.id },
+    // Create Resources (defining column access for Site model) using the new `key` field
+    await prisma.resource.createMany({
+      data: [
+        {
+          key: 'Site_Admin',
+          columns: [
+            'id',
+            'website',
+            'niche',
+            'site_category',
+            'da',
+            'pa',
+            'person',
+            'person_id',
+            'price',
+            'sailing_price',
+            'discount',
+            'adult',
+            'casino_adult',
+            'contact',
+            'contact_from',
+            'web_category',
+            'follow',
+            'price_category',
+            'traffic',
+            'spam_score',
+            'cbd_price',
+            'remark',
+            'contact_from_id',
+            'vendor_country',
+            'phone_number',
+            'sample_url',
+            'bank_details',
+            'dr',
+            'user_id',
+            'timestamp',
+            'web_ip',
+            'web_country',
+            'link_insertion_cost',
+            'tat',
+            'social_media_posting',
+            'semrush_traffic',
+            'semrush_first_country_name',
+            'semrush_first_country_traffic',
+            'semrush_second_country_name',
+            'semrush_second_country_traffic',
+            'semrush_third_country_name',
+            'semrush_third_country_traffic',
+            'semrush_fourth_country_name',
+            'semrush_fourth_country_traffic',
+            'semrush_fifth_country_name',
+            'semrush_fifth_country_traffic',
+            'similarweb_traffic',
+            'vendor_invoice_status',
+            'main_category',
+            'site_update_date',
+            'website_type',
+            'language',
+            'gst',
+            'disclaimer',
+            'anchor_text',
+            'banner_image_price',
+            'cp_update_date',
+            'pure_category',
+            'availability',
+            'indexed_url',
+            'website_status',
+            'website_quality',
+            'num_of_links',
+            'semrush_updation_date',
+            'organic_traffic',
+            'organic_traffic_last_update_date',
+            'created_at',
           ],
+          description: 'Admin access to all Site columns',
         },
-        resources: {
-          connect: [{ id: adminResource.id }],
+        {
+          key: 'Site_Sales',
+          columns: [
+            'id',
+            'website',
+            'price',
+            'da',
+            'pa',
+            'niche',
+            'site_category',
+            'traffic',
+            'dr',
+            'main_category',
+            'website_status',
+          ],
+          description: 'Sales team access to limited Site columns',
         },
+      ],
+    });
+
+    // Retrieve the created resources
+    const [adminResource, salesResource] = await prisma.resource.findMany({
+      where: {
+        key: { in: ['Site_Admin', 'Site_Sales'] },
       },
-      create: {
+    });
+
+    // Create Roles with their permissions and resources
+    const adminRole = await prisma.role.create({
+      data: {
         name: 'admin',
         permissions: {
-          connect: [
-            { id: salesPermission.id },
-            { id: contentPermission.id },
-          ],
+          connect: [{ id: sitesPermission.id }],
         },
         resources: {
           connect: [{ id: adminResource.id }],
@@ -107,119 +142,17 @@ async function main() {
       },
     });
 
-    await prisma.role.upsert({
-      where: { name: 'sales' },
-      update: {
-        permissions: {
-          connect: [{ id: salesPermission.id }],
-        },
-        resources: {
-          connect: [{ id: salesResource.id }],
-        },
-      },
-      create: {
+    const salesRole = await prisma.role.create({
+      data: {
         name: 'sales',
         permissions: {
-          connect: [{ id: salesPermission.id }],
+          connect: [{ id: sitesPermission.id }],
         },
         resources: {
           connect: [{ id: salesResource.id }],
         },
       },
     });
-
-    await prisma.role.upsert({
-      where: { name: 'content' },
-      update: {
-        permissions: {
-          connect: [{ id: contentPermission.id }],
-        },
-        resources: {
-          connect: [{ id: contentResource.id }],
-        },
-      },
-      create: {
-        name: 'content',
-        permissions: {
-          connect: [{ id: contentPermission.id }],
-        },
-        resources: {
-          connect: [{ id: contentResource.id }],
-        },
-      },
-    });
-
-    // Upsert MasterData Entries
-    await prisma.masterData.upsert({
-      where: { orderNumber: 1001 },
-      update: {},
-      create: {
-        orderNumber: 1001,
-        clientName: 'Tech Solutions Inc',
-        clientEmail: 'contact@techsolutions.com',
-        contentCategory: 'Technology',
-        contentLink: 'https://example.com/tech-article',
-        houseCost: 500,
-        priceQuoted: 750,
-      },
-    });
-
-    await prisma.masterData.upsert({
-      where: { orderNumber: 1002 },
-      update: {},
-      create: {
-        orderNumber: 1002,
-        clientName: 'Green Energy Co',
-        clientEmail: 'info@greenenergy.com',
-        contentCategory: 'Environment',
-        contentLink: 'https://example.com/green-energy',
-        houseCost: 600,
-        priceQuoted: 900,
-      },
-    });
-
-    await prisma.masterData.upsert({
-      where: { orderNumber: 1003 },
-      update: {},
-      create: {
-        orderNumber: 1003,
-        clientName: 'Fashion Forward',
-        clientEmail: 'sales@fashionforward.com',
-        contentCategory: 'Fashion',
-        contentLink: 'https://example.com/fashion-trends',
-        houseCost: 400,
-        priceQuoted: 650,
-      },
-    });
-
-    await prisma.masterData.upsert({
-      where: { orderNumber: 1004 },
-      update: {},
-      create: {
-        orderNumber: 1004,
-        clientName: 'Health Plus',
-        clientEmail: 'contact@healthplus.com',
-        contentCategory: 'Healthcare',
-        contentLink: 'https://example.com/health-article',
-        houseCost: 550,
-        priceQuoted: 800,
-      },
-    });
-
-    await prisma.masterData.upsert({
-      where: { orderNumber: 1005 },
-      update: {},
-      create: {
-        orderNumber: 1005,
-        clientName: 'Food Delights',
-        clientEmail: 'info@fooddelights.com',
-        contentCategory: 'Food & Beverage',
-        contentLink: 'https://example.com/food-review',
-        houseCost: 450,
-        priceQuoted: 700,
-      },
-    });
-
 
     console.log('Seed data inserted successfully!');
   } catch (error) {

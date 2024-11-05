@@ -7,7 +7,6 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 require("dotenv/config");
 const userRouter_1 = __importDefault(require("../routers/userRouter"));
-const salesRouter_1 = __importDefault(require("../routers/salesRouter"));
 const dataRouter_1 = __importDefault(require("../routers/dataRouter"));
 const adminRouter_1 = __importDefault(require("../routers/adminRouter"));
 const app = (0, express_1.default)();
@@ -19,7 +18,6 @@ app.get('/api/v1/health', (req, res) => {
     res.send('Perfect Health');
 });
 app.use('/api/v1/user', userRouter_1.default);
-app.use('/api/v1/sales', salesRouter_1.default);
 app.use('/api/v1/data', dataRouter_1.default);
 app.use('/api/v1/admin', adminRouter_1.default);
 app.listen(port, () => {

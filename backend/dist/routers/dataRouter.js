@@ -4,8 +4,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const masterDataMiddleware_1 = __importDefault(require("../middlewares/masterDataMiddleware"));
-const masterDataController_1 = require("../controllers/masterDataController");
 const router = express_1.default.Router();
-router.post('/masterData', masterDataMiddleware_1.default, masterDataController_1.masterDataController);
+const viewsMiddleware_1 = __importDefault(require("../middlewares/viewsMiddleware"));
+const viewsController_1 = require("../controllers/viewsController");
+router.get('/:resource/:viewId?', viewsMiddleware_1.default, viewsController_1.viewsController.getView);
+router.post('/:resource', viewsMiddleware_1.default, viewsController_1.viewsController.createView);
+router.put('/:resource/:viewId', viewsMiddleware_1.default, viewsController_1.viewsController.updateView);
+router.delete('/:resource/:viewId', viewsMiddleware_1.default, viewsController_1.viewsController.deleteView);
 exports.default = router;
