@@ -9,6 +9,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "private" : true,
-  "workspaces" : ["backend", "frontend", "shared"]
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "dependencies": {
+  }
 }

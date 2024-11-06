@@ -94,7 +94,7 @@ export async function signInController(req: Request, res: Response) {
 
         const accessData = await getPermissions(userFound.id);
 
-        console.log(accessData);
+        // console.log(accessData);
 
         const token = jwt.sign({
             email: userFound.email,

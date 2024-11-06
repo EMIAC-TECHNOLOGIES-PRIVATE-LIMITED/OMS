@@ -93,4 +93,4 @@ export interface AuthRequest extends Request {
     modelName?: string
     view?: any
     userViews?: { id: number; viewName: string }[];
-}rel
+}

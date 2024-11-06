@@ -1,7 +1,7 @@
 // config/resourcesMap.ts
 
 const ResourcesMap = {
-    Sites_Admin: [
+    Site_Admin: [
         'id',
         'website',
         'niche',
@@ -70,7 +70,7 @@ const ResourcesMap = {
         'organic_traffic_last_update_date',
         'created_at',
     ],
-    Sites_Sales
+    Sits_Sales
         : [
             'id',
             'website',

@@ -50,10 +50,12 @@ const viewsMiddleware = async (
             (r) => {
                 // console.log(r.key);
                 // console.log(r.key.toLowerCase().split('_')[0]);
-                return r.key.toLowerCase().split('_')[0] === resource.toLowerCase();
+
+                //TODO: fix this concat thing 
+                return r.key.toLowerCase().split('_')[0].concat('s') === resource.toLowerCase();
             }
         );
-        // console.log(userResource);
+        console.log(userResource);
 
         if (!userResource) {
             return res

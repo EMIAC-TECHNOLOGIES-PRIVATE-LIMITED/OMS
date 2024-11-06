@@ -9,4 +9,4 @@ export declare const signinSchema: z.ZodObject<{
     email: string;
     password: string;
 }>;
-export declare type SigninBody = z.infer<typeof signinSchema>;
+export type SigninBody = z.infer<typeof signinSchema>;

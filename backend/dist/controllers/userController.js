@@ -12,7 +12,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.signInController = exports.signUpController = void 0;
+exports.signUpController = signUpController;
+exports.signInController = signInController;
 const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 require("dotenv/config");
@@ -71,7 +72,6 @@ function signUpController(req, res) {
         }
     });
 }
-exports.signUpController = signUpController;
 function signInController(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const result = signinSchema_1.signinSchema.safeParse(req.body);
@@ -92,7 +92,7 @@ function signInController(req, res) {
                 return res.status(401).json({ error: "Invalid email or password" });
             }
             const accessData = yield (0, getPermissions_1.getPermissions)(userFound.id);
-            console.log(accessData);
+            // console.log(accessData);
             const token = jsonwebtoken_1.default.sign({
                 email: userFound.email,
                 userId: userFound.id,
@@ -114,4 +114,3 @@ function signInController(req, res) {
         }
     });
 }
-exports.signInController = signInController;

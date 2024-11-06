@@ -15,4 +15,4 @@ export declare const signupSchema: z.ZodObject<{
     password: string;
     roleId: number;
 }>;
-export declare type SignupBody = z.infer<typeof signupSchema>;
+export type SignupBody = z.infer<typeof signupSchema>;
