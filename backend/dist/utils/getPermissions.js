@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPermissions = getPermissions;
+exports.getPermissions = void 0;
 const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
 const permissionsMap_1 = __importDefault(require("../constants/permissionsMap"));
 const resourcesMap_1 = __importDefault(require("../constants/resourcesMap"));
@@ -90,3 +90,4 @@ function getPermissions(userId) {
         };
     });
 }
+exports.getPermissions = getPermissions;

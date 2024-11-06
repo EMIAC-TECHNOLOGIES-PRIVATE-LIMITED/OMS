@@ -12,8 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.signUpController = signUpController;
-exports.signInController = signInController;
+exports.signInController = exports.signUpController = void 0;
 const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 require("dotenv/config");
@@ -72,6 +71,7 @@ function signUpController(req, res) {
         }
     });
 }
+exports.signUpController = signUpController;
 function signInController(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const result = signinSchema_1.signinSchema.safeParse(req.body);
@@ -114,3 +114,4 @@ function signInController(req, res) {
         }
     });
 }
+exports.signInController = signInController;

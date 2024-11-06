@@ -12,9 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.suspendUser = suspendUser;
-exports.revokeUser = revokeUser;
-exports.manageAccess = manageAccess;
+exports.manageAccess = exports.revokeUser = exports.suspendUser = void 0;
 const prismaClient_1 = __importDefault(require("../utils/prismaClient"));
 // Suspend a user
 function suspendUser(req, res) {
@@ -55,6 +53,7 @@ function suspendUser(req, res) {
         }
     });
 }
+exports.suspendUser = suspendUser;
 // Revoke suspension of a user
 function revokeUser(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -94,6 +93,7 @@ function revokeUser(req, res) {
         }
     });
 }
+exports.revokeUser = revokeUser;
 // manage custom permssion and resources 
 function manageAccess(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -210,3 +210,4 @@ function manageAccess(req, res) {
         }
     });
 }
+exports.manageAccess = manageAccess;

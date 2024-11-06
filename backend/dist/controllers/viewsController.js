@@ -142,9 +142,9 @@ exports.viewsController = {
     }),
     // Update an existing view
     updateView: (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a;
+        var _b;
         const { viewId } = req.params;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+        const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.userId;
         const permittedColumns = req.permittedColumns;
         const { viewName, columns, filters, sorting, grouping } = req.body;
         // Validate columns
@@ -183,9 +183,9 @@ exports.viewsController = {
     }),
     // Delete a view
     deleteView: (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a;
+        var _c;
         const { viewId } = req.params;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+        const userId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
         try {
             // Verify ownership before deletion
             const view = yield prismaClient_1.default.view.findUnique({ where: { id: parseInt(viewId) } });
