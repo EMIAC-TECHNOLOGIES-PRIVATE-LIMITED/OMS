@@ -19,8 +19,6 @@ exports.viewsController = {
     getView: (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         const page = req.query.page ? parseInt(req.query.page) : 1;
         const pageSize = req.query.pageSize ? parseInt(req.query.pageSize) : 10;
-        // console.log(req.query.page);
-        // console.log(req.page);
         const skip = (page - 1) * pageSize;
         const take = pageSize;
         const view = req.view;
@@ -29,25 +27,22 @@ exports.viewsController = {
         const userViews = req.userViews;
         const modelName = req.modelName;
         if (!modelName) {
-            return res.status(502).json({ 'message': "bad request" });
+            return res.status(502).json({ 'message': "Bad request: Model name missing" });
         }
         // Validate view columns
         const viewColumns = view.columns.filter((col) => permittedColumns.includes(col));
         // Sanitize filters, sorting, and grouping
         const sanitizedFilters = sanitizeFilters(view.filters, permittedColumns);
-        const sanitizedSorting = sanitizeSorting(view.sorting, permittedColumns);
+        const sanitizedSorting = sanitizeSorting(view.sort, permittedColumns);
         const sanitizedGrouping = view.grouping
             ? view.grouping.filter((col) => permittedColumns.includes(col))
             : [];
         // Build Prisma query
         const selectClause = viewColumns.reduce((acc, col) => (Object.assign(Object.assign({}, acc), { [col]: true })), {});
-        // console.log(view.sort);
-        // console.log(permittedColumns);
-        // console.log(sanitizedSorting);
         const queryOptions = {
             where: sanitizedFilters,
             select: selectClause,
-            orderBy: view.sort,
+            orderBy: sanitizedSorting,
             skip,
             take
         };
@@ -85,6 +80,7 @@ exports.viewsController = {
             // Prepare response
             const response = {
                 success: true,
+                viewId: req.view,
                 totalRecords,
                 page,
                 pageSize,
@@ -103,6 +99,95 @@ exports.viewsController = {
             return res.status(500).json({ success: false, message: 'Error fetching data' });
         }
     }),
+    getData: (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+        const page = req.query.page ? parseInt(req.query.page) : 1;
+        const pageSize = req.query.pageSize ? parseInt(req.query.pageSize) : 10;
+        const skip = (page - 1) * pageSize;
+        const take = pageSize;
+        const permittedColumns = req.permittedColumns;
+        const columnTypes = req.columnTypes;
+        const userViews = req.userViews;
+        const modelName = req.modelName;
+        if (!modelName) {
+            return res.status(400).json({ message: "Bad request: Model name missing" });
+        }
+        // Get filter configurations from req.body
+        const { viewName, columns, filters, sorting, grouping } = req.body;
+        // Validate columns
+        const validColumns = columns.filter((col) => permittedColumns.includes(col));
+        if (validColumns.length === 0) {
+            return res.status(400).json({ success: false, message: 'No valid columns provided' });
+        }
+        // Sanitize filters, sorting, and grouping
+        const sanitizedFilters = sanitizeFilters(filters, permittedColumns);
+        const sanitizedSorting = sanitizeSorting(sorting, permittedColumns);
+        const sanitizedGrouping = grouping
+            ? grouping.filter((col) => permittedColumns.includes(col))
+            : [];
+        // Build Prisma query
+        const selectClause = validColumns.reduce((acc, col) => (Object.assign(Object.assign({}, acc), { [col]: true })), {});
+        const queryOptions = {
+            where: sanitizedFilters,
+            select: selectClause,
+            orderBy: sanitizedSorting,
+            skip,
+            take,
+        };
+        let totalRecords;
+        try {
+            let data;
+            if (sanitizedGrouping.length > 0) {
+                // Use groupBy
+                const rawData = yield prismaClient_1.default[modelName].groupBy({
+                    by: sanitizedGrouping,
+                    where: sanitizedFilters,
+                    orderBy: sanitizedSorting,
+                    skip,
+                    take,
+                });
+                // Transform the raw data into the desired structure
+                const groupedData = rawData.reduce((acc, currentItem) => {
+                    const groupByValue = currentItem[sanitizedGrouping[0]]; // Assuming a single column for groupBy
+                    if (!acc[groupByValue]) {
+                        acc[groupByValue] = [];
+                    }
+                    acc[groupByValue].push(currentItem);
+                    return acc;
+                }, {});
+                data = groupedData;
+                // For grouped data, you might need a different way to count total records
+                totalRecords = Object.keys(groupedData).length;
+            }
+            else {
+                // Use findMany
+                const results = yield prismaClient_1.default[modelName].aggregate({
+                    _count: { _all: true },
+                    where: queryOptions.where,
+                });
+                data = yield prismaClient_1.default[modelName].findMany(queryOptions);
+                totalRecords = results._count._all;
+            }
+            // Prepare response
+            const response = {
+                success: true,
+                totalRecords,
+                page,
+                pageSize,
+                data,
+                availableColumns: columnTypes,
+                appliedFilters: sanitizedFilters,
+                appliedSorting: sanitizedSorting,
+                appliedGrouping: sanitizedGrouping,
+                views: userViews,
+            };
+            const parsedResponse = json_bigint_1.default.stringify(response);
+            return res.type('application/json').send(parsedResponse);
+        }
+        catch (error) {
+            console.error(error);
+            return res.status(500).json({ success: false, message: 'Error fetching data', error, });
+        }
+    }),
     // Create a new view
     createView: (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
@@ -115,13 +200,14 @@ exports.viewsController = {
         if (validColumns.length !== columns.length) {
             return res.status(400).json({ success: false, message: 'Invalid columns in view' });
         }
-        // Sanitize filters and sorting
+        // Sanitize filters, sorting, and grouping
         const sanitizedFilters = sanitizeFilters(filters, permittedColumns);
         const sanitizedSorting = sanitizeSorting(sorting, permittedColumns);
         const sanitizedGrouping = grouping
             ? grouping.filter((col) => permittedColumns.includes(col))
             : [];
         try {
+            // Create the new view in the database
             const newView = yield prismaClient_1.default.view.create({
                 data: {
                     userId,
@@ -130,23 +216,52 @@ exports.viewsController = {
                     columns: validColumns,
                     filters: sanitizedFilters,
                     sort: sanitizedSorting,
-                    groupBy: sanitizedGrouping,
+                    groupBy: sanitizedGrouping
                 },
             });
-            return res.status(201).json({ success: true, view: newView });
+            // Assign the newly created view to req.view for further processing
+            req.view = newView;
+            // Invoke getView to fetch and return the data based on the new view
+            const getViewResponse = yield exports.viewsController.getView(req, res);
+            return getViewResponse;
         }
         catch (error) {
             console.error(error);
             return res.status(500).json({ success: false, message: 'Error creating view' });
         }
     }),
-    // Update an existing view
+    // Update an existing view or create a new "Untitled Grid" view if no id is provided
     updateView: (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
         const { viewId } = req.params;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
         const permittedColumns = req.permittedColumns;
         const { viewName, columns, filters, sorting, grouping } = req.body;
+        if (!viewId) {
+            // No viewId provided, create a new "Untitled Grid" view
+            try {
+                const newView = yield prismaClient_1.default.view.create({
+                    data: {
+                        userId,
+                        tableId: req.params.resource, // Assuming 'resource' is available in params
+                        viewName: 'Untitled Grid',
+                        columns: columns.filter((col) => permittedColumns.includes(col)),
+                        filters: sanitizeFilters(filters, permittedColumns),
+                        sort: sanitizeSorting(sorting, permittedColumns),
+                        groupBy: grouping ? grouping.filter((col) => permittedColumns.includes(col)) : [],
+                    },
+                });
+                // Fetch data for the newly created view
+                req.view = newView;
+                const getViewResponse = yield exports.viewsController.getView(req, res);
+                return getViewResponse;
+            }
+            catch (error) {
+                console.error(error);
+                return res.status(500).json({ success: false, message: 'Error creating Untitled Grid view' });
+            }
+        }
+        // If viewId is provided, proceed with the existing update logic
         // Validate columns
         const validColumns = columns.filter((col) => permittedColumns.includes(col));
         if (validColumns.length !== columns.length) {
@@ -159,7 +274,7 @@ exports.viewsController = {
             ? grouping.filter((col) => permittedColumns.includes(col))
             : [];
         try {
-            //verify ownership
+            // Verify ownership
             const view = yield prismaClient_1.default.view.findUnique({ where: { id: parseInt(viewId) } });
             if (!view || view.userId !== userId) {
                 return res.status(404).json({ success: false, message: 'View not found or access denied' });
@@ -174,7 +289,10 @@ exports.viewsController = {
                     groupBy: sanitizedGrouping,
                 },
             });
-            return res.status(200).json({ success: true, view: updatedView });
+            // Fetch data for the updated view
+            req.view = updatedView;
+            const getViewResponse = yield exports.viewsController.getView(req, res);
+            return getViewResponse;
         }
         catch (error) {
             console.error(error);

@@ -1,0 +1,418 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:randompassword@localhost:5432/mydb?schema=public"
+}
+
+enum StatusLogin {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderPaymentStatus {
+  RECEIVED
+  PARTIALLY_RECEIVED
+  PENDING
+  NOT_RECEIVED
+}
+
+enum VendorPaymentStatus {
+  HOLD
+  UNPAID
+  PAID
+  PARTIALLY_PAID
+  CANCEL
+}
+
+enum OrderStatus {
+  PENDING
+  GIVEN
+  PUBLISH
+  NOT_PUBLISH
+  CANCEL
+  REPLACEMENT
+  NEED_UPDATE
+}
+
+enum VendorInvoiceStatus {
+  PENDING
+  ASK
+  RECEIVED
+  GIVEN
+  PAID
+}
+
+enum SiteType {
+  NORMAL
+  CASINO
+  ADULT
+  CBD
+}
+
+enum Follow {
+  Do_follow
+  No_follow
+  Sponsored
+}
+
+enum PriceType {
+  Paid
+  Free
+  Exchange
+}
+
+enum Posting {
+  Yes
+  No
+}
+
+enum WebsiteType {
+  Default
+  PR
+  Language
+}
+
+enum WebsiteStatus {
+  Normal
+  Blacklist
+  Disqualified
+}
+
+enum WebsiteQuality {
+  Pure
+  Almost_Pure
+  Multi
+}
+
+model User {
+  id                  Int                  @id @default(autoincrement())
+  name                String
+  email               String               @unique
+  suspended           Boolean              @default(false)
+  password            String
+  roleId              Int
+  role                Role                 @relation(fields: [roleId], references: [id])
+  lastLogin           String               @default("")
+  lastLogout          String               @default("")
+  loginId             Int                  @default(0)
+  statusLogin         StatusLogin          @default(ACTIVE)
+  superAppID          Int                  @default(0)
+  secureKey           String               @default("")
+  permissionOverrides PermissionOverride[]
+  resourceOverrides   ResourceOverride[]
+  clients             Client[]             @relation("UserClients")
+  sites               Site[]               @relation("UserSites")
+  views               View[] // Added field for relation with views
+
+  @@index([roleId])
+}
+
+model Role {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  permissions Permission[] @relation("RolePermissions")
+  resources   Resource[]   @relation("RoleResources")
+  users       User[]
+}
+
+model Permission {
+  id          Int                  @id @default(autoincrement())
+  key         String               @unique // Unique key for permission (e.g., "VIEW_SITE_DATA")
+  description String
+  roles       Role[]               @relation("RolePermissions")
+  overrides   PermissionOverride[]
+}
+
+model Resource {
+  id          Int                @id @default(autoincrement())
+  key         String             @unique // Unique key for resource (e.g., "Site", "Sales")
+  columns     String[] // Array of allowed columns (e.g., ["website", "traffic"])
+  description String
+  roles       Role[]             @relation("RoleResources")
+  overrides   ResourceOverride[]
+}
+
+model PermissionOverride {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id])
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  granted      Boolean
+
+  @@unique([userId, permissionId])
+  @@index([userId, permissionId])
+}
+
+model ResourceOverride {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  resourceId Int
+  resource   Resource @relation(fields: [resourceId], references: [id])
+  granted    Boolean
+
+  @@unique([userId, resourceId])
+  @@index([userId, resourceId])
+}
+
+model MasterData {
+  id              Int    @id @default(autoincrement())
+  orderNumber     Int
+  clientName      String
+  clientEmail     String
+  contentCategory String
+  contentLink     String
+  houseCost       Int
+  priceQuoted     Int
+}
+
+model View {
+  id       Int    @id @default(autoincrement())
+  userId   Int
+  user     User   @relation(fields: [userId], references: [id])
+  tableId  String
+  viewName String
+
+  columns String[]
+
+  filters Json
+  sort    Json
+  groupBy String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, tableId])
+}
+
+// {
+//   "AND": [
+//     { "price": { "gte": 100 } },
+//     { "status": "AVAILABLE" },
+//     {
+//       "OR": [
+//         { "category": "Electronics" },
+//         { "category": "Books" }
+//       ]
+//     }
+//   ]
+// }
+
+// [
+//   { "price": "asc" },
+//   { "createdAt": "desc" }
+// ]
+
+// const view = await prisma.view.findUnique({ where: { id: viewId } });
+// const data = await prisma[view.tableId].findMany({
+//   where: view.filters,
+//   select: view.columns.reduce((acc, col) => ({ ...acc, [col]: true }), {}),
+//   orderBy: view.sorting,
+//   ...(view.grouping && { groupBy: view.grouping }),
+// });
+
+model Client {
+  clientId            Int      @id @default(autoincrement())
+  name                String
+  linkSell            Int
+  contentSell         Int
+  totalAmountReceived Int
+  totalOrders         Int
+  salesPersonId       Int
+  phone               String
+  email               String
+  fbId                String
+  contactedId         String
+  siteName            String
+  source              String
+  userId              Int
+  clientClientName    String
+  clientProjects      String
+  clientCreatedAt     DateTime @default(now())
+  clientUpdatedAt     DateTime @updatedAt
+  orders              Order[]  @relation("ClientOrders")
+  salesPerson         User     @relation("UserClients", fields: [salesPersonId], references: [id])
+
+  @@index([salesPersonId])
+}
+
+model Order {
+  orderId                    Int                 @id @default(autoincrement())
+  clientId                   Int
+  client                     Client              @relation("ClientOrders", fields: [clientId], references: [clientId])
+  orderDate                  DateTime
+  publishStatus              Boolean
+  publishDate                DateTime
+  publishLink                String
+  transactionAmount          Int
+  receivedAmount             Int
+  accountType                String
+  accountId                  Int
+  proposedAmount             Int
+  contentAmount              Int
+  website                    String
+  websiteRemark              String
+  vendorEmail                String
+  vendorName                 String
+  siteCost                   Int
+  vendorContactedFrom        String
+  remark                     String
+  vendorWebsiteRemark        String
+  clientAmountReceived       Int
+  clientAmountReceivedDate   String
+  clientAmountReceivedStatus OrderPaymentStatus  @default(NOT_RECEIVED)
+  vendorPaymentAmount        Int
+  vendorAccountType          String
+  vendorPaymentStatus        VendorPaymentStatus
+  vendorPaymentDate          String
+  vendorTransactionId        String
+  orderedBy                  Int
+  orderedUpdatedBy           Int
+  orderOperatedBy            Int
+  orderOperatedUpdateBy      Int
+  userId                     Int
+  paypalId                   String
+  status                     OrderStatus         @default(PENDING)
+  contentDoc                 String
+  vendorInvoiceStatus        VendorInvoiceStatus @default(PENDING)
+  paymentRemark              String
+  actualReceivedAmount       Int
+  actualPaidAmount           Int
+  siteType                   SiteType            @default(NORMAL)
+  websiteType                String
+  invoiceNo                  String              @default("0")
+  invoiceStatus              String
+  priceWithGST               Int
+  indexedUrl                 String
+  statusUpdateDatetime       DateTime
+
+  @@index([clientId])
+}
+
+model Vendor {
+  vendorId      Int    @id @default(autoincrement())
+  name          String
+  phone         String
+  email         String
+  contactedFrom String
+  bankName      String
+  accountNumber String
+  ifscCode      String
+  paypalId      String
+  userId        Int
+  timestamp     String
+  skypeId       String
+  upiId         String
+}
+
+// Enum definitions based on standardized entries in the data
+enum Niche {
+  Multi
+  Tech
+  Business
+  Entertainment
+  Travel
+}
+
+enum SiteCategory {
+  FashionAndBeauty
+  FitnessAndSports
+  GeneralNews
+  Health
+  TechUpdates
+  Finance
+  Travel
+  Education
+  Entertainment
+  Lifestyle
+  // Add more as necessary
+}
+
+enum ContactFrom {
+  CareAtOutreachdealCom
+  RishiJhangirEklavyaGuptaCom
+  VendorAtOutreachdealCom
+}
+
+// Site model updated with enum references
+model Site {
+  id                               Int       @id @default(autoincrement())
+  website                          String
+  niche                            Niche?    // Updated to reference Niche enum
+  site_category                    SiteCategory?  // Updated to reference SiteCategory enum
+  da                               Int
+  pa                               Int
+  person                           String
+  person_id                        Int
+  price                            Int
+  sailing_price                    Int?
+  discount                         Int?
+  adult                            Int?
+  casino_adult                     Int?
+  contact                          String?
+  contact_from                     ContactFrom?  // Updated to reference ContactFrom enum
+  web_category                     String?
+  follow                           String    @default("Do-follow")
+  price_category                   String    @default("Paid")
+  traffic                          BigInt    @default(0)
+  spam_score                       Int?
+  cbd_price                        Int?
+  remark                           String?
+  contact_from_id                  String?
+  vendor_country                   String?
+  phone_number                     BigInt?
+  sample_url                       String?
+  bank_details                     String?
+  dr                               Int?
+  user_id                          Int
+  timestamp                        DateTime  @default(now()) @updatedAt
+  web_ip                           String?
+  web_country                      String?
+  link_insertion_cost              String?
+  tat                              String?
+  social_media_posting             String    @default("No")
+  semrush_traffic                  BigInt?
+  semrush_first_country_name       String?
+  semrush_first_country_traffic    BigInt?
+  semrush_second_country_name      String?
+  semrush_second_country_traffic   BigInt?
+  semrush_third_country_name       String?
+  semrush_third_country_traffic    BigInt?
+  semrush_fourth_country_name      String?
+  semrush_fourth_country_traffic   BigInt?
+  semrush_fifth_country_name       String?
+  semrush_fifth_country_traffic    BigInt?
+  similarweb_traffic               BigInt?
+  vendor_invoice_status            String    @default("Pending")
+  main_category                    String?
+  site_update_date                 String?
+  website_type                     String    @default("Default")
+  language                         String?
+  gst                              String?
+  disclaimer                       String?
+  anchor_text                      String?
+  banner_image_price               Int?
+  cp_update_date                   DateTime?
+  pure_category                    String?
+  availability                     String?
+  indexed_url                      String?
+  website_status                   String    @default("Normal")
+  website_quality                  String?
+  num_of_links                     Int?
+  semrush_updation_date            DateTime?
+  organic_traffic                  BigInt    @default(0)
+  organic_traffic_last_update_date DateTime  @default(now())
+  created_at                       DateTime  @default(now())
+
+  // Relation with User model
+  user User @relation("UserSites", fields: [user_id], references: [id])
+
+  @@index([user_id])
+}

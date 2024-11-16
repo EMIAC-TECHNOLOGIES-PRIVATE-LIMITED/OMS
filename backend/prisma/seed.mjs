@@ -28,7 +28,7 @@ async function main() {
 
     // Create Resources (defining column access for Site model) using the new `key` field
     await prisma.resource.createMany({
-      data: [
+      data: [ 
         {
           key: 'Site_Admin',
           columns: [

@@ -6,12 +6,8 @@ import JSONbig from 'json-bigint';
 export const viewsController = {
     getView: async (req: AuthRequest, res: Response): Promise<Response> => {
 
-
         const page = req.query.page ? parseInt(req.query.page as string) : 1;
         const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 10;
-
-        // console.log(req.query.page);
-        // console.log(req.page);
 
         const skip = (page - 1) * pageSize;
         const take = pageSize;
@@ -21,13 +17,16 @@ export const viewsController = {
         const userViews = req.userViews!;
         const modelName = req.modelName;
 
-        if (!modelName) { return res.status(502).json({ 'message': "bad request" }) }
+        if (!modelName) {
+            return res.status(502).json({ 'message': "Bad request: Model name missing" });
+        }
+
         // Validate view columns
         const viewColumns = view.columns.filter((col: string) => permittedColumns.includes(col));
 
         // Sanitize filters, sorting, and grouping
         const sanitizedFilters = sanitizeFilters(view.filters, permittedColumns);
-        const sanitizedSorting = sanitizeSorting(view.sorting, permittedColumns);
+        const sanitizedSorting = sanitizeSorting(view.sort, permittedColumns);
         const sanitizedGrouping = view.grouping
             ? view.grouping.filter((col: string) => permittedColumns.includes(col))
             : [];
@@ -36,17 +35,13 @@ export const viewsController = {
         const selectClause = viewColumns.reduce(
             (acc: any, col: string) => ({ ...acc, [col]: true }),
             {}
+
         );
-
-
-        // console.log(view.sort);
-        // console.log(permittedColumns);
-        // console.log(sanitizedSorting);
 
         const queryOptions = {
             where: sanitizedFilters,
             select: selectClause,
-            orderBy: view.sort,
+            orderBy: sanitizedSorting,
             skip,
             take
         };
@@ -79,7 +74,7 @@ export const viewsController = {
                 const results = await (prismaClient as any)[modelName].aggregate({
                     _count: { _all: true },
                     where: queryOptions.where
-                })
+                });
                 data = await (prismaClient as any)[modelName].findMany(queryOptions);
 
                 totalRecords = results._count._all;
@@ -88,6 +83,7 @@ export const viewsController = {
             // Prepare response
             const response = {
                 success: true,
+                viewId : req.view,
                 totalRecords,
                 page,
                 pageSize,
@@ -108,6 +104,111 @@ export const viewsController = {
         }
     },
 
+    getData: async (req: AuthRequest, res: Response): Promise<Response> => {
+        const page = req.query.page ? parseInt(req.query.page as string) : 1;
+        const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 10;
+
+        const skip = (page - 1) * pageSize;
+        const take = pageSize;
+
+        const permittedColumns = req.permittedColumns!;
+        const columnTypes = req.columnTypes!;
+        const userViews = req.userViews!;
+        const modelName = req.modelName;
+
+        if (!modelName) {
+            return res.status(400).json({ message: "Bad request: Model name missing" });
+        }
+
+        // Get filter configurations from req.body
+        const { viewName, columns, filters, sorting, grouping } = req.body;
+
+        // Validate columns
+        const validColumns = columns.filter((col: string) => permittedColumns.includes(col));
+        if (validColumns.length === 0) {
+            return res.status(400).json({ success: false, message: 'No valid columns provided' });
+        }
+
+        // Sanitize filters, sorting, and grouping
+        const sanitizedFilters = sanitizeFilters(filters, permittedColumns);
+        const sanitizedSorting = sanitizeSorting(sorting, permittedColumns);
+        const sanitizedGrouping = grouping
+            ? grouping.filter((col: string) => permittedColumns.includes(col))
+            : [];
+
+        // Build Prisma query
+        const selectClause = validColumns.reduce(
+            (acc: any, col: string) => ({ ...acc, [col]: true }),
+            {}
+        );
+
+        const queryOptions = {
+            where: sanitizedFilters,
+            select: selectClause,
+            orderBy: sanitizedSorting,
+            skip,
+            take,
+        };
+
+        let totalRecords;
+        try {
+            let data;
+            if (sanitizedGrouping.length > 0) {
+                // Use groupBy
+                const rawData = await (prismaClient as any)[modelName].groupBy({
+                    by: sanitizedGrouping,
+                    where: sanitizedFilters,
+                    orderBy: sanitizedSorting,
+                    skip,
+                    take,
+                });
+
+                // Transform the raw data into the desired structure
+                const groupedData = rawData.reduce((acc: Record<string, any[]>, currentItem: any) => {
+                    const groupByValue = currentItem[sanitizedGrouping[0]]; // Assuming a single column for groupBy
+                    if (!acc[groupByValue]) {
+                        acc[groupByValue] = [];
+                    }
+                    acc[groupByValue].push(currentItem);
+                    return acc;
+                }, {});
+
+                data = groupedData;
+                // For grouped data, you might need a different way to count total records
+                totalRecords = Object.keys(groupedData).length;
+            } else {
+                // Use findMany
+                const results = await (prismaClient as any)[modelName].aggregate({
+                    _count: { _all: true },
+                    where: queryOptions.where,
+                });
+                data = await (prismaClient as any)[modelName].findMany(queryOptions);
+                totalRecords = results._count._all;
+            }
+
+            // Prepare response
+            const response = {
+                success: true,
+                totalRecords,
+                page,
+                pageSize,
+                data,
+                availableColumns: columnTypes,
+                appliedFilters: sanitizedFilters,
+                appliedSorting: sanitizedSorting,
+                appliedGrouping: sanitizedGrouping,
+                views: userViews,
+            };
+
+            const parsedResponse = JSONbig.stringify(response);
+
+            return res.type('application/json').send(parsedResponse);
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ success: false, message: 'Error fetching data', error, });
+        }
+    },
+
     // Create a new view
     createView: async (req: AuthRequest, res: Response): Promise<Response> => {
         const { resource } = req.params;
@@ -121,7 +222,7 @@ export const viewsController = {
             return res.status(400).json({ success: false, message: 'Invalid columns in view' });
         }
 
-        // Sanitize filters and sorting
+        // Sanitize filters, sorting, and grouping
         const sanitizedFilters = sanitizeFilters(filters, permittedColumns);
         const sanitizedSorting = sanitizeSorting(sorting, permittedColumns);
         const sanitizedGrouping = grouping
@@ -129,6 +230,7 @@ export const viewsController = {
             : [];
 
         try {
+            // Create the new view in the database
             const newView = await prismaClient.view.create({
                 data: {
                     userId,
@@ -137,23 +239,55 @@ export const viewsController = {
                     columns: validColumns,
                     filters: sanitizedFilters,
                     sort: sanitizedSorting,
-                    groupBy: sanitizedGrouping,
+                    groupBy: sanitizedGrouping
                 },
             });
-            return res.status(201).json({ success: true, view: newView });
+
+            // Assign the newly created view to req.view for further processing
+            req.view = newView;
+
+            // Invoke getView to fetch and return the data based on the new view
+            const getViewResponse = await viewsController.getView(req, res);
+            return getViewResponse;
         } catch (error) {
             console.error(error);
             return res.status(500).json({ success: false, message: 'Error creating view' });
         }
     },
 
-    // Update an existing view
+    // Update an existing view or create a new "Untitled Grid" view if no id is provided
     updateView: async (req: AuthRequest, res: Response): Promise<Response> => {
         const { viewId } = req.params;
         const userId = req.user?.userId!;
         const permittedColumns = req.permittedColumns!;
         const { viewName, columns, filters, sorting, grouping } = req.body;
 
+        if (!viewId) {
+            // No viewId provided, create a new "Untitled Grid" view
+            try {
+                const newView = await prismaClient.view.create({
+                    data: {
+                        userId,
+                        tableId: req.params.resource, // Assuming 'resource' is available in params
+                        viewName: 'Untitled Grid',
+                        columns: columns.filter((col: string) => permittedColumns.includes(col)),
+                        filters: sanitizeFilters(filters, permittedColumns),
+                        sort: sanitizeSorting(sorting, permittedColumns),
+                        groupBy: grouping ? grouping.filter((col: string) => permittedColumns.includes(col)) : [],
+                    },
+                });
+
+                // Fetch data for the newly created view
+                req.view = newView;
+                const getViewResponse = await viewsController.getView(req, res);
+                return getViewResponse;
+            } catch (error) {
+                console.error(error);
+                return res.status(500).json({ success: false, message: 'Error creating Untitled Grid view' });
+            }
+        }
+
+        // If viewId is provided, proceed with the existing update logic
         // Validate columns
         const validColumns = columns.filter((col: string) => permittedColumns.includes(col));
         if (validColumns.length !== columns.length) {
@@ -168,7 +302,7 @@ export const viewsController = {
             : [];
 
         try {
-            //verify ownership
+            // Verify ownership
             const view = await prismaClient.view.findUnique({ where: { id: parseInt(viewId) } });
             if (!view || view.userId !== userId) {
                 return res.status(404).json({ success: false, message: 'View not found or access denied' });
@@ -184,7 +318,11 @@ export const viewsController = {
                     groupBy: sanitizedGrouping,
                 },
             });
-            return res.status(200).json({ success: true, view: updatedView });
+
+            // Fetch data for the updated view
+            req.view = updatedView;
+            const getViewResponse = await viewsController.getView(req, res);
+            return getViewResponse;
         } catch (error) {
             console.error(error);
             return res.status(500).json({ success: false, message: 'Error updating view' });
@@ -266,4 +404,3 @@ function sanitizeSorting(sorting: any, permittedColumns: string[]): any[] {
 
     return sanitize(sorting);
 }
-

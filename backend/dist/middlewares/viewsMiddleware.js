@@ -41,7 +41,7 @@ const viewsMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
         const userResource = decoded.resources.find((r) => {
             // console.log(r.key);
             // console.log(r.key.toLowerCase().split('_')[0]);
-            //TODO : Fix this concat thing 
+            //TODO: fix this concat thing 
             return r.key.toLowerCase().split('_')[0].concat('s') === resource.toLowerCase();
         });
         console.log(userResource);

@@ -1,8 +1,8 @@
 
 function Header() {
   return (
-    <div>
-
+    <div className="bg-slate-400 text-3xl">
+      Header
     </div>
   )
 }

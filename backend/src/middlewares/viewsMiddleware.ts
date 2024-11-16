@@ -41,7 +41,7 @@ const viewsMiddleware = async (
         );
 
         if (!hasPermission) {
-            return res.status(403).json({ success: false, message: 'Permission denied' });
+            return res.status(403).json({ success: false, message: 'Permission denied' });  
         }
 
         // Extract permitted columns

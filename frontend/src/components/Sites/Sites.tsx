@@ -1,70 +1,403 @@
-import { Container } from '@mui/material';
-import { DataGrid, GridColDef, GridRowsProp, GridToolbar } from '@mui/x-data-grid';
-import axios from 'axios';
-import { useEffect, useState } from 'react';
-import { ResponseData } from '../../types';
+  import { useEffect, useState, useCallback } from 'react';
+  import axios from 'axios';
+  import { DataTable, ViewSidebar, FilterComponent } from '../';
+  import {
+    WebsiteData,
+    FilterConfig,
+    FrontendAvailableColumns,
+    GetViewDataResponse,
+    View,
+    BackendAvailableColumns,
+    BackendColumnType,
+    SortingOption,
+  } from '../../types/index';
 
-const api: string = (import.meta.env.VITE_API_URL);
-const token: string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluM0B0ZXN0LmNvbSIsInVzZXJJZCI6Mywicm9sZSI6ImFkbWluIiwicGVybWlzc2lvbnMiOlt7ImtleSI6IlZJRVdfU0lURVNfUk9VVEUiLCJkZXNjcmlwdGlvbiI6IlBlcm1pc3Npb24gdG8gdmlldyBzaXRlcyByb3V0ZSJ9XSwicmVzb3VyY2VzIjpbeyJrZXkiOiJTaXRlX0FkbWluIiwiY29sdW1ucyI6WyJpZCIsIndlYnNpdGUiLCJuaWNoZSIsInNpdGVfY2F0ZWdvcnkiLCJkYSIsInBhIiwicGVyc29uIiwicGVyc29uX2lkIiwicHJpY2UiLCJzYWlsaW5nX3ByaWNlIiwiZGlzY291bnQiLCJhZHVsdCIsImNhc2lub19hZHVsdCIsImNvbnRhY3QiLCJjb250YWN0X2Zyb20iLCJ3ZWJfY2F0ZWdvcnkiLCJmb2xsb3ciLCJwcmljZV9jYXRlZ29yeSIsInRyYWZmaWMiLCJzcGFtX3Njb3JlIiwiY2JkX3ByaWNlIiwicmVtYXJrIiwiY29udGFjdF9mcm9tX2lkIiwidmVuZG9yX2NvdW50cnkiLCJwaG9uZV9udW1iZXIiLCJzYW1wbGVfdXJsIiwiYmFua19kZXRhaWxzIiwiZHIiLCJ1c2VyX2lkIiwidGltZXN0YW1wIiwid2ViX2lwIiwid2ViX2NvdW50cnkiLCJsaW5rX2luc2VydGlvbl9jb3N0IiwidGF0Iiwic29jaWFsX21lZGlhX3Bvc3RpbmciLCJzZW1ydXNoX3RyYWZmaWMiLCJzZW1ydXNoX2ZpcnN0X2NvdW50cnlfbmFtZSIsInNlbXJ1c2hfZmlyc3RfY291bnRyeV90cmFmZmljIiwic2VtcnVzaF9zZWNvbmRfY291bnRyeV9uYW1lIiwic2VtcnVzaF9zZWNvbmRfY291bnRyeV90cmFmZmljIiwic2VtcnVzaF90aGlyZF9jb3VudHJ5X25hbWUiLCJzZW1ydXNoX3RoaXJkX2NvdW50cnlfdHJhZmZpYyIsInNlbXJ1c2hfZm91cnRoX2NvdW50cnlfbmFtZSIsInNlbXJ1c2hfZm91cnRoX2NvdW50cnlfdHJhZmZpYyIsInNlbXJ1c2hfZmlmdGhfY291bnRyeV9uYW1lIiwic2VtcnVzaF9maWZ0aF9jb3VudHJ5X3RyYWZmaWMiLCJzaW1pbGFyd2ViX3RyYWZmaWMiLCJ2ZW5kb3JfaW52b2ljZV9zdGF0dXMiLCJtYWluX2NhdGVnb3J5Iiwic2l0ZV91cGRhdGVfZGF0ZSIsIndlYnNpdGVfdHlwZSIsImxhbmd1YWdlIiwiZ3N0IiwiZGlzY2xhaW1lciIsImFuY2hvcl90ZXh0IiwiYmFubmVyX2ltYWdlX3ByaWNlIiwiY3BfdXBkYXRlX2RhdGUiLCJwdXJlX2NhdGVnb3J5IiwiYXZhaWxhYmlsaXR5IiwiaW5kZXhlZF91cmwiLCJ3ZWJzaXRlX3N0YXR1cyIsIndlYnNpdGVfcXVhbGl0eSIsIm51bV9vZl9saW5rcyIsInNlbXJ1c2hfdXBkYXRpb25fZGF0ZSIsIm9yZ2FuaWNfdHJhZmZpYyIsIm9yZ2FuaWNfdHJhZmZpY19sYXN0X3VwZGF0ZV9kYXRlIiwiY3JlYXRlZF9hdCJdfV0sImlhdCI6MTczMDkwMTY1NCwiZXhwIjoxNzMwOTA1MjU0fQ.MiYNE2wlYIoGSKSnyvqvgHdx395Cy-scNm-qwwDIGqM";
+  const api: string = import.meta.env.VITE_API_URL;
+  const token: string = import.meta.env.VITE_API_TOKEN || 'your-default-token-here';
 
-function Sites() {
-    const [data, setData] = useState<ResponseData | null>(null);
+  const Sites = () => {
+    const [data, setData] = useState<WebsiteData[]>([]);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [availableColumns, setAvailableColumns] = useState<FrontendAvailableColumns>({});
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [columns, setColumns] = useState<GridColDef[]>([]); // Initial empty array for columns
+    const [currentViewId, setCurrentViewId] = useState<number | null>(() => {
+      // Initialize currentViewId from localStorage on component mount
+      const storedViewId = window.localStorage.getItem('sites-view-id');
+      return storedViewId ? parseInt(storedViewId, 10) : null;
+    });
+    const [views, setViews] = useState<View[]>([]);
+    const [initialFilterConfig, setInitialFilterConfig] = useState<FilterConfig | undefined>(undefined);
+    const [page, setPage] = useState<number>(1);
+    const [pageSize, setPageSize] = useState<number>(25);
+    const [isModified, setIsModified] = useState<boolean>(false);
+    const [currentFilterConfig, setCurrentFilterConfig] = useState<FilterConfig | null>(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    // Fetch the data
-    useEffect(() => {
-        const fetchSitesData = async () => {
-            try {
-                const response = await axios.get(`${api}/data/sites`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                });
-                setData(response.data);
-            } catch (e: any) {
-                setError(e.response ? e.response.data : 'An error occurred while fetching data');
-            } finally {
-                setLoading(false);
-            }
+    // Fn to transfer backend columns types to frontend columns types and add 'label'
+    const transformAvailableColumns = (backendColumns: BackendAvailableColumns): FrontendAvailableColumns => {
+      const frontendColumns: FrontendAvailableColumns = {};
+      for (const [key, type] of Object.entries(backendColumns)) {
+        frontendColumns[key] = {
+          label: key
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (l) => l.toUpperCase()),
+          type: type as BackendColumnType,
         };
+      }
+      return frontendColumns;
+    };
 
-        fetchSitesData();
-    }, []);
+    // Fn to fetch view data, default view if no viewId provided
+    const fetchViewData = useCallback(async (viewId?: number, isInitial: boolean = false) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const endpoint = viewId
+          ? `${api}/data/sites/${viewId}`
+          : `${api}/data/sites`;
 
-    // Set columns based on availableColumns in data
-    useEffect(() => {
-        if (data) {
-            const generatedColumns: GridColDef[] = Object.entries(data.availableColumns || {}).map(([key]) => ({
-                field: key,
-                headerName: key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
-            }));
-            setColumns(generatedColumns);
+        console.log(`Fetching view data for viewId: ${viewId}`);
+
+        const response = await axios.get<GetViewDataResponse>(endpoint, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          params: {
+            page,
+            pageSize,
+          },
+        });
+
+        if (response.data.success) {
+          setData(response.data.data);
+          setTotalRecords(response.data.totalRecords);
+          setAvailableColumns(transformAvailableColumns(response.data.availableColumns));
+          setViews(response.data.views);
+
+          // Handle view selection
+          const selectedView = viewId
+            ? response.data.views.find((v) => v.id === viewId)
+            : response.data.views.find((v) => v.viewName === 'grid');
+
+          if (selectedView) {
+            setCurrentViewId(selectedView.id);
+            if (isInitial) {
+              window.localStorage.setItem('sites-view-id', selectedView.id.toString());
+            }
+          } else if (isInitial) {
+            // Only reset to default view if this is not an initial load
+            const defaultView = response.data.views.find((v) => v.viewName === 'grid');
+            if (defaultView) {
+              setCurrentViewId(defaultView.id);
+              window.localStorage.setItem('sites-view-id', defaultView.id.toString());
+            }
+          }
+
+          // Construct initialFilterConfig based on the selected view
+          const initialFilters: Record<string, any> = response.data.appliedFilters;
+          const initialSorting: SortingOption[] = response.data.appliedSorting;
+          const initialGrouping: string[] = response.data.appliedGrouping;
+
+          const initialConfig: FilterConfig = {
+            viewName: selectedView?.viewName || 'Untitled View',
+            columns: Object.keys(response.data.availableColumns),
+            filters: initialFilters,
+            sorting: initialSorting,
+            grouping: initialGrouping,
+          };
+
+          setInitialFilterConfig(initialConfig);
+          setCurrentFilterConfig(initialConfig);
+          setIsModified(false);
+        } else {
+          setError('Failed to fetch view data');
         }
-    }, [data]); // Re-run this effect whenever `data` updates
-
-    if (loading) {
-        return (
-            <>
-                <h4>Loader / Spinner Here</h4>
-            </>
+      } catch (error: any) {
+        console.error('Error fetching view data:', error);
+        setError(
+          error.response?.data.message ||
+          'An error occurred while fetching view data'
         );
-    }
+      } finally {
+        setLoading(false);
+      }
+    }, [page, pageSize]);
+
+    // Initial data load
+    useEffect(() => {
+      const initializeView = async () => {
+        if (isInitialLoad) {
+          const storedViewId = window.localStorage.getItem('sites-view-id');
+          console.log('Initial load - stored view ID:', storedViewId);
+
+          if (storedViewId) {
+            const parsedViewId = parseInt(storedViewId, 10);
+            if (!isNaN(parsedViewId)) {
+              await fetchViewData(parsedViewId, true);
+            } else {
+              await fetchViewData(undefined, true);
+            }
+          } else {
+            await fetchViewData(undefined, true);
+          }
+          setIsInitialLoad(false);
+        }
+      };
+
+      initializeView();
+    }, [fetchViewData, isInitialLoad]);
+
+    // Update localStorage when currentViewId changes
+    useEffect(() => {
+      if (!isInitialLoad && currentViewId !== null) {
+        console.log('Updating localStorage with viewId:', currentViewId);
+        window.localStorage.setItem('sites-view-id', currentViewId.toString());
+      }
+    }, [currentViewId, isInitialLoad]);
+
+    // Handle view selection
+    const handleSelectView = async (viewId: number) => {
+      console.log('Selecting view:', viewId);
+      setCurrentViewId(viewId);
+      await fetchViewData(viewId);
+    };
+
+    // NEW : Fetch data without creating or updating any view
+    const fetchDataWithFilterConfig = useCallback(async (filterConfig: FilterConfig) => {
+
+      console.log('New fetch only data function called')
+      console.log(`The iler congfig bein sent are ${filterConfig}`)
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.post<GetViewDataResponse>(
+          `${api}/data/sites/data`,
+          filterConfig,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            params: {
+              page,
+              pageSize,
+            },
+          }
+        );
+
+        if (response.data.success) {
+          setData(response.data.data);
+          setTotalRecords(response.data.totalRecords);
+          setAvailableColumns(transformAvailableColumns(response.data.availableColumns));
+        } else {
+          setError('Failed to fetch data');
+        }
+      } catch (error: any) {
+        setError(
+          error.response?.data.message || 'An error occurred while fetching data'
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [page, pageSize]);
+
+
+    const createOrUpdateView = useCallback(async (
+      filterConfig: FilterConfig,
+      viewId?: number
+    ): Promise<GetViewDataResponse | null> => {
+      setLoading(true);
+      setError(null);
+      console.log('Create or update function called')
+      console.log(`The filter config sent to backend are ${filterConfig}`)
+      try {
+        const endpoint = viewId
+          ? `${api}/data/sites/${viewId}`
+          : `${api}/data/sites`;
+
+        const method = viewId ? 'put' : 'post';
+
+        const response = await axios.request<GetViewDataResponse>({
+          url: endpoint,
+          method,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": 'application/json'
+          },
+          params: {
+            page,
+            pageSize
+          },
+          data: filterConfig
+        });
+
+        if (response.data.success) {
+          setData(response.data.data);
+          setTotalRecords(response.data.totalRecords);
+          setAvailableColumns(transformAvailableColumns(response.data.availableColumns));
+          setViews(response.data.views);
+          const updatedView = viewId
+            ? response.data.views.find((v) => v.id === viewId)
+            : response.data.views.find((v) => v.viewName === filterConfig.viewName);
+
+          setCurrentViewId(updatedView?.id || null);
+          if (updatedView)
+            handleSelectView(updatedView.id)
+
+          // Construct initialFilterConfig based on the updated view
+          const initialFilters: Record<string, any> = response.data.appliedFilters;
+          const initialSorting: SortingOption[] = response.data.appliedSorting;
+          const initialGrouping: string[] = response.data.appliedGrouping;
+
+          const initialConfig: FilterConfig = {
+            viewName: updatedView?.viewName || 'Untitled View',
+            columns: Object.keys(response.data.availableColumns),
+            filters: initialFilters,
+            sorting: initialSorting,
+            grouping: initialGrouping,
+          };
+
+          setInitialFilterConfig(initialConfig);
+          setCurrentFilterConfig(initialConfig);
+          setIsModified(false);
+          return response.data;
+        } else {
+          setError('Failed to create/update view');
+          return null;
+        }
+      } catch (error: any) {
+        setError(
+          error.response?.data.message ||
+          'An error occurred while creating/updating the view'
+        );
+        console.log(error);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    }, [page, pageSize]);
+
+    /**
+     * Handler for selecting an existing view from the sidebar.
+     */
+
+    const handlePageChange = (newPage?: number, newPageSize?: number) => {
+      if (newPageSize && newPageSize !== pageSize) {
+        setPage(1);
+        setPageSize(newPageSize);
+      } else if (newPage) {
+        setPage(newPage);
+      }
+      if (currentFilterConfig) {
+        fetchDataWithFilterConfig(currentFilterConfig);
+      } else if (currentViewId) {
+        fetchViewData(currentViewId);
+      } else {
+        fetchViewData();
+      }
+    };
+
+    const handleDeleteView = (deletedViewId: number) => {
+      setViews((prevViews) => prevViews.filter((view) => view.id !== deletedViewId));
+      if (currentViewId === deletedViewId) {
+        const defaultView = views.find((v) => v.viewName === 'Grid View');
+        setCurrentViewId(defaultView?.id || null);
+        if (defaultView) {
+          fetchViewData(defaultView.id);
+        } else {
+          fetchViewData();
+        }
+      }
+    };
+
+    /**
+     * Handler for changes in the filter configuration.
+     * Fetches data based on the new configuration and sets the modified state.
+     */
+    const onFilterChange = useCallback(async (filterConfig: FilterConfig) => {
+
+      const isConfigEqual = JSON.stringify(filterConfig) === JSON.stringify(currentFilterConfig);
+      if (!isConfigEqual) {
+        await fetchDataWithFilterConfig(filterConfig);
+        setCurrentFilterConfig(filterConfig);
+        setIsModified(true);
+      }
+    }, [currentFilterConfig, fetchDataWithFilterConfig]);
+
+
+    const isDefaultView = useCallback((): boolean => {
+      const defaultView = views.find((v) => v.viewName === 'grid');
+      return currentViewId === defaultView?.id || currentViewId === null;
+    }, [currentViewId, views]);
+
+
+    const handleSaveView = async () => {
+      if (!currentFilterConfig) {
+        return;
+      }
+
+      if (isDefaultView()) {
+        const filterConfig = {
+          ...currentFilterConfig,
+          viewName: currentFilterConfig.viewName === 'grid' ? 'Untiteled View' : currentFilterConfig.viewName
+        };
+        await createOrUpdateView(filterConfig);
+        console.log('new view created');
+      } else {
+        await createOrUpdateView(currentFilterConfig, currentViewId || undefined);
+      }
+      setIsModified(false);
+    };
 
     return (
-        <Container>
-            <div className='bg-red-200'>
-                <DataGrid rows={rows} columns={columns} slots={{ toolbar: GridToolbar }} />
+      <div className="flex h-screen">
+        {/* Sidebar */}
+        <ViewSidebar
+          views={views}
+          resource="sites"
+          currentViewId={currentViewId}
+          onSelectView={handleSelectView}
+          onDeleteView={handleDeleteView}
+        />
+
+
+        <div className="flex-1 p-4 overflow-auto">
+          <h2 className="text-2xl font-bold mb-4">Sites</h2>
+          {availableColumns && initialFilterConfig && (
+            <FilterComponent
+              availableColumns={availableColumns}
+              onFilterChange={onFilterChange}
+              initialFilterConfig={initialFilterConfig} // Pass the initialFilterConfig
+              page={page}
+              pageSize={pageSize}
+              totalRecords={totalRecords}
+              onPageChange={handlePageChange}
+            />
+          )}
+          {/* Save View Button */}
+          {isModified && (
+            <div className="flex justify-end mb-4">
+              <button
+                type="button"
+                onClick={handleSaveView}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                {isDefaultView() ? 'Save View' : 'Save'}
+              </button>
             </div>
-        </Container>
+          )}
+          <DataTable
+            data={data}
+            availableColumns={availableColumns}
+            loading={loading}
+            error={error}
+            totalRecords={totalRecords}
+          />
+          {error && <div className="text-red-500 mt-4">{error}</div>}
+        </div>
+      </div>
     );
-}
+  };
 
-// Sample rows, adjust as needed
-const rows: GridRowsProp = [
-    { id: 1, col1: 'Hello', col2: 'World' },
-    { id: 2, col1: 'DataGridPro', col2: 'is Awesome' },
-];
-
-export default Sites;
+  export default Sites;

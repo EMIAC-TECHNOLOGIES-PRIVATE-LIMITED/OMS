@@ -99,7 +99,7 @@ function signInController(req, res) {
                 role: userFound.role.name,
                 permissions: accessData.permissions,
                 resources: accessData.resources,
-            }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            }, process.env.JWT_SECRET, { expiresIn: '12h' });
             return res.status(200).json({
                 message: 'User logged in successfully',
                 token,
