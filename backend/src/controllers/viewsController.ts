@@ -83,7 +83,7 @@ export const viewsController = {
             // Prepare response
             const response = {
                 success: true,
-                viewId : req.view,
+                viewId: req.view,
                 totalRecords,
                 page,
                 pageSize,
@@ -105,6 +105,8 @@ export const viewsController = {
     },
 
     getData: async (req: AuthRequest, res: Response): Promise<Response> => {
+        const { column, value } = req.query
+
         const page = req.query.page ? parseInt(req.query.page as string) : 1;
         const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 10;
 
@@ -118,6 +120,31 @@ export const viewsController = {
 
         if (!modelName) {
             return res.status(400).json({ message: "Bad request: Model name missing" });
+        }
+
+        if (column && value) {
+            try {
+                const typeAheadFilter = {
+                    [column as string]: {
+                        contains: value,
+                        mode: 'insensitive'
+                    }
+                }
+
+                const results = await (prismaClient as any)[modelName].findMany({
+                    where: typeAheadFilter,
+                    select: { [column as string]: true },
+                    take: 10
+                });
+
+                return res.json({
+                    success: true,
+                    data: results
+                })
+            } catch (e) {
+                console.log(e);
+                return res.status(500).json({ success: false, message: `Error Fetching the typeAhead Suggestions,  ${e}` });
+            }
         }
 
         // Get filter configurations from req.body

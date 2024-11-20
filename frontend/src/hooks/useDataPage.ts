@@ -46,7 +46,7 @@ export function useDataPage<T extends object>({
             setError(null);
             try {
                 const endpoint = viewId ? `${apiEndpoint}/${viewId}` : `${apiEndpoint}`;
-                console.log(`Fetching view data for viewId: ${viewId}`);
+                // console.log(`Fetching view data for viewId: ${viewId}`);
 
                 const response = await fetchDataPage(
                     endpoint,
@@ -115,8 +115,8 @@ export function useDataPage<T extends object>({
     // Fetch data with filter config
     const fetchDataWithFilterConfig = useCallback(
         async (filterConfig: FilterConfig) => {
-            console.log('Fetching data with filter config');
-            console.log(`Filter config being sent:`, filterConfig);
+            // console.log('Fetching data with filter config');
+            // console.log(`Filter config being sent:`, filterConfig);
             setLoading(true);
             setError(null);
             try {
@@ -151,7 +151,7 @@ export function useDataPage<T extends object>({
 
     // Handle view selection
     const handleSelectView = async (viewId: number) => {
-        console.log('Selecting view:', viewId);
+        // console.log('Selecting view:', viewId);
         setCurrentViewId(viewId);
         await fetchViewData(viewId);
     };
@@ -164,8 +164,8 @@ export function useDataPage<T extends object>({
         ): Promise<GetViewDataResponse | null> => {
             setLoading(true);
             setError(null);
-            console.log('Create or update view function called');
-            console.log(`Filter config sent to backend:`, filterConfig);
+            // console.log('Create or update view function called');
+            // console.log(`Filter config sent to backend:`, filterConfig);
             try {
                 const endpoint = viewId ? `${apiEndpoint}/${viewId}` : `${apiEndpoint}`;
                 const method: 'post' | 'put' = viewId ? 'put' : 'post';
@@ -292,7 +292,7 @@ export function useDataPage<T extends object>({
             };
             await createOrUpdateView(filterConfig);
             setCurrentFilterConfig(filterConfig);
-            console.log('New view created');
+            // console.log('New view created');
         } else {
             await createOrUpdateView(currentFilterConfig, currentViewId || undefined);
         }
@@ -304,7 +304,7 @@ export function useDataPage<T extends object>({
         const initializeView = async () => {
             if (isInitialLoad) {
                 const storedViewId = window.localStorage.getItem(`${resource}-view-id`);
-                console.log('Initial load - stored view ID:', storedViewId);
+                // console.log('Initial load - stored view ID:', storedViewId);
 
                 if (storedViewId) {
                     const parsedViewId = parseInt(storedViewId, 10);
@@ -329,7 +329,7 @@ export function useDataPage<T extends object>({
     // Update localStorage when currentViewId changes
     useEffect(() => {
         if (!isInitialLoad && currentViewId !== null) {
-            console.log('Updating localStorage with viewId:', currentViewId);
+            // console.log('Updating localStorage with viewId:', currentViewId);
             window.localStorage.setItem(`${resource}-view-id`, currentViewId.toString());
         }
     }, [currentViewId, isInitialLoad, resource]);

@@ -2,5 +2,6 @@ import ColumnSelector from "./ColumnSelector/ColumnSelector";
 import FilterList from "./FilterList/FilterList";
 import PaginationControls from "./PaginationControls/PaginationControls";
 import SortingList from "./SortingList/SortingList";
+import Spinner from "./Spinner/Spinner";
 
-export {ColumnSelector, FilterList, PaginationControls, SortingList}
+export { Spinner, ColumnSelector, FilterList, PaginationControls, SortingList }

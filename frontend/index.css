@@ -1,0 +1,24 @@
+/* src/index.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Animation Classes for React Transition Group */
+@layer components {
+  /* Entering Animation */
+  .filter-enter {
+    @apply opacity-0 scale-95;
+  }
+  .filter-enter-active {
+    @apply opacity-100 scale-100 transition-opacity transition-transform duration-300 ease-out;
+  }
+
+  /* Exiting Animation */
+  .filter-exit {
+    @apply opacity-100 scale-100;
+  }
+  .filter-exit-active {
+    @apply opacity-0 scale-95 transition-opacity transition-transform duration-300 ease-in;
+  }
+}

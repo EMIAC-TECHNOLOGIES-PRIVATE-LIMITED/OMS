@@ -100,6 +100,7 @@ exports.viewsController = {
         }
     }),
     getData: (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+        const { column, value } = req.query;
         const page = req.query.page ? parseInt(req.query.page) : 1;
         const pageSize = req.query.pageSize ? parseInt(req.query.pageSize) : 10;
         const skip = (page - 1) * pageSize;
@@ -110,6 +111,29 @@ exports.viewsController = {
         const modelName = req.modelName;
         if (!modelName) {
             return res.status(400).json({ message: "Bad request: Model name missing" });
+        }
+        if (column && value) {
+            try {
+                const typeAheadFilter = {
+                    [column]: {
+                        contains: value,
+                        mode: 'insensitive'
+                    }
+                };
+                const results = yield prismaClient_1.default[modelName].findMany({
+                    where: typeAheadFilter,
+                    select: { [column]: true },
+                    take: 10
+                });
+                return res.json({
+                    success: true,
+                    data: results
+                });
+            }
+            catch (e) {
+                console.log(e);
+                return res.status(500).json({ success: false, message: `Error Fetching the typeAhead Suggestions,  ${e}` });
+            }
         }
         // Get filter configurations from req.body
         const { viewName, columns, filters, sorting, grouping } = req.body;

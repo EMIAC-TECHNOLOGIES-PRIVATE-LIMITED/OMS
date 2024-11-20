@@ -7,8 +7,9 @@ import Sites from "./Sites/Sites";
 import ViewSidebar from "./ViewSidebar/ViewSidebar";
 import { DataPage } from "./DataPage/DataPage";
 import FilterComponent2 from "./FilterComponent/FilterComponent2";
+import IconButton from "./UI/IconButton/IconButton";
 
 
 
 
-export { DataTable, FilterComponent, FilterComponent2, Footer, Header, Home, Sites, ViewSidebar, DataPage }
+export { IconButton ,DataTable, FilterComponent, FilterComponent2, Footer, Header, Home, Sites, ViewSidebar, DataPage }
