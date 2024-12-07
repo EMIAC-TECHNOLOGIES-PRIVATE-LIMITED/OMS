@@ -1,7 +1,6 @@
-// src/components/Header.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'; // Corrected icon imports
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'; 
+import { NavLink } from 'react-router-dom'; // Import NavLink
 
 function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -11,10 +10,9 @@ function Header() {
     { name: 'Home', href: '/dashboard' },
     { name: 'Clients', href: '/users' },
     { name: 'Sites', href: '/Sites' },
-    { name: 'Vendors', href: '/reports' },
+    { name: 'Vendors', href: '/Vendors' },
   ];
 
-  // Close mobile menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -40,40 +38,36 @@ function Header() {
     <header className="bg-white shadow-premium">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          {/* Left side: Logo and Navigation */}
           <div className="flex">
-            {/* Company Logo */}
             <div className="flex-shrink-0 flex items-center">
               <img
                 className="h-8 w-auto"
-                src="/i2.png" // Ensure the logo is placed in public/images/logo.png
+                src="/i2.png"
                 alt="Company Logo"
               />
             </div>
-            {/* Desktop Navigation */}
             <nav className="hidden md:ml-6 md:flex md:space-x-8">
               {navigation.map((item) => (
-                <a
+                <NavLink
                   key={item.name}
-                  href={item.href}
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                    window.location.pathname === item.href
-                      ? 'border-brand text-brand'
-                      : 'border-transparent text-neutral-700 hover:border-brand hover:text-brand'
-                  } transition-colors duration-300`}
+                  to={item.href}
+                  className={({ isActive }) =>
+                    `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                      isActive
+                        ? 'border-brand text-brand'
+                        : 'border-transparent text-neutral-700 hover:border-brand hover:text-brand'
+                    } transition-colors duration-300`
+                  }
                 >
                   {item.name}
-                </a>
+                </NavLink>
               ))}
             </nav>
           </div>
-          {/* Right side: Project Name and Mobile Menu Button */}
           <div className="flex items-center">
-            {/* Project Name */}
             <div className="hidden md:block text-lg font-semibold text-neutral-800">
               Outreach Platform
             </div>
-            {/* Mobile Menu Button */}
             <div className="flex md:hidden">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -94,20 +88,22 @@ function Header() {
         </div>
       </div>
 
-      {/* Mobile Navigation Menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden" id="mobile-menu" ref={mobileMenuRef}>
           <nav className="px-2 pt-2 pb-3 space-y-1 sm:px-3 animate-fadeIn scale-in">
             {navigation.map((item) => (
-              <a
+              <NavLink
                 key={item.name}
-                href={item.href}
-                className="block px-3 py-2 rounded-md text-base font-medium text-neutral-700 hover:bg-neutral-100 hover:text-brand transition-colors duration-300"
+                to={item.href}
+                className={({ isActive }) =>
+                  `block px-3 py-2 rounded-md text-base font-medium text-neutral-700 hover:bg-neutral-100 hover:text-brand transition-colors duration-300 ${
+                    isActive ? 'text-brand' : 'text-neutral-700'
+                  }`
+                }
               >
                 {item.name}
-              </a>
+              </NavLink>
             ))}
-            {/* Project Name in Mobile Menu */}
             <div className="mt-3 px-3">
               <span className="text-lg font-semibold text-neutral-800">
                 Outreach Platform

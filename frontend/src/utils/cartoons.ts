@@ -177,7 +177,7 @@ export const cartoonCharacters: string[] = [
     "Phoenixperson New",
     "Bobby Driscoll",
     "Goldenfold Teacher",
-    "Principal Vagina",
+
     "Butters Stotch",
     "Kenny McCormick",
     
@@ -684,7 +684,6 @@ export const cartoonCharacters: string[] = [
     "Phoenixperson New",
     "Bobby Driscoll",
     "Goldenfold Teacher",
-    "Principal Vagina",
     "Butters Stotch",
     "Kenny McCormick",
     "Stan Marsh",
@@ -776,7 +775,7 @@ export const cartoonCharacters: string[] = [
     "Martian Manhunter",
     "Batgirl Barbara",
     "Robin Damian",
-    "Nightwing Dick",
+    
     "Red Hood",
     "Blue Beetle",
     "Green Arrow",
@@ -795,7 +794,7 @@ export const cartoonCharacters: string[] = [
     "Raven Rachel",
     "Beast Boy",
     "Cyborg Victor",
-    "Robin Dick",
+  
     "Red Robin",
     "Supergirl Kara",
     "Batwoman Kate",

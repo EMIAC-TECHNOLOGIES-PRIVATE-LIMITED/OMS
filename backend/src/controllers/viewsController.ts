@@ -80,6 +80,7 @@ export const viewsController = {
                 totalRecords = results._count._all;
             }
 
+
             // Prepare response
             const response = {
                 success: true,
@@ -210,6 +211,8 @@ export const viewsController = {
                     where: queryOptions.where,
                 });
                 data = await (prismaClient as any)[modelName].findMany(queryOptions);
+                console.log(`select clause recieved is `, selectClause)
+                console.log(`data fetched is `, data)  
                 totalRecords = results._count._all;
             }
 
@@ -274,6 +277,7 @@ export const viewsController = {
             req.view = newView;
 
             // Invoke getView to fetch and return the data based on the new view
+            req.userViews = await prismaClient.view.findMany({ where: { userId } });
             const getViewResponse = await viewsController.getView(req, res);
             return getViewResponse;
         } catch (error) {
@@ -348,6 +352,7 @@ export const viewsController = {
 
             // Fetch data for the updated view
             req.view = updatedView;
+            req.userViews = await prismaClient.view.findMany({ where: { userId } });
             const getViewResponse = await viewsController.getView(req, res);
             return getViewResponse;
         } catch (error) {

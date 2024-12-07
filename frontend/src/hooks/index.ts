@@ -1,9 +1,7 @@
-import { useColumns } from "./useColumns";
-import { useDataPage } from "./useDataPage";
-import { useFilters } from "./useFilters";
+
 import { usePagination } from "./usePagination";
-import { useSorting } from "./useSorting";
+import { useDataPage } from "./useDataPage";
 import { useTypeAhead } from "./useTypeAheads";
 
 
-export { useTypeAhead, useColumns, useDataPage, useFilters, usePagination, useSorting }
+export { useTypeAhead, usePagination, useDataPage }

@@ -2,6 +2,7 @@ import axios, { Method } from 'axios';
 import { GetViewDataResponse } from '../types';
 
 const token: string = import.meta.env.VITE_API_TOKEN ;
+const api : string = import.meta.env.VITE_API_URL;
 
 export async function fetchDataPage(
   endpoint: string,
@@ -11,7 +12,7 @@ export async function fetchDataPage(
 ): Promise<GetViewDataResponse> {
   try {
     const response = await axios.request<GetViewDataResponse>({
-      url: endpoint,
+      url: `${api}${endpoint}`,
       method,
       headers: {
         Authorization: `Bearer ${token}`,

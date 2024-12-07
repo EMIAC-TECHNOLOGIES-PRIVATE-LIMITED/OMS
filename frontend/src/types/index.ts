@@ -29,14 +29,18 @@ export interface FilterCondition {
 
 
 export interface SortingOption {
-  column: string;
-  direction: 'asc' | 'desc';
-}[]
+  [x: string]: "asc" | "desc";
+}
+
+// export interface SortingOption {
+//   column: string;
+//   direction: 'asc' | 'desc';
+// }
 
 export interface FilterConfig {
-  viewName: string;
   columns: string[];
-  filters: Record<string, any>;
+  filters: ExtendedFilterCondition[];
+  globalConnector: 'AND' | 'OR';
   sorting: SortingOption[];
   grouping: string[];
 }
@@ -69,7 +73,7 @@ export interface GetViewDataResponse {
   viewId: {
     id: number,
     columns: string[]
-    viewName : string
+    viewName: string
   };
   page: number;
   pageSize: number;
@@ -152,7 +156,29 @@ export interface WebsiteData {
   created_at: string;
 }
 
-export interface ExtendedFilterCondition extends FilterCondition { }
+export interface VendorData {
+  vendorId: number;
+  name: string;
+  phone: string;
+  email: string;
+  contactedFrom: string;
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  paypalId: string;
+  userId: number;
+  timestamp: string;
+  skypeId: string;
+  upiId: string;
+}
+
+export interface ExtendedFilterCondition extends FilterCondition {
+  id: string;
+  connector: 'AND' | 'OR';
+  column: string;
+  operator: string;
+  value: string;
+}
 
 // View Interface
 export interface View {

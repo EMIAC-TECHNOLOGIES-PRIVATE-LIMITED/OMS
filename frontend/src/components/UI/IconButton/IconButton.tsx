@@ -1,18 +1,29 @@
-// src/components/UI/IconButton.tsx
+// src/components/UI/IconButton/IconButton.tsx
 
 import React from 'react';
 
-interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface IconButtonProps {
   icon: React.ReactNode;
-  ariaLabel: string;
+  onClick?: () => void;
+  className?: string;
+  ariaLabel?: string;
+  title?: string;
 }
 
-const IconButton: React.FC<IconButtonProps> = ({ icon, ariaLabel, ...props }) => {
+const IconButton: React.FC<IconButtonProps> = ({
+  icon,
+  onClick,
+  className = '',
+  ariaLabel,
+  title,
+}) => {
   return (
     <button
-      {...props}
-      className="flex items-center justify-center w-6 h-6 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-dark rounded-full transition-colors duration-200"
+      type="button"
+      onClick={onClick}
+      className={`focus:outline-none ${className}`}
       aria-label={ariaLabel}
+      title={title}
     >
       {icon}
     </button>

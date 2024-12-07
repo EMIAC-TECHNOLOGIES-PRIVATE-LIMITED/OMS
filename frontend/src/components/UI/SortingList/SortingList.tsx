@@ -8,6 +8,7 @@ interface SortingListProps {
   showColumns: string[];
 }
 
+
 const SortingList: React.FC<SortingListProps> = ({
   sorting,
   setSorting,
@@ -74,8 +75,17 @@ const SortingList: React.FC<SortingListProps> = ({
               onChange={(e) => updateSorting(index, 'direction', e.target.value)}
               className="border border-gray-300 rounded-md p-1"
             >
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
+              {availableColumns[sort.column]?.type === 'String' ? (
+                <>
+                  <option value="asc">A-Z</option>
+                  <option value="desc">Z-A</option>
+                </>
+              ) : (
+                <>
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </>
+              )}  
             </select>
             <button
               onClick={() => removeSorting(index)}

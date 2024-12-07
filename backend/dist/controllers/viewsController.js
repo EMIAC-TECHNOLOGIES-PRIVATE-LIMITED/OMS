@@ -189,6 +189,8 @@ exports.viewsController = {
                     where: queryOptions.where,
                 });
                 data = yield prismaClient_1.default[modelName].findMany(queryOptions);
+                console.log(`select clause recieved is `, selectClause);
+                console.log(`data fetched is `, data);
                 totalRecords = results._count._all;
             }
             // Prepare response
@@ -246,6 +248,7 @@ exports.viewsController = {
             // Assign the newly created view to req.view for further processing
             req.view = newView;
             // Invoke getView to fetch and return the data based on the new view
+            req.userViews = yield prismaClient_1.default.view.findMany({ where: { userId } });
             const getViewResponse = yield exports.viewsController.getView(req, res);
             return getViewResponse;
         }
@@ -315,6 +318,7 @@ exports.viewsController = {
             });
             // Fetch data for the updated view
             req.view = updatedView;
+            req.userViews = yield prismaClient_1.default.view.findMany({ where: { userId } });
             const getViewResponse = yield exports.viewsController.getView(req, res);
             return getViewResponse;
         }

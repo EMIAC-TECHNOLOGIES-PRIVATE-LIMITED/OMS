@@ -1,33 +1,24 @@
-// src/components/ViewSidebar/ViewSidebar.tsx
-
-import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { TrashIcon, XMarkIcon, TableCellsIcon, ChartBarSquareIcon } from '@heroicons/react/24/outline';
+import { useRecoilState } from 'recoil';
+import { viewsState, currentViewIdState } from '../../store/atoms/atoms';
 import { View } from '../../types/index';
-
-import {
-  TrashIcon,        // For Remove Buttons
-  XMarkIcon,        // For Close Buttons
-} from '@heroicons/react/24/outline';
+import { fetchDataPage } from '../../utils';
+import { motion } from 'framer-motion';
 
 interface ViewSidebarProps {
-  views: View[];
-  currentViewId: number | null;
-  onSelectView: (viewId: number) => void;
-  resource: string; // Specifies the resource name (e.g., 'sites')
-  onDeleteView: (viewId: number) => void; // Callback to update views after deletion
+  resource: string;
 }
 
-const ViewSidebar: React.FC<ViewSidebarProps> = ({
-  views,
-  currentViewId,
-  onSelectView,
-  resource,
-  onDeleteView,
-}) => {
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+const ViewSidebar: React.FC<ViewSidebarProps> = ({ resource }) => {
+  const [views, setViews] = useRecoilState<View[]>(viewsState(resource));
+  const [currentViewId, setCurrentViewId] = useRecoilState<number | null>(currentViewIdState(resource));
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewToDelete, setViewToDelete] = useState<View | null>(null);
-  const token: string = import.meta.env.VITE_API_TOKEN || 'your-default-token-here';
-  const api: string = import.meta.env.VITE_API_URL;
+  const [isHovered, setIsHovered] = useState(false);
+
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const handleDeleteClick = (view: View) => {
     setViewToDelete(view);
@@ -37,18 +28,25 @@ const ViewSidebar: React.FC<ViewSidebarProps> = ({
   const handleConfirmDelete = async () => {
     if (!viewToDelete) return;
 
+    const endpoint = `/data/${resource}/${viewToDelete.id}`;
+
     try {
-      await axios.delete(`${api}/data/${resource}/${viewToDelete.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      onDeleteView(viewToDelete.id);
+      await fetchDataPage(endpoint, 'delete');
+      setViews((prevViews) => prevViews.filter((view) => view.id !== viewToDelete.id));
+
+      if (currentViewId === viewToDelete.id) {
+        const defaultView = views.find((v) => v.viewName === 'grid');
+        if (defaultView) {
+          setCurrentViewId(defaultView.id);
+        } else {
+          setCurrentViewId(null);
+        }
+      }
+
       setIsModalOpen(false);
       setViewToDelete(null);
-    } catch (error) {
-      console.error('Error deleting view:', error);
-      alert('Failed to delete the view. Please try again.');
+    } catch (err: any) {
+      console.error('Error deleting view:', err);
     }
   };
 
@@ -57,52 +55,73 @@ const ViewSidebar: React.FC<ViewSidebarProps> = ({
     setViewToDelete(null);
   };
 
-  // Refs for clicking outside the modal to close it (optional)
-  const modalRef = useRef<HTMLDivElement>(null);
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+      setIsModalOpen(false);
+      setViewToDelete(null);
+    }
+  }, []);
+
+  const sortedViews = useMemo(() => {
+    const defaultView = views.filter((v) => v.viewName === 'grid');
+    const otherViews = views.filter((v) => v.viewName !== 'grid').sort((a, b) => a.viewName.localeCompare(b.viewName));
+
+    return [...defaultView, ...otherViews];
+  }, [views]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        modalRef.current &&
-        !modalRef.current.contains(event.target as Node)
-      ) {
-        setIsModalOpen(false);
-        setViewToDelete(null);
-      }
-    };
-
     if (isModalOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     } else {
       document.removeEventListener('mousedown', handleClickOutside);
     }
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isModalOpen]);
 
+  const handleSelectView = (viewId: number) => {
+    setCurrentViewId(viewId);
+    window.localStorage.setItem(`${resource}-view-id`, viewId.toString());
+  };
+
   return (
-    <div className="w-64 bg-neutral-100 p-4 border-r border-neutral-200 h-full overflow-y-auto">
-      {/* Header */}
+    <motion.div
+      className="bg-neutral-100 p-4 border-r border-neutral-200 h-full overflow-y-auto"
+      initial={{ width: '4rem', opacity: 0 }}
+      animate={{
+        width: isHovered ? '16rem' : '4rem',
+        opacity: 1,
+      }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-neutral-800">Views</h3>
-        {/* Removed the plus button as it's not needed */}
       </div>
 
-      {/* Views List */}
       <ul>
-        {views.map((view) => (
+        {sortedViews.map((view) => (
           <li key={view.id} className="group flex items-center justify-between mb-2">
             <button
-              onClick={() => onSelectView(view.id)}
+              onClick={() => handleSelectView(view.id)}
               className={`flex items-center w-full p-2 rounded-md transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-brand-dark ${
                 view.id === currentViewId
                   ? 'bg-brand text-white'
                   : 'text-neutral-700 hover:bg-brand-light hover:text-white'
               }`}
             >
-              {view.viewName}
+              {/* Fixed container for the icon */}
+              <span className="flex items-center justify-center w-8 h-8">
+                {view.viewName === 'grid' ? (
+                  <TableCellsIcon className="w-6 h-6 text-neutral-700" />
+                ) : (
+                  <ChartBarSquareIcon className="w-6 h-6 text-neutral-700" />
+                )}
+              </span>
+              {/* Name (visible only when expanded) */}
+              {isHovered && <span className="ml-2">{view.viewName === 'grid' ? 'Default Grid' : view.viewName}</span>}
             </button>
             {view.viewName !== 'grid' && (
               <button
@@ -118,14 +137,16 @@ const ViewSidebar: React.FC<ViewSidebarProps> = ({
         ))}
       </ul>
 
-      {/* Delete Confirmation Modal */}
       {isModalOpen && viewToDelete && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div
+          <motion.div
             ref={modalRef}
-            className="bg-white rounded-lg p-6 w-80 shadow-lg transform transition-all duration-300 animate-scaleIn animate-fadeIn"
+            className="bg-white rounded-lg p-6 w-80 shadow-lg"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            {/* Header */}
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-neutral-800">Confirm Deletion</h2>
               <button
@@ -136,12 +157,10 @@ const ViewSidebar: React.FC<ViewSidebarProps> = ({
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
-            {/* Content */}
             <p className="text-neutral-700 mb-4">
-              Are you sure you want to delete the view "<span className="font-medium">{viewToDelete.viewName}</span>"?
-              This action cannot be undone.
+              Are you sure you want to delete the view "<span className="font-bold">{viewToDelete.viewName}</span>"? This
+              action cannot be undone.
             </p>
-            {/* Actions */}
             <div className="flex justify-end space-x-2">
               <button
                 onClick={handleCancelDelete}
@@ -151,16 +170,16 @@ const ViewSidebar: React.FC<ViewSidebarProps> = ({
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="flex items-center px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-red-700"
+                className="flex items-center px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-red-800"
               >
                 Delete
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
-export default ViewSidebar;
+export default memo(ViewSidebar);

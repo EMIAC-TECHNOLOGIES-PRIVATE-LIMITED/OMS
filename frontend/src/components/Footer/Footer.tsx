@@ -8,7 +8,7 @@ function Footer() {
       <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
         {/* Company Name */}
         <div className="mb-4 md:mb-0">
-          <h1 className="text-xl font-bold">Your Company</h1>
+          <h1 className="text-xl font-bold">EMIAC Technologies</h1>
         </div>
         
         {/* Navigation Links */}
@@ -39,7 +39,7 @@ function Footer() {
         </div>
       </div>
       <div className="container mx-auto px-4 mt-4 text-center text-sm">
-        &copy; {new Date().getFullYear()} Your Company. All rights reserved.
+        &copy; {new Date().getFullYear()} EMIAC Technologies. All rights reserved.
       </div>
     </footer>
   )

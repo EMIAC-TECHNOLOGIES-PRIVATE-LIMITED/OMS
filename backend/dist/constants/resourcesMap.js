@@ -71,7 +71,7 @@ const ResourcesMap = {
         'organic_traffic_last_update_date',
         'created_at',
     ],
-    Sits_Sales: [
+    Site_Sales: [
         'id',
         'website',
         'price',
@@ -83,6 +83,21 @@ const ResourcesMap = {
         'dr',
         'main_category',
         'website_status',
+    ],
+    Vendor_Admin: [
+        'vendorId',
+        'name',
+        'phone',
+        'email',
+        'contactedFrom',
+        'bankName',
+        'accountNumber',
+        'ifscCode',
+        'paypalId',
+        'userId',
+        'timestamp',
+        'skypeId',
+        'upiId',
     ],
 };
 exports.default = ResourcesMap;

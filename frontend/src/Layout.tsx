@@ -16,6 +16,7 @@ function Layout() {
         <Header />
         <Outlet />
         <Footer />
+
       </ThemeProvider>
     </>
   )

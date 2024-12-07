@@ -1,4 +1,4 @@
-// src/components/FilterList.tsx
+// src/components/FilterList/FilterList.tsx
 
 import React, { useState } from 'react';
 import { ExtendedFilterCondition, FrontendAvailableColumns } from '../../../types';
@@ -21,8 +21,22 @@ const FilterList: React.FC<FilterListProps> = ({
   availableColumns,
   showColumns,
 }) => {
+  // Function to generate a unique ID for each filter
+  const generateUniqueId = () => {
+    return Math.random().toString(36).substring(2, 9);
+  };
+
   const addFilter = () => {
-    setFilters([...filters, { column: '', operator: '', value: '' }]);
+    setFilters([
+      ...filters,
+      {
+        id: generateUniqueId(),
+        column: '',
+        operator: '',
+        value: '',
+        connector: 'AND',
+      },
+    ]);
   };
 
   const updateFilter = (
@@ -94,7 +108,7 @@ const FilterList: React.FC<FilterListProps> = ({
         <div className="flex items-center space-x-1 mr-2">
           <input
             type="checkbox"
-            checked={filter.value === true}
+            checked={Boolean(filter.value) === true}
             onChange={(e) => updateFilter(index, 'value', e.target.checked)}
             className="form-checkbox h-4 w-4 text-brand focus:ring-brand-dark"
           />
@@ -110,14 +124,14 @@ const FilterList: React.FC<FilterListProps> = ({
             columnType === 'number'
               ? 'number'
               : columnType === 'date'
-              ? 'date'
-              : 'text'
+                ? 'date'
+                : 'text'
           }
-          value={filter.value}
+          value={filter.value as string}
           onChange={(e) => {
             const newValue =
               columnType === 'number'
-                ? e.target.valueAsNumber || 0
+                ? e.target.valueAsNumber
                 : e.target.value;
 
             updateFilter(index, 'value', newValue);
@@ -137,9 +151,8 @@ const FilterList: React.FC<FilterListProps> = ({
             {suggestions.map((suggestion, i) => (
               <li
                 key={i}
-                className={`p-2 text-sm text-neutral-800 cursor-pointer hover:bg-brand-light ${
-                  i === activeSuggestionIndex ? 'bg-brand-light' : ''
-                }`}
+                className={`p-2 text-sm text-neutral-800 cursor-pointer hover:bg-brand-light ${i === activeSuggestionIndex ? 'bg-brand-light' : ''
+                  }`}
                 onMouseDown={() => {
                   updateFilter(index, 'value', suggestion);
                   resetSuggestions();
@@ -166,7 +179,7 @@ const FilterList: React.FC<FilterListProps> = ({
           const operators = getOperators(columnType);
 
           return (
-            <CSSTransition key={index} timeout={300} classNames="filter">
+            <CSSTransition key={filter.id} timeout={300} classNames="filter">
               <div className="flex flex-wrap items-center mb-2 bg-white p-2 rounded-md shadow-sm">
                 {/* Column Selection */}
                 <select

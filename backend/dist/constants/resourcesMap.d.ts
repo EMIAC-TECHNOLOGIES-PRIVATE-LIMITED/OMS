@@ -1,5 +1,6 @@
 declare const ResourcesMap: {
     Site_Admin: string[];
-    Sits_Sales: string[];
+    Site_Sales: string[];
+    Vendor_Admin: string[];
 };
 export default ResourcesMap;
