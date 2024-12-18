@@ -3,10 +3,11 @@ import PermissionsMap from "../constants/permissionsMap";
 import ResourcesMap from "../constants/resourcesMap";
 
 export async function getPermissions(userId: number) {
-    console.log('Starting getPermissions for userId:', userId);
+    // console.log('Starting getPermissions for userId:', userId);
     
     try {
         const user = await prismaClient.user.findUnique({
+            
             where: { id: userId },
             include: {
                 role: {

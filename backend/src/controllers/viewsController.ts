@@ -133,6 +133,8 @@ export const viewsController = {
                 }
 
                 const results = await (prismaClient as any)[modelName].findMany({
+                    cacheStrategy : {
+                    },
                     where: typeAheadFilter,
                     select: { [column as string]: true },
                     take: 10
@@ -245,6 +247,7 @@ export const viewsController = {
         const userId = req.user?.userId!;
         const permittedColumns = req.permittedColumns!;
         const { viewName, columns, filters, sorting, grouping } = req.body;
+
 
         // Validate columns
         const validColumns = columns.filter((col: string) => permittedColumns.includes(col));

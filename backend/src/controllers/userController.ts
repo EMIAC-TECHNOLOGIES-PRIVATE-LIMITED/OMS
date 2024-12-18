@@ -4,7 +4,6 @@ import jwt from "jsonwebtoken";
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import { SignupBody, signupSchema } from "../schemas/signupSchema";
-import { getAvailableRoles } from "../utils/getAvailabeRoles";
 import { SigninBody, signinSchema } from "../schemas/signinSchema";
 import { getPermissions } from "../utils/getPermissions";
 
@@ -25,19 +24,30 @@ export async function signUpController(req: Request, res: Response): Promise<Res
         where: {
             email: body.email
         }
+
     })
 
     if (userExist) {
         return res.status(501).json({
-            message : "Email Id already in use. "
+            message: "Email Id already in use. "
         })
     }
 
-    const availableRoles = await getAvailableRoles();
-    const roleIDs = availableRoles.map(role => role.id);
-    if (!roleIDs.includes(body.roleId)) {
-        return res.status(400).json({ error: "Invalid roleId received" });
+    try {
+        const validRole = await prismaClient.role.findUnique({
+            where: {
+                id: body.roleId
+            }
+        })
+
+        if (!validRole) {
+            return res.status(400).json({ error: "Invalid roldeId recieved" })
+        }
+
+    } catch (error) {
+        console.log(error);
     }
+
 
     try {
 
@@ -71,15 +81,15 @@ export async function signUpController(req: Request, res: Response): Promise<Res
 
 export async function signInController(req: Request, res: Response) {
     const result = signinSchema.safeParse(req.body);
-    if(!result.success) {
+    if (!result.success) {
         return res.status(400).json({ errors: result.error.errors });
     }
-    
+
     const body: SigninBody = result.data;
 
     try {
         const userFound = await prismaClient.user.findUnique({
-            where: { email : body.email },
+            where: { email: body.email },
             include: { role: true },
         });
 

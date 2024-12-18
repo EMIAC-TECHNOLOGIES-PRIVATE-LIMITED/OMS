@@ -111,7 +111,7 @@ model User {
   views               View[] // Added field for relation with views
 
   @@index([roleId])
-}
+} 
 
 model Role {
   id          Int          @id @default(autoincrement())
@@ -131,8 +131,7 @@ model Permission {
 
 model Resource {
   id          Int                @id @default(autoincrement())
-  key         String             @unique // Unique key for resource (e.g., "Site", "Sales")
-  columns     String[] // Array of allowed columns (e.g., ["website", "traffic"])
+  key         String             @unique 
   description String
   roles       Role[]             @relation("RoleResources")
   overrides   ResourceOverride[]
