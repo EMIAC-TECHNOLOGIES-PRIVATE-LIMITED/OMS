@@ -1,0 +1,1 @@
+export const cacheTTL = process.env.CACHE_TTL ? parseInt(process.env.CACHE_TTL) : 300;
