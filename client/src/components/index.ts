@@ -1,6 +1,6 @@
 import DataTable from "./DataTable/DataTable";
 import Footer from "./Footer/Footer";
-import Header from "./Header/Header";
+import Header from "./Header/LoggedInHeader";
 import Home from "./Home/Home";
 import Sites from "./Sites/Sites";
 import ViewSidebar from "./ViewSidebar/ViewSidebar"

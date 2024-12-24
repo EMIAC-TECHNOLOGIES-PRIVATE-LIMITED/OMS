@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'; 
+import { useState, useEffect, useRef } from 'react';
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { NavLink } from 'react-router-dom'; // Import NavLink
 
-function Header() {
+function LoggedInHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -52,10 +52,9 @@ function Header() {
                   key={item.name}
                   to={item.href}
                   className={({ isActive }) =>
-                    `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      isActive
-                        ? 'border-brand text-brand'
-                        : 'border-transparent text-neutral-700 hover:border-brand hover:text-brand'
+                    `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive
+                      ? 'border-brand text-brand'
+                      : 'border-transparent text-neutral-700 hover:border-brand hover:text-brand'
                     } transition-colors duration-300`
                   }
                 >
@@ -96,8 +95,7 @@ function Header() {
                 key={item.name}
                 to={item.href}
                 className={({ isActive }) =>
-                  `block px-3 py-2 rounded-md text-base font-medium text-neutral-700 hover:bg-neutral-100 hover:text-brand transition-colors duration-300 ${
-                    isActive ? 'text-brand' : 'text-neutral-700'
+                  `block px-3 py-2 rounded-md text-base font-medium text-neutral-700 hover:bg-neutral-100 hover:text-brand transition-colors duration-300 ${isActive ? 'text-brand' : 'text-neutral-700'
                   }`
                 }
               >
@@ -116,4 +114,4 @@ function Header() {
   );
 }
 
-export default Header;
+export default LoggedInHeader;

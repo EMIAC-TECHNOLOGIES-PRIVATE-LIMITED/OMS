@@ -1,23 +1,20 @@
-import Header from './components/Header/Header'
+import { useRecoilValue } from 'recoil';
+import { authAtom } from './store/atoms/atoms';
 import Footer from './components/Footer/Footer'
 import { Outlet } from 'react-router-dom'
-import { createTheme, ThemeProvider } from '@mui/material'
+import LoggedInHeader from './components/Header/LoggedInHeader';
+import LoggedOutHeader from './components/Header/LoggedOutHeader';
+
 function Layout() {
-  const theme = createTheme({
-    colorSchemes: {
-      dark: true,
-      light: true,
-    }
-  })
+
+
+  const { isAuthenticated } = useRecoilValue(authAtom);
+
   return (
     <>
-      <ThemeProvider theme={theme}>
-
-        <Header />
-        <Outlet />
-        <Footer />
-
-      </ThemeProvider>
+      {isAuthenticated ? <LoggedInHeader /> : <LoggedOutHeader />}
+      <Outlet />
+      <Footer />
     </>
   )
 }

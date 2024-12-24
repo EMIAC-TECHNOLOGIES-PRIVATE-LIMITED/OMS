@@ -1,7 +1,7 @@
 import { apiRequest } from './APIService';
 
 export async function signIn(email: string, password: string) {
-    return apiRequest<{ token: string }>(
+    return apiRequest<{ roleId: number, role: { id: number, name: string }, permissions: { id: number, name: string }[], success: boolean }>(
         '/user/signin',
         'POST',
         undefined,

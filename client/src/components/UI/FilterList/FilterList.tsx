@@ -1,11 +1,8 @@
-// src/components/FilterList/FilterList.tsx
-
 import React, { useState } from 'react';
 import { ExtendedFilterCondition, FrontendAvailableColumns } from '../../../types';
 import { mapBackendToFrontendType, getOperators } from '../../../utils';
 import { TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import IconButton from '../IconButton/IconButton'; // Reusable IconButton component
-import { CSSTransition, TransitionGroup } from 'react-transition-group';
 import { useTypeAhead } from '../../../hooks'; // New hook
 
 interface FilterListProps {
@@ -78,23 +75,19 @@ const FilterList: React.FC<FilterListProps> = ({
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'ArrowDown') {
-        // Navigate down
         setActiveSuggestionIndex((prevIndex) =>
           prevIndex < suggestions.length - 1 ? prevIndex + 1 : prevIndex
         );
       } else if (event.key === 'ArrowUp') {
-        // Navigate up
         setActiveSuggestionIndex((prevIndex) =>
           prevIndex > 0 ? prevIndex - 1 : prevIndex
         );
       } else if (event.key === 'Enter') {
-        // Select highlighted suggestion
         if (activeSuggestionIndex >= 0) {
           updateFilter(index, 'value', suggestions[activeSuggestionIndex]);
           resetSuggestions();
         }
       } else if (event.key === 'Escape') {
-        // Close suggestions
         resetSuggestions();
       }
     };
@@ -124,8 +117,8 @@ const FilterList: React.FC<FilterListProps> = ({
             columnType === 'number'
               ? 'number'
               : columnType === 'date'
-                ? 'date'
-                : 'text'
+              ? 'date'
+              : 'text'
           }
           value={filter.value as string}
           onChange={(e) => {
@@ -136,7 +129,6 @@ const FilterList: React.FC<FilterListProps> = ({
 
             updateFilter(index, 'value', newValue);
 
-            // Fetch suggestions for string column types
             if (columnType === 'string') {
               fetchSuggestions(filter.column, newValue as string);
             }
@@ -171,7 +163,7 @@ const FilterList: React.FC<FilterListProps> = ({
   return (
     <div className="mb-3">
       <h4 className="font-medium text-sm text-neutral-800 mb-2">Filters</h4>
-      <TransitionGroup>
+      <div>
         {filters.map((filter, index) => {
           const columnType = mapBackendToFrontendType(
             availableColumns[filter.column]?.type || 'String'
@@ -179,54 +171,47 @@ const FilterList: React.FC<FilterListProps> = ({
           const operators = getOperators(columnType);
 
           return (
-            <CSSTransition key={filter.id} timeout={300} classNames="filter">
-              <div className="flex flex-wrap items-center mb-2 bg-white p-2 rounded-md shadow-sm">
-                {/* Column Selection */}
-                <select
-                  value={filter.column}
-                  onChange={(e) => updateFilter(index, 'column', e.target.value)}
-                  className="mr-2 border border-brand rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
-                >
-                  <option value="">Select Column</option>
-                  {showColumns.map((col) => (
-                    <option key={col} value={col}>
-                      {availableColumns[col].label}
-                    </option>
-                  ))}
-                </select>
+            <div key={filter.id} className="flex flex-wrap items-center mb-2 bg-white p-2 rounded-md shadow-sm">
+              <select
+                value={filter.column}
+                onChange={(e) => updateFilter(index, 'column', e.target.value)}
+                className="mr-2 border border-brand rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
+              >
+                <option value="">Select Column</option>
+                {showColumns.map((col) => (
+                  <option key={col} value={col}>
+                    {availableColumns[col].label}
+                  </option>
+                ))}
+              </select>
 
-                {/* Operator Selection */}
-                <select
-                  value={filter.operator}
-                  onChange={(e) => updateFilter(index, 'operator', e.target.value)}
-                  className="mr-2 border border-brand rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
-                  disabled={!filter.column}
-                >
-                  <option value="">Select Operator</option>
-                  {operators.map((op) => (
-                    <option key={op.value} value={op.value}>
-                      {op.label}
-                    </option>
-                  ))}
-                </select>
+              <select
+                value={filter.operator}
+                onChange={(e) => updateFilter(index, 'operator', e.target.value)}
+                className="mr-2 border border-brand rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
+                disabled={!filter.column}
+              >
+                <option value="">Select Operator</option>
+                {operators.map((op) => (
+                  <option key={op.value} value={op.value}>
+                    {op.label}
+                  </option>
+                ))}
+              </select>
 
-                {/* Value Input */}
-                {renderFilterValueInput(filter, index, columnType)}
+              {renderFilterValueInput(filter, index, columnType)}
 
-                {/* Remove Filter Button */}
-                <IconButton
-                  icon={<TrashIcon className="w-4 h-4 text-red-500" />}
-                  ariaLabel="Remove Filter"
-                  onClick={() => removeFilter(index)}
-                  className="ml-2"
-                />
-              </div>
-            </CSSTransition>
+              <IconButton
+                icon={<TrashIcon className="w-4 h-4 text-red-500" />}
+                ariaLabel="Remove Filter"
+                onClick={() => removeFilter(index)}
+                className="ml-2"
+              />
+            </div>
           );
         })}
-      </TransitionGroup>
+      </div>
 
-      {/* Add Filter Button */}
       <button
         type="button"
         onClick={addFilter}

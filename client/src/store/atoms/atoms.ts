@@ -1,9 +1,22 @@
-// src/store/atoms/atoms.ts
-
-import { atomFamily, selectorFamily } from 'recoil';
+import { atom, atomFamily, selectorFamily } from 'recoil';
 import { FrontendAvailableColumns, FilterConfig, View } from '../../types';
 
 type ResourceKey = string;
+
+export const authAtom = atom<{
+  isAuthenticated: boolean,
+  role: string | null,
+  email: string | null,
+  permissions: string[] | null
+}>({
+  key: 'authAtom',
+  default: {
+    isAuthenticated: false,
+    role: null,
+    email: null,
+    permissions: null
+  }
+});
 
 // Existing Atoms
 export const dataState = atomFamily<any[], ResourceKey>({

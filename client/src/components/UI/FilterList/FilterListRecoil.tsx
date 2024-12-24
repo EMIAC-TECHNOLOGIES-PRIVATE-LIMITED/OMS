@@ -5,7 +5,6 @@ import {
   FilterConfig,
 } from '../../../types';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import { CSSTransition, TransitionGroup } from 'react-transition-group';
 import { useRecoilState, useRecoilValue } from 'recoil';
 import {
   currentFilterConfigState,
@@ -28,8 +27,6 @@ const FilterListRecoil: React.FC<FilterListRecoilProps> = ({ resource }) => {
 
   const filters = currentFilterConfig?.filters || [];
   const showColumns = currentFilterConfig?.columns || [];
-
-
 
   // Function to add a new filter
   const addFilter = () => {
@@ -99,14 +96,14 @@ const FilterListRecoil: React.FC<FilterListRecoilProps> = ({ resource }) => {
     });
   };
 
-  console.log("filters : " , filters)
+  console.log("filters : ", filters);
 
   return (
     <div className="mb-3">
       <h4 className="font-medium text-sm text-neutral-800 mb-2">Filters</h4>
-      <TransitionGroup>
+      <div>
         {filters.map((filter, index) => (
-          <CSSTransition key={filter.id} timeout={300} classNames="filter">
+          <div key={filter.id} className="filter">
             <FilterRow
               filter={filter}
               index={index}
@@ -115,9 +112,9 @@ const FilterListRecoil: React.FC<FilterListRecoilProps> = ({ resource }) => {
               updateFilter={updateFilter}
               removeFilter={removeFilter}
             />
-          </CSSTransition>
+          </div>
         ))}
-      </TransitionGroup>
+      </div>
 
       {/* Add Filter Button */}
       <button
@@ -131,8 +128,6 @@ const FilterListRecoil: React.FC<FilterListRecoilProps> = ({ resource }) => {
     </div>
   );
 };
-
-
 
 const generateUniqueId = () => {
   return Math.random().toString(36).substring(2, 9);
