@@ -1,5 +1,6 @@
 import { apiRequest } from './APIService';
+import { UserInfoResponse } from '../../../../shared/src/types';
 
-export async function getUserInfo() {
-    return apiRequest<{ id: number; name: string; email: string }>('/user/me', 'GET');
+export async function getUserInfo(): Promise<UserInfoResponse> {
+    return apiRequest<UserInfoResponse>('/user/me', 'GET');
 }
