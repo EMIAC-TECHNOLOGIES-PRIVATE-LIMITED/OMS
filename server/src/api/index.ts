@@ -4,8 +4,7 @@ import cookieParser from 'cookie-parser';
 import 'dotenv/config';
 import userRouter from '../routers/userRouter'
 import dataRouter from '../routers/dataRouter'
-import adminRouter from "../routers/adminRouter"
-import {demoInterface} from '@shared/types';
+import adminRouter from "../routers/adminRouter";
 
 const app = express();
 app.use(express.json());

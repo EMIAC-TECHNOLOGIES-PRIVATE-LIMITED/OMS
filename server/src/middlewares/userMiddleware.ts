@@ -10,19 +10,30 @@ const jwtSecret = process.env.JWT_SECRET || 'random@123';
 
 interface AuthRequest extends Request {
     user?: {
+        name: string;
         email: string;
         userId: number;
-        role: string;
+        role: {
+            id: number;
+            name: string;
+        };
         permissions: any[];
     };
 }
 
 const populateUserData = async (
-    decoded: { email: string; userId: number; role: string },
+    decoded: {
+        name: string;
+        email: string; userId: number; role: {
+            id: number;
+            name: string;
+        }
+    },
     req: AuthRequest
 ): Promise<void> => {
     const userPermissions = await getPermissionCached(decoded.userId);
     req.user = {
+        name: decoded.name,
         email: decoded.email,
         userId: decoded.userId,
         role: decoded.role,
@@ -49,9 +60,13 @@ export async function userMiddleware(
     try {
         // Verify the current access token
         const decoded = jwt.verify(accessToken, jwtSecret) as {
+            name: string;
             email: string;
             userId: number;
-            role: string;
+            role: {
+                id: number;
+                name: string;
+            }
         };
         await populateUserData(decoded, req);
         return next();
@@ -64,9 +79,13 @@ export async function userMiddleware(
             // Simply decode the new token without verification
             const newToken = req.cookies.accessToken;
             const decodedNewToken = jwt.decode(newToken) as {
+                name: string;
                 email: string;
                 userId: number;
-                role: string;
+                role: {
+                    id: number;
+                    name: string;
+                };
             };
 
             if (decodedNewToken) {

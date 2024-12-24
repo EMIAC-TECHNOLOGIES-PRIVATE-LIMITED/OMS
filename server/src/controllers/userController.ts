@@ -8,33 +8,37 @@ import { SigninBody, signinSchema } from "../schemas/signinSchema";
 import { getUserPermission } from "../utils/getPermissions";
 import STATUS_CODES from '../constants/statusCodes';
 import { APIError, APIResponse } from '../utils/apiHandler';
-
-interface AuthenticatedRequest extends Request {
-    user: {
-        email: string;
-        userId: number;
-        role: string;
-        permissions: any[];
-    };
-}
+import { SignUpResponse, SignInResponse, SignOutResponse, UserInfoResponse } from '../../../shared/src/types';
 
 const saltRounds = 10;
 const jwtSecret = process.env.JWT_SECRET || 'random@123';
 const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || 'random@123';
 
-export async function signUpController(req: Request, res: Response): Promise<Response> {
+interface AuthenticatedRequest extends Request {
+    user: {
+        email: string;
+        userId: number;
+        name: string;
+        role: {
+            id: number;
+            name: string;
+        };
+        permissions: any[];
+    };
+}
+
+export async function signUpController(req: Request, res: Response): Promise<Response<SignUpResponse>> {
     const result = signupSchema.safeParse(req.body);
+
     if (!result.success) {
-        return res
-            .status(STATUS_CODES.BAD_REQUEST)
-            .json(
-                new APIError(
-                    STATUS_CODES.BAD_REQUEST,
-                    "Invalid input",
-                    result.error.errors,
-                    false
-                )
-            );
+        return res.status(STATUS_CODES.BAD_REQUEST).json(
+            new APIError(
+                STATUS_CODES.BAD_REQUEST,
+                "Invalid input",
+                result.error.errors,
+                false
+            ).toJSON()
+        );
     }
 
     const body: SignupBody = result.data;
@@ -46,16 +50,14 @@ export async function signUpController(req: Request, res: Response): Promise<Res
     });
 
     if (userExist) {
-        return res
-            .status(STATUS_CODES.CONFLICT)
-            .json(
-                new APIError(
-                    STATUS_CODES.CONFLICT,
-                    "Email ID already in use.",
-                    [],
-                    false
-                )
-            );
+        return res.status(STATUS_CODES.CONFLICT).json(
+            new APIError(
+                STATUS_CODES.CONFLICT,
+                "Email ID already in use.",
+                [],
+                false
+            ).toJSON()
+        );
     }
 
     try {
@@ -66,29 +68,25 @@ export async function signUpController(req: Request, res: Response): Promise<Res
         });
 
         if (!validRole) {
-            return res
-                .status(STATUS_CODES.BAD_REQUEST)
-                .json(
-                    new APIError(
-                        STATUS_CODES.BAD_REQUEST,
-                        "Invalid roleId provided",
-                        [],
-                        false
-                    )
-                );
+            return res.status(STATUS_CODES.BAD_REQUEST).json(
+                new APIError(
+                    STATUS_CODES.BAD_REQUEST,
+                    "Invalid roleId provided",
+                    [],
+                    false
+                ).toJSON()
+            );
         }
     } catch (error) {
         console.error("Role validation failed:", error);
-        return res
-            .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
-            .json(
-                new APIError(
-                    STATUS_CODES.INTERNAL_SERVER_ERROR,
-                    "Role validation failed",
-                    [error instanceof Error ? error.message : "Unknown error"],
-                    false
-                )
-            );
+        return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
+            new APIError(
+                STATUS_CODES.INTERNAL_SERVER_ERROR,
+                "Role validation failed",
+                [error instanceof Error ? error.message : "Unknown error"],
+                false
+            ).toJSON()
+        );
     }
 
     try {
@@ -104,48 +102,41 @@ export async function signUpController(req: Request, res: Response): Promise<Res
             },
         });
 
-        return res
-            .status(STATUS_CODES.CREATED)
-            .json(
-                new APIResponse(
-                    STATUS_CODES.CREATED,
-                    "User created successfully",
-                    {
-                        userId: newUser.id,
-                        name: newUser.name,
-                        email: newUser.email,
-                    },
-                    true
-                )
-            );
+        return res.status(STATUS_CODES.CREATED).json(
+            new APIResponse<SignUpResponse>(
+                STATUS_CODES.CREATED,
+                "User created successfully",
+                {
+                    userId: newUser.id,
+                },
+                true
+            ).toJSON()
+        );
     } catch (error) {
         console.error("User creation failed:", error);
-        return res
-            .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
-            .json(
-                new APIError(
-                    STATUS_CODES.INTERNAL_SERVER_ERROR,
-                    "User creation failed",
-                    [error instanceof Error ? error.message : "Unknown error"],
-                    false
-                )
-            );
+        return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
+            new APIError(
+                STATUS_CODES.INTERNAL_SERVER_ERROR,
+                "User creation failed",
+                [error instanceof Error ? error.message : "Unknown error"],
+                false
+            ).toJSON()
+        );
     }
 }
 
-export async function signInController(req: Request, res: Response): Promise<Response> {
+export async function signInController(req: Request, res: Response): Promise<Response<SignInResponse>> {
     const result = signinSchema.safeParse(req.body);
+
     if (!result.success) {
-        return res
-            .status(STATUS_CODES.BAD_REQUEST)
-            .json(
-                new APIError(
-                    STATUS_CODES.BAD_REQUEST,
-                    "Invalid input",
-                    result.error.errors,
-                    false
-                )
-            );
+        return res.status(STATUS_CODES.BAD_REQUEST).json(
+            new APIError(
+                STATUS_CODES.BAD_REQUEST,
+                "Invalid input",
+                result.error.errors,
+                false
+            ).toJSON()
+        );
     }
 
     const body: SigninBody = result.data;
@@ -159,48 +150,43 @@ export async function signInController(req: Request, res: Response): Promise<Res
         });
 
         if (!userFound) {
-            return res
-                .status(STATUS_CODES.UNAUTHORIZED)
-                .json(
-                    new APIError(
-                        STATUS_CODES.UNAUTHORIZED,
-                        "Invalid email or password",
-                        [],
-                        false
-                    )
-                );
+            return res.status(STATUS_CODES.UNAUTHORIZED).json(
+                new APIError(
+                    STATUS_CODES.UNAUTHORIZED,
+                    "Invalid email or password",
+                    [],
+                    false
+                ).toJSON()
+            );
         }
 
         const passwordMatch = await bcrypt.compare(body.password, userFound.password);
         if (!passwordMatch) {
-            return res
-                .status(STATUS_CODES.UNAUTHORIZED)
-                .json(
-                    new APIError(
-                        STATUS_CODES.UNAUTHORIZED,
-                        "Invalid email or password",
-                        [],
-                        false
-                    )
-                );
+            return res.status(STATUS_CODES.UNAUTHORIZED).json(
+                new APIError(
+                    STATUS_CODES.UNAUTHORIZED,
+                    "Invalid email or password",
+                    [],
+                    false
+                ).toJSON()
+            );
         }
 
         if (userFound.suspended) {
-            return res
-                .status(STATUS_CODES.FORBIDDEN)
-                .json(
-                    new APIError(
-                        STATUS_CODES.FORBIDDEN,
-                        "User is suspended",
-                        [],
-                        false
-                    )
-                );
+            return res.status(STATUS_CODES.FORBIDDEN).json(
+                new APIError(
+                    STATUS_CODES.FORBIDDEN,
+                    "User is suspended",
+                    [],
+                    false
+                ).toJSON()
+            );
         }
 
         const permissions = await getUserPermission(userFound.roleId);
         const accessToken = jwt.sign(
             {
+                name: userFound.name,
                 email: userFound.email,
                 userId: userFound.id,
                 role: userFound.role,
@@ -216,13 +202,11 @@ export async function signInController(req: Request, res: Response): Promise<Res
             { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '7d' }
         );
 
-        // Save Refresh Token in the database
         await prismaClient.user.update({
             where: { id: userFound.id },
             data: { refreshToken: [...userFound.refreshToken, newRefreshToken] },
         });
 
-        // Set Tokens in HTTP-Only Cookies
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: true,
@@ -237,48 +221,38 @@ export async function signInController(req: Request, res: Response): Promise<Res
             maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
         });
 
-        return res
-            .status(STATUS_CODES.OK)
-            .json(
-                new APIResponse(
-                    STATUS_CODES.OK,
-                    "User logged in successfully",
-                    {
-                        roleId: userFound.roleId,
-                        role: userFound.role,
-                        permissions,
-                    },
-                    true
-                )
-            );
+        return res.status(STATUS_CODES.OK).json(
+            new APIResponse<SignInResponse>(
+                STATUS_CODES.OK,
+                "User logged in successfully",
+                {
+                    name: userFound.name,
+                    email: userFound.email,
+                    role: userFound.role,
+                    permissions,
+                },
+                true
+            ).toJSON()
+        );
     } catch (error) {
         console.error("Login failed:", error);
-        return res
-            .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
-            .json(
-                new APIError(
-                    STATUS_CODES.INTERNAL_SERVER_ERROR,
-                    "Internal server error",
-                    [error instanceof Error ? error.message : "Unknown error"],
-                    false
-                )
-            );
+        return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
+            new APIError(
+                STATUS_CODES.INTERNAL_SERVER_ERROR,
+                "Internal server error",
+                [error instanceof Error ? error.message : "Unknown error"],
+                false
+            ).toJSON()
+        );
     }
 }
 
-export async function signOutController(req: Request, res: Response): Promise<Response> {
+export async function signOutController(req: Request, res: Response): Promise<Response<SignOutResponse>> {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
         return res
             .status(STATUS_CODES.BAD_REQUEST)
-            .json(
-                new APIError(
-                    STATUS_CODES.BAD_REQUEST,
-                    "Refresh Token not found",
-                    [],
-                    false
-                )
-            );
+            .json(new APIError(STATUS_CODES.BAD_REQUEST, "Refresh Token not found", [], false).toJSON());
     }
 
     try {
@@ -290,14 +264,7 @@ export async function signOutController(req: Request, res: Response): Promise<Re
         if (!userFound) {
             return res
                 .status(STATUS_CODES.NOT_FOUND)
-                .json(
-                    new APIError(
-                        STATUS_CODES.NOT_FOUND,
-                        "User not found",
-                        [],
-                        false
-                    )
-                );
+                .json(new APIError(STATUS_CODES.NOT_FOUND, "User not found", [], false).toJSON());
         }
 
         const updatedRefreshTokens = (userFound.refreshToken || []).filter(token => token !== refreshToken);
@@ -321,27 +288,13 @@ export async function signOutController(req: Request, res: Response): Promise<Re
 
         return res
             .status(STATUS_CODES.OK)
-            .json(
-                new APIResponse(
-                    STATUS_CODES.OK,
-                    "User logged out successfully",
-                    {},
-                    true
-                )
-            );
+            .json(new APIResponse(STATUS_CODES.OK, "User logged out successfully", {}, true).toJSON());
     } catch (error) {
         console.error("Logout failed:", error);
         if (error instanceof jwt.JsonWebTokenError) {
             return res
                 .status(STATUS_CODES.UNAUTHORIZED)
-                .json(
-                    new APIError(
-                        STATUS_CODES.UNAUTHORIZED,
-                        "Invalid or expired refresh token",
-                        [],
-                        false
-                    )
-                );
+                .json(new APIError(STATUS_CODES.UNAUTHORIZED, "Invalid or expired refresh token", [], false).toJSON());
         }
 
         return res
@@ -352,36 +305,28 @@ export async function signOutController(req: Request, res: Response): Promise<Re
                     "Internal server error",
                     [error instanceof Error ? error.message : "Unknown error"],
                     false
-                )
+                ).toJSON()
             );
     }
 }
 
-export async function userInfo(req: Request, res: Response): Promise<Response> {
+export async function userInfo(req: Request, res: Response): Promise<Response<UserInfoResponse>> {
     const body = req as AuthenticatedRequest;
     const user = body.user;
 
     if (!user || !user.permissions) {
         return res
             .status(STATUS_CODES.UNAUTHORIZED)
-            .json(
-                new APIError(
-                    STATUS_CODES.UNAUTHORIZED,
-                    "User permissions not found. Ensure you are authenticated.",
-                    [],
-                    false
-                )
-            );
+            .json(new APIError(STATUS_CODES.UNAUTHORIZED, "User permissions not found. Ensure you are authenticated.", [], false).toJSON());
     }
 
     return res
         .status(STATUS_CODES.OK)
-        .json(
-            new APIResponse(
-                STATUS_CODES.OK,
-                "User permissions fetched successfully",
-                { userId: user.userId, email: user.email, role: user.role, permissions: user.permissions },
-                true
-            )
-        );
+        .json(new APIResponse<UserInfoResponse>(STATUS_CODES.OK, "User permissions fetched successfully", {
+            id: user.userId,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            permissions: user.permissions
+        }, true).toJSON());
 }

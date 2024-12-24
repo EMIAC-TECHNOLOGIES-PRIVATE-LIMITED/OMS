@@ -1,10 +1,32 @@
-class APIResponse<T = any> {
+class APIError extends Error {
+    constructor(public status: number, public message: string, public errors: any, public success: boolean) {
+        super(message);
+        this.status = status;
+        this.message = message;
+        this.errors = errors;
+        this.success = false;
+    }
+
+    toJSON() {
+        return {
+            status: this.status,
+            message: this.message,
+            errors: this.errors,
+            success: this.success,
+        };
+    }
+}
+
+class APIResponse {
     constructor(
         public status: number,
         public message: string = "success",
-        public data: T,
+        public data: any,
         public success: boolean
     ) {
+        this.status = status;
+        this.message = message;
+        this.data = data;
         this.success = status >= 200 && status < 300;
     }
 
@@ -20,7 +42,7 @@ class APIResponse<T = any> {
     private sanitizeBigInt(data: any): any {
         if (data === null || data === undefined) return data;
         if (typeof data === "bigint") {
-            return data.toString();
+            return data.toString(); // Convert BigInt to string
         }
         if (Array.isArray(data)) {
             return data.map(this.sanitizeBigInt.bind(this));
@@ -35,25 +57,8 @@ class APIResponse<T = any> {
     }
 }
 
-class APIError extends Error {
-    constructor(
-        public status: number,
-        public message: string,
-        public errors: any,
-        public success: boolean = false // Default to false
-    ) {
-        super(message);
-    }
 
-    toJSON() {
-        return {
-            status: this.status,
-            message: this.message,
-            errors: this.errors,
-            success: this.success,
-        };
-    }
+export {
+    APIError,
+    APIResponse
 }
-
-
-export { APIError, APIResponse };

@@ -57,6 +57,7 @@ export async function generateAccessToken(req: any, res: Response): Promise<bool
 
         const newAccessToken = jwt.sign(
             {
+                name: user.name,
                 email: user.email,
                 userId: user.id,
                 role: user.role,
