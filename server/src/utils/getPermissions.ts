@@ -73,14 +73,18 @@ export const getResourceCached = async function (userId: number, table: string):
     }
 };
 
-export const getPermissionCached = async function (userId: number): Promise<string[]> {
+export const getPermissionCached = async function (
+    userId: number
+): Promise<{ id: number; name: string }[]> {
     try {
-        const value = permissionCache.get(`${userId}`) as string[]
-        if (value) {
-            return value;
+        // Attempt to retrieve cached permissions as an array of objects
+        const cachedValue = permissionCache.get(`${userId}`) as { id: number; name: string }[];
+        if (cachedValue) {
+            return cachedValue;
         } else {
             let user;
             try {
+                // Fetch user with role and permission overrides, selecting necessary fields
                 user = await prismaClient.user.findUnique({
                     where: {
                         id: userId,
@@ -88,51 +92,93 @@ export const getPermissionCached = async function (userId: number): Promise<stri
                     include: {
                         role: {
                             include: {
-                                permissions: true
-                            }
+                                permissions: {
+                                    select: { id: true, key: true },
+                                },
+                            },
                         },
                         permissionOverrides: {
                             include: {
-                                permission: true
-                            }
-                        }
-                    }
+                                permission: {
+                                    select: { id: true, key: true },
+                                },
+                            },
+                        },
+                    },
                 });
             } catch {
+                // Return empty array if fetching user fails
                 return [];
             }
+
             if (user) {
-                let permissionArray: string[] = [];
+                // Initialize permissions with role-based permissions
+                let permissionArray: { id: number; name: string }[] = [];
                 try {
-                    permissionArray = user.role.permissions.map(p => p.key);
-                } catch { }
+                    permissionArray = user.role.permissions.map((p) => ({
+                        id: p.id,
+                        name: p.key,
+                    }));
+                } catch {
+                    // If mapping role permissions fails, proceed with an empty array
+                    permissionArray = [];
+                }
+
+                // Apply permission overrides
                 try {
                     user.permissionOverrides.forEach((overRide) => {
-                        const overRiddenPermission = overRide.permission.key;
+                        const overriddenPermission = {
+                            id: overRide.permission.id,
+                            name: overRide.permission.key,
+                        };
                         if (overRide.granted) {
-                            if (!permissionArray.includes(overRiddenPermission)) {
-                                permissionArray.push(overRiddenPermission);
+                            // Add permission if not already present
+                            if (
+                                !permissionArray.find(
+                                    (p) => p.id === overriddenPermission.id
+                                )
+                            ) {
+                                permissionArray.push(overriddenPermission);
                             }
                         } else {
-                            permissionArray = permissionArray.filter(p => p !== overRiddenPermission)
+                            // Remove permission based on id
+                            permissionArray = permissionArray.filter(
+                                (p) => p.id !== overriddenPermission.id
+                            );
                         }
                     });
-                } catch { }
+                } catch {
+                    // If applying overrides fails, proceed without changes
+                }
+
+                // Attempt to cache the updated permissions
                 try {
-                    const success = permissionCache.set(`${userId}`, permissionArray, cacheTTL)
+                    const success = permissionCache.set(
+                        `${userId}`,
+                        permissionArray,
+                        cacheTTL
+                    );
                     if (!success) {
-                        console.log("Error while writting to cache")
+                        console.log("Error while writing to cache");
                     }
-                } catch { }
+                } catch {
+                    // Log error if caching fails, but do not disrupt the flow
+                    console.log("Error while writing to cache");
+                }
+
+                // Return the final array of permissions
                 return permissionArray;
             } else {
+                // Return empty array if user is not found
                 return [];
             }
         }
     } catch {
+        // Return empty array for any unforeseen errors
         return [];
     }
-}
+};
+
 
 export const getUserPermission = async function (
     userId: number
@@ -154,7 +200,6 @@ export const getUserPermission = async function (
         });
 
         if (!user) {
-            console.error(`User with id ${userId} not found.`);
             return [];
         }
 
@@ -177,10 +222,10 @@ export const getUserPermission = async function (
 
         return permissions;
     } catch (error) {
-        console.error('Error while fetching permissions for the user:', userId, 'Error:', error);
         return [];
     }
 };
+
 
 export const getUserPermissionsAndResources = async function (
     userId: number

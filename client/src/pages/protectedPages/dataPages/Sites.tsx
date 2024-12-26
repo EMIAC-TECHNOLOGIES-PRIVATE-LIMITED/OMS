@@ -1,5 +1,5 @@
-import {  DataPage } from '../components/';
-import { WebsiteData } from '../types';
+import {  DataPage } from '../../../components';
+import { WebsiteData } from '../../../types';
 
 
 

@@ -4,6 +4,7 @@ import { AuthRequest } from '../types/sitesDataTypes';
 import { tableDataTypes } from '../constants/tableDataTypes';
 import STATUS_CODES from '../constants/statusCodes';
 import { APIError, APIResponse } from '../utils/apiHandler';
+import { GetFilteredDataResponse, GetViewDataResponse } from '@shared/types';
 
 export const viewsController = {
     getView: async (req: AuthRequest, res: Response): Promise<Response> => {
@@ -57,6 +58,7 @@ export const viewsController = {
 
             const response = {
                 viewId: view.id,
+                viewName: view.viewName,
                 totalRecords,
                 page,
                 pageSize,
@@ -66,7 +68,7 @@ export const viewsController = {
                 appliedFilters: sanitizedFilters,
                 appliedSorting: sanitizedSorting,
                 views: userViews,
-            };
+            } as GetViewDataResponse['data'];
 
             return res
                 .status(STATUS_CODES.OK)
@@ -81,9 +83,9 @@ export const viewsController = {
 
     getTypeAhead: async (req: AuthRequest, res: Response): Promise<Response> => {
         const { column, value } = req.query;
-        const { resource } = req.params; 
+        const { resource } = req.params;
 
-      
+
         if (!resource) {
             return res
                 .status(STATUS_CODES.BAD_REQUEST)
@@ -102,14 +104,14 @@ export const viewsController = {
             const typeAheadFilter = {
                 [column as string]: {
                     contains: value,
-                    mode: 'insensitive', 
+                    mode: 'insensitive',
                 },
             };
 
             const results = await (prismaClient as any)[modelName].findMany({
                 where: typeAheadFilter,
-                select: { [column as string]: true }, 
-                take: 10, 
+                select: { [column as string]: true },
+                take: 10,
             });
 
             return res
@@ -226,7 +228,7 @@ export const viewsController = {
                 appliedFilters: sanitizedFilters,
                 appliedSorting: sanitizedSorting,
                 views: userViews,
-            };
+            } as GetFilteredDataResponse['data'];
 
             return res
                 .status(STATUS_CODES.OK)
@@ -265,7 +267,7 @@ export const viewsController = {
                     filters: sanitizedFilters,
                     sort: sanitizedSorting,
                 },
-            });
+            })
 
             req.view = newView;
             req.userViews = await prismaClient.view.findMany({ where: { userId } });

@@ -1,9 +1,9 @@
-import {  DataPage } from '../components/';
-import { VendorData} from '../types';
+import {  DataPage } from '../../../components';
+import { VendorData} from '../../../types';
 
 
 
-const Vendors  = () => {
+const Orders  = () => {
   return (
     <>
     <DataPage<VendorData>
@@ -15,4 +15,4 @@ const Vendors  = () => {
   );
 };
 
-export default Vendors;
+export default Orders;

@@ -103,7 +103,8 @@ const populateRequestData = async (
     req.modelName = resource.charAt(0).toUpperCase() + resource.slice(1).toLowerCase();
 
     const userPermissions = await getPermissionCached(decoded.userId);
-    const isPermitted = userPermissions.includes(resource);
+    const permittedRoutes = userPermissions.map(((p) => (p.name)));
+    const isPermitted = permittedRoutes.includes(resource);
     
     if (!isPermitted) {
         throw new APIError(

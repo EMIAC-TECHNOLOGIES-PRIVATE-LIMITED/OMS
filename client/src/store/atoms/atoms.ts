@@ -3,18 +3,39 @@ import { FrontendAvailableColumns, FilterConfig, View } from '../../types';
 
 type ResourceKey = string;
 
-export const authAtom = atom<{
-  isAuthenticated: boolean,
-  role: string | null,
-  email: string | null,
-  permissions: string[] | null
-}>({
+interface AuthData {
+  isAuthenticated: boolean;
+  loading: boolean;
+  userInfo: {
+    id: number;
+    email: string;
+    name: string;
+    role: {
+      id: number;
+      name: string;
+    };
+    permissions: Array<{
+      id: number;
+      name: string;
+    }>;
+  }
+}
+
+export const authAtom = atom<AuthData>({
   key: 'authAtom',
   default: {
     isAuthenticated: false,
-    role: null,
-    email: null,
-    permissions: null
+    loading: true,
+    userInfo: {
+      id: 0,
+      name: '',
+      role: {
+        id: 0,
+        name: ''
+      },
+      email: '',
+      permissions: [],
+    }
   }
 });
 

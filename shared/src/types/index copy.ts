@@ -1,6 +1,9 @@
+
 export interface SignInRequest {
+
     email: string;
     password: string;
+
 }
 
 export interface SignInResponse {
@@ -9,7 +12,7 @@ export interface SignInResponse {
     success: boolean;
     data: {
         id: number;
-        email: string;
+        email: string
         name: string;
         role: {
             id: number;
@@ -19,18 +22,19 @@ export interface SignInResponse {
             id: number;
             name: string;
         }>;
-    };
+    }
 }
 
 export interface SignOutResponse {
     status: number;
     message: string;
     success: boolean;
-    data: {
+    data:
+    {
         status: number;
         message: string;
         success: boolean;
-    };
+    }
 }
 
 export interface SignUpRequest {
@@ -38,13 +42,14 @@ export interface SignUpRequest {
     email: string;
     password: string;
     roleId: number;
+
 }
 
 export interface SignUpResponse {
     status: number;
     message: string;
     success: boolean;
-    data: { userId: number };
+    data: { userId: number }
 }
 
 export interface UserInfoResponse {
@@ -63,8 +68,9 @@ export interface UserInfoResponse {
             id: number;
             name: string;
         }>;
-    };
+    }
 }
+
 
 export interface GetAllRolesResponse {
     status: number;
@@ -147,6 +153,7 @@ export interface GetUserPermissionsResponse {
             id: number;
             table: string;
             column: string;
+
         }>;
     };
     success: boolean;
@@ -190,12 +197,12 @@ export interface ManageUserAccessResponse {
     success: boolean;
 }
 
+
 export interface GetViewDataResponse {
     status: number;
     message: string;
     data: {
         viewId: number;
-        viewName: string;
         totalRecords: number;
         page: number;
         pageSize: number;
@@ -206,8 +213,19 @@ export interface GetViewDataResponse {
         availableColumnsType: {
             [key: string]: string;
         };
-        appliedFilters: FilterConfig['appliedFilters'];
-        appliedSorting: FilterConfig['appliedSorting'];
+        appliedFilters: {
+            [key in LogicalOperator]: Array<{
+                [key: string]: {
+                    contains?: string;
+                    equals?: string | number;
+                    startsWith?: string;
+                    endsWith?: string;
+                };
+            }>;
+        };
+        appliedSorting: Array<{
+            [key: string]: 'asc' | 'desc';
+        }>;
         views: Array<{
             id: number;
             viewName: string;
@@ -216,10 +234,19 @@ export interface GetViewDataResponse {
     success: boolean;
 }
 
+
 export interface GetFilteredDataRequest {
     columns: string[];
-    filters: FilterConfig['appliedFilters'];
-    sorting: FilterConfig['appliedSorting'];
+    filters: {
+        [key in LogicalOperator]: Array<{
+            [key: string]: {
+                contains: string;
+            };
+        }>;
+    };
+    sorting: Array<{
+        [key: string]: "asc" | "desc";
+    }>;
 }
 
 export interface GetFilteredDataResponse {
@@ -235,8 +262,16 @@ export interface GetFilteredDataResponse {
         availableColumns: {
             [key: string]: string;
         };
-        appliedFilters: FilterConfig['appliedFilters'];
-        appliedSorting: FilterConfig['appliedSorting'];
+        appliedFilters: {
+            [key in LogicalOperator]: Array<{
+                [key: string]: {
+                    contains?: string;
+                };
+            }>;
+        };
+        appliedSorting: Array<{
+            [key: string]: "asc" | "desc";
+        }>;
         views: Array<{
             id: number;
             viewName: string;
@@ -245,11 +280,20 @@ export interface GetFilteredDataResponse {
     success: boolean;
 }
 
+
 export interface CreateViewRequest {
     viewName: string;
     columns: string[];
-    filters: FilterConfig['appliedFilters'];
-    sorting: FilterConfig['appliedSorting'];
+    filters: {
+        [key in LogicalOperator]: Array<{
+            [key: string]: {
+                contains: string;
+            };
+        }>;
+    };
+    sorting: Array<{
+        [key: string]: "asc" | "desc";
+    }>;
 }
 
 export interface CreateViewResponse {
@@ -261,8 +305,16 @@ export interface CreateViewResponse {
         tableId: string;
         viewName: string;
         columns: string[];
-        filters: FilterConfig['appliedFilters'];
-        sort: FilterConfig['appliedSorting'];
+        filters: {
+            [key in LogicalOperator]: Array<{
+                [key: string]: {
+                    contains?: string;
+                };
+            }>;
+        };
+        sort: Array<{
+            [key: string]: "asc" | "desc";
+        }>;
         groupBy?: string[];
         createdAt?: Record<string, any>;
         updatedAt?: Record<string, any>;
@@ -274,8 +326,16 @@ export interface UpdateViewRequest {
     viewId: number;
     viewName: string;
     columns: string[];
-    filters: FilterConfig['appliedFilters'];
-    sorting: FilterConfig['appliedSorting'];
+    filters: {
+        [key in LogicalOperator]: Array<{
+            [key: string]: {
+                contains: string;
+            };
+        }>;
+    };
+    sorting: Array<{
+        [key: string]: "asc" | "desc";
+    }>;
 }
 
 export interface UpdateViewResponse {
@@ -288,13 +348,22 @@ export interface UpdateViewResponse {
         tableId: string;
         viewName: string;
         columns: string[];
-        filters: FilterConfig['appliedFilters'];
-        sort: FilterConfig['appliedSorting'];
+        filters: {
+            [key in LogicalOperator]: Array<{
+                [key: string]: {
+                    contains?: string;
+                };
+            }>;
+        };
+        sort: Array<{
+            [key: string]: "asc" | "desc";
+        }>;
         groupBy: string[];
         createdAt: Record<string, any>;
         updatedAt: Record<string, any>;
     };
 }
+
 
 export interface DeleteViewRequest {
     viewId: number;
@@ -306,11 +375,13 @@ export interface DeleteViewResponse {
     success: boolean;
 }
 
+
 export interface HealthCheckResponse {
     status: number;
     message: string;
     success: boolean;
 }
+
 
 export enum LogicalOperator {
     AND = 'AND',
@@ -331,9 +402,4 @@ export interface FilterConfig {
     appliedSorting: Array<{
         [key: string]: 'asc' | 'desc';
     }>;
-}
-
-export interface View {
-    id: number;
-    viewName: string;
 }

@@ -27,7 +27,7 @@ interface AuthenticatedRequest extends Request {
     };
 }
 
-export async function signUpController(req: Request, res: Response): Promise<Response<SignUpResponse>> {
+export async function signUpController(req: Request, res: Response): Promise<Response> {
     const result = signupSchema.safeParse(req.body);
 
     if (!result.success) {
@@ -103,7 +103,7 @@ export async function signUpController(req: Request, res: Response): Promise<Res
         });
 
         return res.status(STATUS_CODES.CREATED).json(
-            new APIResponse<SignUpResponse>(
+            new APIResponse(
                 STATUS_CODES.CREATED,
                 "User created successfully",
                 {
@@ -125,7 +125,7 @@ export async function signUpController(req: Request, res: Response): Promise<Res
     }
 }
 
-export async function signInController(req: Request, res: Response): Promise<Response<SignInResponse>> {
+export async function signInController(req: Request, res: Response): Promise<Response> {
     const result = signinSchema.safeParse(req.body);
 
     if (!result.success) {
@@ -183,7 +183,8 @@ export async function signInController(req: Request, res: Response): Promise<Res
             );
         }
 
-        const permissions = await getUserPermission(userFound.roleId);
+        const permissions = await getUserPermission(userFound.id);
+    
         const accessToken = jwt.sign(
             {
                 name: userFound.name,
@@ -214,6 +215,12 @@ export async function signInController(req: Request, res: Response): Promise<Res
             maxAge: 15 * 60 * 1000, // 15 minutes
         });
 
+        res.cookie('isAuthenticated', 'true', { 
+            httpOnly: false,
+            secure: true,
+            sameSite: 'strict'
+        })
+
         res.cookie('refreshToken', newRefreshToken, {
             httpOnly: true,
             secure: true,
@@ -221,16 +228,19 @@ export async function signInController(req: Request, res: Response): Promise<Res
             maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
         });
 
+        const responseObject: SignInResponse['data'] = {
+            id: userFound.id,
+            name: userFound.name,
+            email: userFound.email,
+            role: userFound.role,
+            permissions
+        }
+
         return res.status(STATUS_CODES.OK).json(
-            new APIResponse<SignInResponse>(
+            new APIResponse(
                 STATUS_CODES.OK,
                 "User logged in successfully",
-                {
-                    name: userFound.name,
-                    email: userFound.email,
-                    role: userFound.role,
-                    permissions,
-                },
+                responseObject,
                 true
             ).toJSON()
         );
@@ -247,7 +257,7 @@ export async function signInController(req: Request, res: Response): Promise<Res
     }
 }
 
-export async function signOutController(req: Request, res: Response): Promise<Response<SignOutResponse>> {
+export async function signOutController(req: Request, res: Response): Promise<Response> {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
         return res
@@ -286,6 +296,12 @@ export async function signOutController(req: Request, res: Response): Promise<Re
             sameSite: 'strict',
         });
 
+        res.clearCookie('isAuthenticated', {
+            httpOnly: false,
+            secure: true,
+            sameSite: 'strict',
+        })
+
         return res
             .status(STATUS_CODES.OK)
             .json(new APIResponse(STATUS_CODES.OK, "User logged out successfully", {}, true).toJSON());
@@ -310,7 +326,7 @@ export async function signOutController(req: Request, res: Response): Promise<Re
     }
 }
 
-export async function userInfo(req: Request, res: Response): Promise<Response<UserInfoResponse>> {
+export async function userInfo(req: Request, res: Response): Promise<Response> {
     const body = req as AuthenticatedRequest;
     const user = body.user;
 
@@ -320,13 +336,17 @@ export async function userInfo(req: Request, res: Response): Promise<Response<Us
             .json(new APIError(STATUS_CODES.UNAUTHORIZED, "User permissions not found. Ensure you are authenticated.", [], false).toJSON());
     }
 
+    const reponseObject: UserInfoResponse['data'] = {
+        id: user.userId,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        permissions: user.permissions
+    }
+
     return res
         .status(STATUS_CODES.OK)
-        .json(new APIResponse<UserInfoResponse>(STATUS_CODES.OK, "User permissions fetched successfully", {
-            id: user.userId,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            permissions: user.permissions
-        }, true).toJSON());
+        .json(new APIResponse(STATUS_CODES.OK, "User permissions fetched successfully",
+            reponseObject
+            , true).toJSON());
 }

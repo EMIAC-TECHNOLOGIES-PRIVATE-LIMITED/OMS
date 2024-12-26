@@ -1,5 +1,3 @@
-// src/components/DataTableRecoil/DataTableRecoil.tsx
-
 import React from 'react';
 import { useRecoilValue } from 'recoil';
 import {

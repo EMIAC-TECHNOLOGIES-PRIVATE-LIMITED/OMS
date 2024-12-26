@@ -1,5 +1,3 @@
-// src/hooks/useDataPageRecoil.ts
-
 import { useRecoilState, useRecoilValue } from 'recoil';
 import {
   dataState,

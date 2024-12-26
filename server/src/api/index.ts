@@ -11,7 +11,10 @@ app.use(express.json());
 app.use(cookieParser());
 
 // TODO : remove cors and configure proxy from frontend
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials : true
+}));
 
 const port = process.env.PORT || 3000;
 

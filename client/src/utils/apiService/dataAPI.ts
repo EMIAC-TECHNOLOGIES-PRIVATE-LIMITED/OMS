@@ -10,16 +10,17 @@ import {
     UpdateViewResponse,
 } from '../../../../shared/src/types';
 
-export async function getViewData(): Promise<GetViewDataResponse> {
-    return apiRequest<GetViewDataResponse>('/data/site', 'GET');
+export async function getViewData(route: string, viewId? : number): Promise<GetViewDataResponse> {
+    return apiRequest<GetViewDataResponse>(`/data/${route}/${viewId}`, 'GET');
 }
 
 export async function getFilteredData(
+    route: string,
     columns: GetFilteredDataRequest['columns'],
     filters: GetFilteredDataRequest['filters'],
     sorting: GetFilteredDataRequest['sorting']
 ): Promise<GetFilteredDataResponse> {
-    return apiRequest<GetFilteredDataResponse>('/data/site/data', 'POST', undefined, {
+    return apiRequest<GetFilteredDataResponse>(`/data/${route}/data`, 'POST', undefined, {
         columns,
         filters,
         sorting,
@@ -27,12 +28,13 @@ export async function getFilteredData(
 }
 
 export async function createView(
+    route: string,
     viewName: CreateViewRequest['viewName'],
     columns: CreateViewRequest['columns'],
     filters: CreateViewRequest['filters'],
     sorting: CreateViewRequest['sorting']
 ): Promise<CreateViewResponse> {
-    return apiRequest<CreateViewResponse>('/data/site', 'POST', undefined, {
+    return apiRequest<CreateViewResponse>(`/data/${route}`, 'POST', undefined, {
         viewName,
         columns,
         filters,
@@ -41,13 +43,14 @@ export async function createView(
 }
 
 export async function updateView(
+    route: string,
     viewId: UpdateViewRequest['viewId'],
     viewName: UpdateViewRequest['viewName'],
     columns: UpdateViewRequest['columns'],
     filters: UpdateViewRequest['filters'],
     sorting: UpdateViewRequest['sorting']
 ): Promise<UpdateViewResponse> {
-    return apiRequest<UpdateViewResponse>(`/data/site/${viewId}`, 'PUT', undefined, {
+    return apiRequest<UpdateViewResponse>(`/data/${route}/${viewId}`, 'PUT', undefined, {
         viewName,
         columns,
         filters,
@@ -55,6 +58,8 @@ export async function updateView(
     });
 }
 
-export async function deleteView(viewId: number): Promise<DeleteViewResponse> {
-    return apiRequest<DeleteViewResponse>(`/data/site/${viewId}`, 'DELETE');
+export async function deleteView(
+    route: string,
+    viewId: number): Promise<DeleteViewResponse> {
+    return apiRequest<DeleteViewResponse>(`/data/${route}/${viewId}`, 'DELETE');
 }
