@@ -10,17 +10,28 @@ import {
     UpdateViewResponse,
 } from '../../../../shared/src/types';
 
-export async function getViewData(route: string, viewId? : number): Promise<GetViewDataResponse> {
-    return apiRequest<GetViewDataResponse>(`/data/${route}/${viewId}`, 'GET');
+// dataAPI.ts
+export async function getViewData(route: string, viewId?: number): Promise<GetViewDataResponse> {
+    let endpoint = `/data/${route}`;
+
+    if (viewId != null) {
+        endpoint += `/${viewId}`;
+    }
+
+    return apiRequest<GetViewDataResponse>(endpoint, 'GET');
 }
+
 
 export async function getFilteredData(
     route: string,
     columns: GetFilteredDataRequest['columns'],
     filters: GetFilteredDataRequest['filters'],
-    sorting: GetFilteredDataRequest['sorting']
+    sorting: GetFilteredDataRequest['sorting'],
+    page: GetFilteredDataRequest['page'] = 1,
+    pageSize: GetFilteredDataRequest['pageSize'] = 25
+
 ): Promise<GetFilteredDataResponse> {
-    return apiRequest<GetFilteredDataResponse>(`/data/${route}/data`, 'POST', undefined, {
+    return apiRequest<GetFilteredDataResponse>(`/data/${route}/data?page=${page}&pageSize=${pageSize}`, 'POST', undefined, {
         columns,
         filters,
         sorting,

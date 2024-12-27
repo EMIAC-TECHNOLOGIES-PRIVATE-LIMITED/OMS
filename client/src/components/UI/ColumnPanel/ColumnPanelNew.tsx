@@ -1,55 +1,64 @@
-// src/components/UI/ColumnPanelNew/ColumnPanelNew.tsx
-
 import React, { useState, useRef } from 'react';
-import { FilterConfig, FrontendAvailableColumns } from '../../../../shared/src/types';
-import ButtonNew from '../ButtonNew/ButtonNew';
-import PanelNew from '../PanelNew/PanelNew';
+import { FilterConfig, } from '../../../../../shared/src/types';
+import Button from '../Button/Button';
+import Panel from '../Panel/Panel';
 import { EyeSlashIcon } from '@heroicons/react/24/outline';
-import ColumnSelectorNew from '../ColumnSelectorNew/ColumnSelectorNew'; // Assuming renamed
+import ColumnSelector from '../ColumnSelector/ColumnSelector';
+import { availableColumnsTypes } from '../../../types';
 
 interface ColumnPanelNewProps {
   resource: string;
   filterConfig: FilterConfig;
-  availableColumns: FrontendAvailableColumns;
+  availableColumnsTypes: availableColumnsTypes;
   onFilterChange: (newFilterConfig: FilterConfig) => void;
 }
 
-const ColumnPanelNew: React.FC<ColumnPanelNewProps> = ({ resource, filterConfig, availableColumns, onFilterChange }) => {
+const ColumnPanelNew: React.FC<ColumnPanelNewProps> = ({
+  resource,
+  filterConfig,
+  availableColumnsTypes,
+  onFilterChange,
+}) => {
   const [isColumnPanelOpen, setIsColumnPanelOpen] = useState<boolean>(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  if (!filterConfig) {
-    return null;
-  }
+  // Fallback for missing columns in filterConfig
+  const selectedColumns = filterConfig.columns || [];
 
-  const handleColumnsChange = (selectedColumns: string[]) => {
+  // Derive available columns from availableColumnsTypes
+  const availableColumns = Object.keys(availableColumnsTypes);
+
+  // Handle changes to selected columns
+  const handleColumnsChange = (updatedColumns: string[]) => {
     onFilterChange({
       ...filterConfig,
-      columns: selectedColumns,
+      columns: updatedColumns,
     });
   };
 
   return (
     <div className="relative">
-      <ButtonNew
-        onClick={() => setIsColumnPanelOpen(prev => !prev)}
+      {/* Toggle Column Panel Button */}
+      <Button
+        onClick={() => setIsColumnPanelOpen((prev) => !prev)}
         icon={<EyeSlashIcon className="w-5 h-5 mr-1" />}
-        label={`Show Columns (${filterConfig.columns.length})`}
+        label={`Show Columns (${selectedColumns.length})`}
       />
-      <PanelNew
+
+      {/* Column Selection Panel */}
+      <Panel
         isOpen={isColumnPanelOpen}
         onClose={() => setIsColumnPanelOpen(false)}
         title="Select Columns to Display"
         panelRef={panelRef}
       >
         {/* Column Selector */}
-        <ColumnSelectorNew
-          resource={resource}
-          selectedColumns={filterConfig.columns}
+        <ColumnSelector
+          selectedColumns={selectedColumns}
           availableColumns={availableColumns}
           onColumnsChange={handleColumnsChange}
         />
-      </PanelNew>
+      </Panel>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Spinner } from '../UI/index'; // Adjust the import path as necessary
+import { Spinner } from '../UI/index'; 
 
 interface DataTableNewProps {
   data: Record<string, any>[];
@@ -17,6 +17,16 @@ const DataTableNew: React.FC<DataTableNewProps> = ({ data, loading, error }) => 
 
   const formatHeader = (header: string) =>
     header.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+
+  // Helper function to render cell content
+  const renderCellContent = (content: any) => {
+    if (typeof content === 'object' && content !== null) {
+      return JSON.stringify(content);
+      // Alternatively, extract a specific property:
+      // return content.name || 'N/A';
+    }
+    return content ?? '--';
+  };
 
   return (
     <div className="relative w-full h-full">
@@ -42,7 +52,7 @@ const DataTableNew: React.FC<DataTableNewProps> = ({ data, loading, error }) => 
                     key={column}
                     className="py-3 px-6 border-b border-neutral-200 text-sm text-neutral-800 bg-transparent"
                   >
-                    {row[column] ?? '--'}
+                    {renderCellContent(row[column])}
                   </td>
                 ))}
               </tr>

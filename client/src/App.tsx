@@ -5,7 +5,7 @@ import { authAtom } from './store/atoms/atoms';
 import { getUserInfo } from './utils/apiService/userAPI';
 import Layout from './Layout';
 import Home from './components/Home/Home';
-import Dashboard from './pages/Dashboard';
+import Dashboard from './pages/publicPages/Landing/Dashboard';
 import Sites from './pages/protectedPages/dataPages/Sites';
 import Vendors from './pages/protectedPages/dataPages/Vendors';
 import LoginPage from './pages/publicPages/LoginPage';

@@ -34,21 +34,20 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
     // Local State Variables
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
+    const [innitalLoading, setInitialLoading] = useState<boolean>(true);
     const [currentViewId, setCurrentViewId] = useState<number | null>(null);
-    const [tableData, setTableData] = useState<Array<{ [key: string]: any }>>(
-        []
-    );
-    const [views, setViews] = useState<Array<{ id: number; viewName: string }>>(
-        []
-    );
+    const [tableData, setTableData] = useState<Array<{ [key: string]: any }>>([]);
+    const [views, setViews] = useState<Array<{ id: number; viewName: string }>>([]);
     const [totalRecords, setTotalRecords] = useState<number>(0);
     const [page, setPage] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(25);
     const [initialFilterConfig, setInitialFilterConfig] = useState<FilterConfig>({
+        columns: [],
         appliedFilters: {},
         appliedSorting: [],
     });
     const [currentFilterConfig, setCurrentFilterConfig] = useState<FilterConfig>({
+        columns: [],
         appliedFilters: {},
         appliedSorting: [],
     });
@@ -64,7 +63,7 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
         const modified =
             JSON.stringify(initialFilterConfig) !== JSON.stringify(currentFilterConfig) || initialViewName !== currentViewName;
         setIsModified(modified);
-    }, [initialFilterConfig, currentFilterConfig]);
+    }, [initialFilterConfig, currentFilterConfig, initialViewName, currentViewName]);
 
     // Load the currentViewId from localStorage on component mount
     useEffect(() => {
@@ -74,7 +73,7 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
         } else {
             setCurrentViewId(null);
         }
-    }, [resource]);
+    }, []);
 
     // Fetch view data whenever currentViewId changes
     useEffect(() => {
@@ -86,6 +85,11 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
 
                 if (response.success) {
                     const data = response.data;
+                    if (!currentViewId) {
+                        setCurrentViewId(data.viewId);
+                        window.localStorage.setItem(`${resource}-viewId`, data.viewId.toString());
+                    }
+
                     setTableData(data.data);
                     setViews(data.views);
                     setTotalRecords(data.totalRecords);
@@ -93,10 +97,12 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
                     setPageSize(data.pageSize);
                     setAvailableColumns(data.availableColumnsType);
                     setInitialFilterConfig({
+                        columns: Object.keys(data.availableColumnsType),
                         appliedFilters: data.appliedFilters,
                         appliedSorting: data.appliedSorting,
                     });
                     setCurrentFilterConfig({
+                        columns: Object.keys(data.availableColumnsType),
                         appliedFilters: data.appliedFilters,
                         appliedSorting: data.appliedSorting,
                     });
@@ -107,20 +113,28 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
                 }
             } catch (err: any) {
                 console.error("Error fetching view data:", err);
-                setError(
-                    err.response?.data?.message ||
-                    "An error occurred while fetching view data."
-                );
+                const errorMessage = err.response?.data?.message;
+                if (typeof errorMessage === 'string') {
+                    setError(errorMessage);
+                } else if (typeof errorMessage === 'object' && errorMessage !== null) {
+                    setError(JSON.stringify(errorMessage));
+                } else {
+                    setError("An error occurred while fetching view data.");
+                }
             } finally {
                 setLoading(false);
             }
         };
 
         fetchView();
-    }, [currentViewId, resource]);
+    }, [currentViewId]);
 
     // Fetch filtered data whenever filters, pagination, or sorting changes
     useEffect(() => {
+        if (innitalLoading) {
+            setInitialLoading(false);
+            return;
+        }
         const fetchFilteredData = async () => {
             setLoading(true);
             setError(null);
@@ -129,13 +143,17 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
                     columns: Object.keys(availableColumns),
                     filters: currentFilterConfig.appliedFilters,
                     sorting: currentFilterConfig.appliedSorting,
+                    page,
+                    pageSize,
                 };
 
                 const response: GetFilteredDataResponse = await getFilteredData(
                     resource,
                     requestPayload.columns,
                     requestPayload.filters,
-                    requestPayload.sorting
+                    requestPayload.sorting,
+                    requestPayload.page,
+                    requestPayload.pageSize,
                 );
 
                 if (response.success) {
@@ -148,10 +166,14 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
                 }
             } catch (err: any) {
                 console.error("Error fetching filtered data:", err);
-                setError(
-                    err.response?.data?.message ||
-                    "An error occurred while fetching filtered data."
-                );
+                const errorMessage = err.response?.data?.message;
+                if (typeof errorMessage === 'string') {
+                    setError(errorMessage);
+                } else if (typeof errorMessage === 'object' && errorMessage !== null) {
+                    setError(JSON.stringify(errorMessage));
+                } else {
+                    setError("An error occurred while fetching filtered data.");
+                }
             } finally {
                 setLoading(false);
             }
@@ -227,9 +249,14 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
             }
         } catch (err: any) {
             console.error("Error saving view:", err);
-            setError(
-                err.response?.data?.message || "An error occurred while saving the view."
-            );
+            const errorMessage = err.response?.data?.message;
+            if (typeof errorMessage === 'string') {
+                setError(errorMessage);
+            } else if (typeof errorMessage === 'object' && errorMessage !== null) {
+                setError(JSON.stringify(errorMessage));
+            } else {
+                setError("An error occurred while saving the view.");
+            }
         } finally {
             setLoading(false);
         }
@@ -238,7 +265,6 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
         currentViewId,
         availableColumns,
         currentFilterConfig,
-        getViewData,
     ]);
 
     // Handle deleting a view
@@ -269,14 +295,19 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
                 }
             } catch (err: any) {
                 console.error("Error deleting view:", err);
-                setError(
-                    err.response?.data?.message || "An error occurred while deleting the view."
-                );
+                const errorMessage = err.response?.data?.message;
+                if (typeof errorMessage === 'string') {
+                    setError(errorMessage);
+                } else if (typeof errorMessage === 'object' && errorMessage !== null) {
+                    setError(JSON.stringify(errorMessage));
+                } else {
+                    setError("An error occurred while deleting the view.");
+                }
             } finally {
                 setLoading(false);
             }
         },
-        [resource, currentViewId, getViewData]
+        [resource, currentViewId]
     );
 
     // Handle filter changes
@@ -285,7 +316,7 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
     }, []);
 
     // Handle pagination changes
-    const handlePageChange = useCallback(
+    const handlePageChange: (newPage: number, newPageSize: number) => void = useCallback(
         (newPage: number, newPageSize: number) => {
             setPage(newPage);
             setPageSize(newPageSize);
@@ -303,7 +334,7 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
                 page={page}
                 pageSize={pageSize}
                 totalPages={Math.ceil(totalRecords / pageSize)}
-                setPage={handlePageChange}
+                handlePageChange={handlePageChange}
                 currentViewName={currentViewName}
                 setCurrentViewName={setCurrentViewName}
                 availableColumnsTypes={availableColumns}

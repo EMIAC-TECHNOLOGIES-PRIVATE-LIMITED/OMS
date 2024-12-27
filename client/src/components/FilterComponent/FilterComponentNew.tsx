@@ -19,7 +19,7 @@ interface FilterComponentNewProps {
   page: number;
   pageSize: number;
   totalPages: number;
-  setPage: (page: number, pageSize: number) => void;
+  handlePageChange: (page: number, pageSize: number) => void;
   availableColumnsTypes: availableColumnsTypes;
 }
 
@@ -33,7 +33,7 @@ const FilterComponentNew: React.FC<FilterComponentNewProps> = ({
   page,
   pageSize,
   totalPages,
-  setPage,
+  handlePageChange,
   availableColumnsTypes
 }) => {
   // Handle view name change
@@ -67,18 +67,25 @@ const FilterComponentNew: React.FC<FilterComponentNewProps> = ({
         <ColumnPanelNew
           resource={resource}
           filterConfig={filterConfig}
+          availableColumnsTypes={availableColumnsTypes}
           onFilterChange={onFilterChange}
         />
         <SortingPanelNew
           resource={resource}
           filterConfig={filterConfig}
           onFilterChange={onFilterChange}
+          availableColumnsTypes={availableColumnsTypes}
         />
       </div>
 
       {/* Right Section: Pagination Controls */}
       <div className="flex items-center">
-        <  resource={resource} />
+        <  PaginationControlsNew
+          page={page}
+          pageSize={pageSize}
+          handlePageChange={handlePageChange}
+          totalPages={totalPages}
+        />
       </div>
     </div>
   );

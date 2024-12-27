@@ -6,6 +6,41 @@ import { FunnelIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import IconButton from '../IconButton/IconButton';
 import { availableColumnsTypes } from '../../../types';
 
+/**
+ * FilterPanelNew Component
+ * ------------------------
+ * This component allows dynamic addition, modification, and deletion of filters based on various columns and conditions.
+ * 
+ * Key Features:
+ * - Filters are grouped under logical connectors (AND/OR).
+ * - Users can select columns, conditions (e.g., equals, contains), and input values dynamically.
+ * - Handles multiple data types (string, number, boolean, date) with tailored operators for each.
+ * 
+ * Main Functionalities:
+ * - `addFilter`: Adds a new filter with default column and condition.
+ * - `updateFilter`: Updates a filter's column, condition, or value.
+ * - `removeFilter`: Removes a filter from the current connector group.
+ * - `getOperatorsByType`: Provides appropriate operators based on the column's data type.
+ * 
+ * Props:
+ * - `filterConfig`: Manages the applied filters and sorting configurations.
+ * - `availableColumnsTypes`: Defines column names and their respective data types.
+ * - `onFilterChange`: Callback to update the parent state with the modified filter configuration.
+ * 
+ * State Management:
+ * - `isFilterPanelOpen`: Toggles the visibility of the filter panel.
+ * - `filterConfig.appliedFilters`: Dynamically updates based on user interactions.
+ * 
+ * Interaction Flow:
+ * 1. Add Filter: Adds a default filter with an empty condition.
+ * 2. Update Filter: Allows users to change columns, conditions, or values.
+ * 3. Remove Filter: Deletes the selected filter.
+ * 
+ * Rendering:
+ * - Dynamically renders filters with dropdowns for columns and conditions and input boxes for values.
+ * - Displays the count of applied filters.
+ */
+
 interface FilterPanelNewProps {
   resource: string;
   filterConfig: FilterConfig;
@@ -20,50 +55,67 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
 }) => {
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState<boolean>(false);
 
-  const currentConnector: LogicalOperator = LogicalOperator.AND;
+  const currentConnector: LogicalOperator = LogicalOperator.AND; // Default connector
 
+  // Utility: Create a default filter for a column
+  const getDefaultFilter = (column: string) => ({
+    [column]: { equals: '' },
+  });
+
+  // Add a new filter
   const addFilter = () => {
-    const newFilter = { column: '', condition: {}, operator: currentConnector };
+    const defaultColumn = Object.keys(availableColumnsTypes)[0] || ''; // Use first available column
+    const newFilter = getDefaultFilter(defaultColumn);
 
     onFilterChange({
       ...filterConfig,
       appliedFilters: {
-        [currentConnector]: [...(filterConfig.appliedFilters[currentConnector] || []), newFilter],
+        ...filterConfig.appliedFilters,
+        [currentConnector]: [
+          ...(filterConfig.appliedFilters[currentConnector] || []),
+          newFilter,
+        ],
       },
     });
   };
 
+  // Update an existing filter
   const updateFilter = (index: number, field: 'column' | 'condition', value: any) => {
-    const updatedFilters = [...(filterConfig.appliedFilters[currentConnector] || [])];
-    const filter = { ...updatedFilters[index] };
+    const existingFilters = filterConfig.appliedFilters[currentConnector] || [];
+    const updatedFilters = [...existingFilters];
 
     if (field === 'column') {
-      filter.column = value;
-      filter.condition = {}; // Reset condition on column change
+      const newFilter = getDefaultFilter(value); 
+      updatedFilters[index] = newFilter;
     } else {
-      filter.condition = value;
+      const currentColumn = Object.keys(existingFilters[index])[0];
+      updatedFilters[index] = { [currentColumn]: value };
     }
 
-    updatedFilters[index] = filter;
     onFilterChange({
       ...filterConfig,
       appliedFilters: {
+        ...filterConfig.appliedFilters,
         [currentConnector]: updatedFilters,
       },
     });
   };
 
+  // Remove a filter
   const removeFilter = (index: number) => {
-    const updatedFilters = [...(filterConfig.appliedFilters[currentConnector] || [])];
-    updatedFilters.splice(index, 1);
+    const existingFilters = filterConfig.appliedFilters[currentConnector] || [];
+    const updatedFilters = existingFilters.filter((_, i) => i !== index);
+
     onFilterChange({
       ...filterConfig,
       appliedFilters: {
+        ...filterConfig.appliedFilters,
         [currentConnector]: updatedFilters,
       },
     });
   };
 
+  // Get operators by data type
   const getOperatorsByType = (type: string) => {
     switch (type) {
       case 'string':
@@ -111,66 +163,69 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
         <div className="mb-3">
           <h4 className="font-medium text-sm text-neutral-800 mb-2">Filters</h4>
           <div>
-            {(filterConfig.appliedFilters[currentConnector] || []).map((filter, index) => (
-              <div key={index} className="flex flex-col gap-2 mb-2 p-2 bg-white rounded-md shadow-sm">
-                {/* Column Selection */}
-                <select
-                  value={filter.column || ''}
-                  onChange={(e) => updateFilter(index, 'column', e.target.value)}
-                  className="border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
-                >
-                  <option value="">Select Column</option>
-                  {showColumns.map((col) => (
-                    <option key={col} value={col}>
-                      {col}
-                    </option>
-                  ))}
-                </select>
+            {(filterConfig.appliedFilters[currentConnector] || []).map((filter, index) => {
+              const [column, condition] = Object.entries(filter)[0];
 
-                {/* Condition */}
-                {filter.column && (
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col gap-2 mb-2 p-2 bg-white rounded-md shadow-sm"
+                >
+                  {/* Column Selection */}
                   <select
-                    value={Object.keys(filter.condition)[0] || ''}
+                    value={column || ''}
+                    onChange={(e) => updateFilter(index, 'column', e.target.value)}
+                    className="border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
+                  >
+                    <option value="">Select Column</option>
+                    {showColumns.map((col) => (
+                      <option key={col} value={col}>
+                        {col}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Condition Selection */}
+                  <select
+                    value={Object.keys(condition)[0] || ''}
                     onChange={(e) =>
                       updateFilter(index, 'condition', {
-                        [e.target.value]: '',
+                        [e.target.value]: Object.values(condition)[0] || '',
                       })
                     }
                     className="border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
                   >
                     <option value="">Select Condition</option>
-                    {getOperatorsByType(availableColumnsTypes[filter.column]).map((op) => (
+                    {getOperatorsByType(availableColumnsTypes[column]).map((op) => (
                       <option key={op.value} value={op.value}>
                         {op.label}
                       </option>
                     ))}
                   </select>
-                )}
 
-                {/* Value Input */}
-                {filter.column && filter.condition && (
+                  {/* Value Input */}
                   <input
                     type="text"
-                    value={Object.values(filter.condition)[0] || ''}
+                    value={Object.values(condition)[0] || ''}
                     onChange={(e) =>
                       updateFilter(index, 'condition', {
-                        [Object.keys(filter.condition)[0]]: e.target.value,
+                        [Object.keys(condition)[0]]: e.target.value,
                       })
                     }
                     className="border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
                     placeholder="Enter value"
                   />
-                )}
 
-                {/* Remove Filter Button */}
-                <IconButton
-                  icon={<TrashIcon className="w-4 h-4 text-red-500" />}
-                  ariaLabel="Remove Filter"
-                  onClick={() => removeFilter(index)}
-                  className="ml-auto"
-                />
-              </div>
-            ))}
+                  {/* Remove Filter Button */}
+                  <IconButton
+                    icon={<TrashIcon className="w-4 h-4 text-red-500" />}
+                    ariaLabel="Remove Filter"
+                    onClick={() => removeFilter(index)}
+                    className="ml-auto"
+                  />
+                </div>
+              );
+            })}
           </div>
 
           {/* Add Filter Button */}

@@ -1,18 +1,18 @@
-import {  DataPage } from '../../../components';
-import { WebsiteData } from '../../../types';
+import DataPageNew from "../../../components/DataPage/DataPageNew";
 
 
 
-const Clients = () => {
+
+const Sites = () => {
   return (
     <>
-    <DataPage<WebsiteData>
-      apiEndpoint={`/data/clients`}
-      resource="clients"
-      pageTitle="Clients" 
-    />
+      <DataPageNew
+        apiEndpoint="/data/client"
+        resource="client"
+        pageTitle="Clients"
+      />
     </>
   );
 };
 
-export default Clients;
+export default Sites;

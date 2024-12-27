@@ -1,18 +1,18 @@
-import {  DataPage } from '../../../components';
-import { VendorData} from '../../../types';
+import DataPageNew from "../../../components/DataPage/DataPageNew";
 
 
 
-const Orders  = () => {
+
+const Sites = () => {
   return (
     <>
-    <DataPage<VendorData>
-      apiEndpoint={`/data/vendors`}
-      resource="vendors"
-      pageTitle="Vendors" 
-    />
+      <DataPageNew
+        apiEndpoint="/data/order"
+        resource="order"
+        pageTitle="Orders"
+      />
     </>
   );
 };
 
-export default Orders;
+export default Sites;
