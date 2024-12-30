@@ -1,29 +1,38 @@
 import React from 'react';
-import { Spinner } from '../UI/index'; 
+import { Spinner } from '../UI/index';
 
 interface DataTableNewProps {
   data: Record<string, any>[];
+  availableColumns: string[];
   loading: boolean;
   error: string | null;
 }
 
-const DataTableNew: React.FC<DataTableNewProps> = ({ data, loading, error }) => {
+const DataTableNew: React.FC<DataTableNewProps> = ({
+  data,
+  availableColumns,
+  loading,
+  error
+}) => {
   if (loading) return <Spinner imagePath="./image.png" />;
   if (error) return <p className="text-red-500 font-medium">{error}</p>;
 
-  const displayColumns: string[] = React.useMemo(() => {
-    return data.length > 0 ? Object.keys(data[0]) : [];
-  }, [data]);
+  const displayColumns = React.useMemo(() => {
+    if (!data.length) {
+      return [];
+    }
+
+    const dataColumns = Object.keys(data[0]);
+
+    return availableColumns.filter(col => dataColumns.includes(col));
+  }, [data, availableColumns]);
 
   const formatHeader = (header: string) =>
     header.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 
-  // Helper function to render cell content
   const renderCellContent = (content: any) => {
     if (typeof content === 'object' && content !== null) {
       return JSON.stringify(content);
-      // Alternatively, extract a specific property:
-      // return content.name || 'N/A';
     }
     return content ?? '--';
   };
@@ -46,7 +55,10 @@ const DataTableNew: React.FC<DataTableNewProps> = ({ data, loading, error }) => 
           </thead>
           <tbody className="bg-transparent">
             {data.map((row, rowIndex) => (
-              <tr key={rowIndex} className="hover:bg-gray-50 transition-colors duration-300">
+              <tr
+                key={rowIndex}
+                className="hover:bg-gray-50 transition-colors duration-300"
+              >
                 {displayColumns.map(column => (
                   <td
                     key={column}

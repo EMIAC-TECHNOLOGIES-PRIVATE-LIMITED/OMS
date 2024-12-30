@@ -4,7 +4,7 @@ import { AuthRequest } from '../types/sitesDataTypes';
 import { tableDataTypes } from '../constants/tableDataTypes';
 import STATUS_CODES from '../constants/statusCodes';
 import { APIError, APIResponse } from '../utils/apiHandler';
-import { GetFilteredDataResponse, GetViewDataResponse } from '@shared/types';
+import { CreateViewResponse, DeleteViewResponse, GetFilteredDataResponse, GetViewDataResponse, UpdateViewResponse } from '@shared/types';
 
 export const viewsController = {
     getView: async (req: AuthRequest, res: Response): Promise<Response> => {
@@ -16,9 +16,16 @@ export const viewsController = {
         const { view, permittedColumns, userViews, modelName } = req;
 
         if (!modelName) {
-            return res.status(STATUS_CODES.BAD_REQUEST).json(
-                new APIError(STATUS_CODES.BAD_REQUEST, "Bad request: Model name missing", [], false).toJSON()
-            );
+            return res
+                .status(STATUS_CODES.BAD_REQUEST)
+                .json(
+                    new APIError(
+                        STATUS_CODES.BAD_REQUEST,
+                        "Bad request: Model name missing",
+                        [],
+                        false
+                    ).toJSON()
+                );
         }
 
         const columnTypes = tableDataTypes[modelName] || {};
@@ -28,15 +35,20 @@ export const viewsController = {
             return acc;
         }, {} as { [key: string]: string });
 
-        const viewColumns = view.columns.filter((col: string) => permittedColumns?.includes(col));
+        const viewColumns = view.columns.filter((col: string) =>
+            permittedColumns?.includes(col)
+        );
 
-        const sanitizedFilters = sanitizeFilters(view.filters, permittedColumns || []);
+        const sanitizedFilters = sanitizeFilters(
+            view.filters,
+            permittedColumns || []
+        );
 
         const sanitizedSorting = Array.isArray(view.sort)
             ? sanitizeSorting(view.sort, permittedColumns || [])
             : [];
 
-        const selectClause = viewColumns.reduce(
+        const selectClause: string[] = viewColumns.reduce(
             (acc: any, col: string) => ({ ...acc, [col]: true }),
             {}
         );
@@ -54,7 +66,9 @@ export const viewsController = {
                 where: queryOptions.where,
             });
 
-            const data = await (prismaClient as any)[modelName].findMany(queryOptions);
+            const data = await (prismaClient as any)[modelName].findMany(
+                queryOptions
+            );
 
             const response = {
                 viewId: view.id,
@@ -67,6 +81,7 @@ export const viewsController = {
                 availableColumnsType,
                 appliedFilters: sanitizedFilters,
                 appliedSorting: sanitizedSorting,
+                column: selectClause,
                 views: userViews,
             } as GetViewDataResponse['data'];
 
@@ -77,9 +92,17 @@ export const viewsController = {
             console.error(error);
             return res
                 .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
-                .json(new APIError(STATUS_CODES.INTERNAL_SERVER_ERROR, "Error fetching data", [error], false).toJSON());
+                .json(
+                    new APIError(
+                        STATUS_CODES.INTERNAL_SERVER_ERROR,
+                        "Error fetching data",
+                        [error],
+                        false
+                    ).toJSON()
+                );
         }
     },
+
 
     getTypeAhead: async (req: AuthRequest, res: Response): Promise<Response> => {
         const { column, value } = req.query;
@@ -125,7 +148,6 @@ export const viewsController = {
         }
     },
 
-
     getData: async (req: AuthRequest, res: Response): Promise<Response> => {
         const { column, value } = req.query;
 
@@ -136,12 +158,19 @@ export const viewsController = {
         const take = pageSize;
 
         const permittedColumns = req.permittedColumns!;
-
         const { modelName } = req;
+
         if (!modelName) {
-            return res.status(STATUS_CODES.BAD_REQUEST).json(
-                new APIError(STATUS_CODES.BAD_REQUEST, "Bad request: Model name missing", [], false).toJSON()
-            );
+            return res
+                .status(STATUS_CODES.BAD_REQUEST)
+                .json(
+                    new APIError(
+                        STATUS_CODES.BAD_REQUEST,
+                        "Bad request: Model name missing",
+                        [],
+                        false
+                    ).toJSON()
+                );
         }
 
         const columnTypes = permittedColumns.reduce((acc, col) => {
@@ -150,56 +179,28 @@ export const viewsController = {
         }, {} as { [key: string]: string });
 
         const userViews = req.userViews!;
-
-        // if (column && value) {
-        //     try {
-        //         const typeAheadFilter = {
-        //             [column as string]: {
-        //                 contains: value,
-        //                 mode: 'insensitive',
-        //             },
-        //         };
-
-        //         const results = await (prismaClient as any)[modelName].findMany({
-        //             where: typeAheadFilter,
-        //             select: { [column as string]: true },
-        //             take: 10,
-        //         });
-
-        //         return res
-        //             .status(STATUS_CODES.OK)
-        //             .json(new APIResponse(STATUS_CODES.OK, "Typeahead data fetched", results, true));
-        //     } catch (e) {
-        //         console.error(e);
-        //         return res
-        //             .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
-        //             .json(
-        //                 new APIError(
-        //                     STATUS_CODES.INTERNAL_SERVER_ERROR,
-        //                     "Error fetching the typeAhead suggestions",
-        //                     [e],
-        //                     false
-        //                 ).toJSON()
-        //             );
-        //     }
-        // }
-
         const { columns, filters, sorting } = req.body;
 
-        const validColumns = columns.filter((col: string) => permittedColumns.includes(col));
+        const validColumns = columns.filter((col: string) =>
+            permittedColumns.includes(col)
+        );
         if (validColumns.length === 0) {
             return res
                 .status(STATUS_CODES.BAD_REQUEST)
-                .json(new APIError(STATUS_CODES.BAD_REQUEST, "No valid columns provided", [], false).toJSON());
+                .json(
+                    new APIError(
+                        STATUS_CODES.BAD_REQUEST,
+                        "No valid columns provided",
+                        [],
+                        false
+                    ).toJSON()
+                );
         }
 
         const sanitizedFilters = sanitizeFilters(filters, permittedColumns);
-
-        // console.log('sanitizedFilters', sanitizedFilters);
-
         const sanitizedSorting = sanitizeSorting(sorting, permittedColumns);
 
-        const selectClause = validColumns.reduce(
+        const selectClause: string[] = validColumns.reduce(
             (acc: any, col: string) => ({ ...acc, [col]: true }),
             {}
         );
@@ -224,9 +225,11 @@ export const viewsController = {
                 page,
                 pageSize,
                 data,
-                availableColumns: columnTypes,
+                availableColumns: Object.keys(columnTypes),
+                availableColumnsType: columnTypes,
                 appliedFilters: sanitizedFilters,
                 appliedSorting: sanitizedSorting,
+                column: selectClause,
                 views: userViews,
             } as GetFilteredDataResponse['data'];
 
@@ -237,15 +240,33 @@ export const viewsController = {
             console.error(error);
             return res
                 .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
-                .json(new APIError(STATUS_CODES.INTERNAL_SERVER_ERROR, "Error fetching data", [error], false).toJSON());
+                .json(
+                    new APIError(
+                        STATUS_CODES.INTERNAL_SERVER_ERROR,
+                        "Error fetching data",
+                        [error],
+                        false
+                    ).toJSON()
+                );
         }
     },
+
+
 
     createView: async (req: AuthRequest, res: Response): Promise<Response> => {
         const { resource } = req.params;
         const userId = req.user?.userId!;
         const permittedColumns = req.permittedColumns!;
         const { viewName, columns, filters, sorting } = req.body;
+        const { modelName } = req;
+
+        if (!modelName) {
+            return res
+                .status(STATUS_CODES.BAD_REQUEST)
+                .json(new APIError(STATUS_CODES.BAD_REQUEST, "Bad request: Model name missing", [], false).toJSON());
+        }
+
+
 
         const validColumns = columns.filter((col: string) => permittedColumns.includes(col));
         if (validColumns.length !== columns.length) {
@@ -258,6 +279,7 @@ export const viewsController = {
         const sanitizedSorting = sanitizeSorting(sorting, permittedColumns);
 
         try {
+            // Create the new view
             const newView = await prismaClient.view.create({
                 data: {
                     userId,
@@ -267,14 +289,26 @@ export const viewsController = {
                     filters: sanitizedFilters,
                     sort: sanitizedSorting,
                 },
-            })
+            });
 
-            req.view = newView;
-            req.userViews = await prismaClient.view.findMany({ where: { userId } });
+            // Re-fetch userViews so we can populate the "views" field in our response
+            req.userViews = await prismaClient.view.findMany({
+                where: {
+                    userId,
+                    tableId: resource
+                }
+            });
+
+
+
+            const response: CreateViewResponse['data'] = {
+                viewId: newView.id,
+                views: req.userViews.map((v) => ({ id: v.id, viewName: v.viewName })),
+            };
 
             return res
                 .status(STATUS_CODES.CREATED)
-                .json(new APIResponse(STATUS_CODES.CREATED, "View created successfully", newView, true));
+                .json(new APIResponse(STATUS_CODES.CREATED, "View created successfully", response, true));
         } catch (error) {
             console.error(error);
             return res
@@ -283,11 +317,22 @@ export const viewsController = {
         }
     },
 
+    // update the view. 
     updateView: async (req: AuthRequest, res: Response): Promise<Response> => {
+
         const { viewId } = req.params;
         const userId = req.user?.userId!;
         const permittedColumns = req.permittedColumns!;
         const { viewName, columns, filters, sorting } = req.body;
+        const { modelName } = req;
+        const { resource } = req.params;
+
+        if (!modelName) {
+            return res
+                .status(STATUS_CODES.BAD_REQUEST)
+                .json(new APIError(STATUS_CODES.BAD_REQUEST, "Bad request: Model name missing", [], false).toJSON());
+        }
+
 
         const validColumns = columns.filter((col: string) => permittedColumns.includes(col));
         if (validColumns.length !== columns.length) {
@@ -300,13 +345,15 @@ export const viewsController = {
         const sanitizedSorting = sanitizeSorting(sorting, permittedColumns);
 
         try {
-            const view = await prismaClient.view.findUnique({ where: { id: parseInt(viewId, 10) } });
-            if (!view || view.userId !== userId) {
+            // Check if the view exists and belongs to the correct user
+            const existingView = await prismaClient.view.findUnique({ where: { id: parseInt(viewId, 10) } });
+            if (!existingView || existingView.userId !== userId) {
                 return res
                     .status(STATUS_CODES.NOT_FOUND)
                     .json(new APIError(STATUS_CODES.NOT_FOUND, "View not found or access denied", [], false).toJSON());
             }
 
+            // Update the view with new parameters
             const updatedView = await prismaClient.view.update({
                 where: { id: parseInt(viewId, 10) },
                 data: {
@@ -317,12 +364,23 @@ export const viewsController = {
                 },
             });
 
-            req.view = updatedView;
-            req.userViews = await prismaClient.view.findMany({ where: { userId } });
+            // Re-fetch userViews so we can populate the "views" field in our response
+            const views = await prismaClient.view.findMany({
+                where: {
+                    userId,
+                    tableId: resource
+                }
+            });
+
+
+            // Shape the response per UpdateViewResponse interface
+            const response: UpdateViewResponse['data'] = {
+                views: views.map((v) => ({ id: v.id, viewName: v.viewName })),
+            };
 
             return res
                 .status(STATUS_CODES.OK)
-                .json(new APIResponse(STATUS_CODES.OK, "View updated successfully", updatedView, true));
+                .json(new APIResponse(STATUS_CODES.OK, "View updated successfully", response, true));
         } catch (error) {
             console.error(error);
             return res
@@ -331,9 +389,11 @@ export const viewsController = {
         }
     },
 
+
     deleteView: async (req: AuthRequest, res: Response): Promise<Response> => {
         const { viewId } = req.params;
         const userId = req.user?.userId!;
+        const { resource } = req.params;
 
         try {
             const view = await prismaClient.view.findUnique({ where: { id: parseInt(viewId, 10) } });
@@ -347,9 +407,18 @@ export const viewsController = {
                 where: { id: parseInt(viewId, 10) },
             });
 
+            const reponse: DeleteViewResponse['data'] = {
+                views: await prismaClient.view.findMany({
+                    where: {
+                        userId,
+                        tableId: resource
+                    }
+                }),
+            }
+
             return res
                 .status(STATUS_CODES.OK)
-                .json(new APIResponse(STATUS_CODES.OK, "View deleted successfully", {}, true));
+                .json(new APIResponse(STATUS_CODES.OK, "View deleted successfully", reponse, true));
         } catch (error) {
             console.error(error);
             return res

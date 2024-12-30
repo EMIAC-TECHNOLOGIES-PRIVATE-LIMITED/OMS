@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FilterConfig, LogicalOperator } from '../../../../../shared/src/types';
 import Button from '../Button/Button';
 import PanelNew from '../Panel/Panel';
@@ -6,134 +6,210 @@ import { FunnelIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import IconButton from '../IconButton/IconButton';
 import { availableColumnsTypes } from '../../../types';
 
-/**
- * FilterPanelNew Component
- * ------------------------
- * This component allows dynamic addition, modification, and deletion of filters based on various columns and conditions.
- * 
- * Key Features:
- * - Filters are grouped under logical connectors (AND/OR).
- * - Users can select columns, conditions (e.g., equals, contains), and input values dynamically.
- * - Handles multiple data types (string, number, boolean, date) with tailored operators for each.
- * 
- * Main Functionalities:
- * - `addFilter`: Adds a new filter with default column and condition.
- * - `updateFilter`: Updates a filter's column, condition, or value.
- * - `removeFilter`: Removes a filter from the current connector group.
- * - `getOperatorsByType`: Provides appropriate operators based on the column's data type.
- * 
- * Props:
- * - `filterConfig`: Manages the applied filters and sorting configurations.
- * - `availableColumnsTypes`: Defines column names and their respective data types.
- * - `onFilterChange`: Callback to update the parent state with the modified filter configuration.
- * 
- * State Management:
- * - `isFilterPanelOpen`: Toggles the visibility of the filter panel.
- * - `filterConfig.appliedFilters`: Dynamically updates based on user interactions.
- * 
- * Interaction Flow:
- * 1. Add Filter: Adds a default filter with an empty condition.
- * 2. Update Filter: Allows users to change columns, conditions, or values.
- * 3. Remove Filter: Deletes the selected filter.
- * 
- * Rendering:
- * - Dynamically renders filters with dropdowns for columns and conditions and input boxes for values.
- * - Displays the count of applied filters.
- */
-
 interface FilterPanelNewProps {
-  resource: string;
+  resource: string; // now used in the onFilterChange calls
   filterConfig: FilterConfig;
   availableColumnsTypes: availableColumnsTypes;
   onFilterChange: (newFilterConfig: FilterConfig) => void;
 }
 
+/**
+ * Utility to get the data type of a column from availableColumnsTypes
+ */
+const getColumnType = (
+  column: string,
+  availableColumnsTypes: availableColumnsTypes
+): string => {
+  return availableColumnsTypes[column] || '';
+};
+
 const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
+  resource,
   filterConfig,
   availableColumnsTypes,
   onFilterChange,
 }) => {
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState<boolean>(false);
 
-  const currentConnector: LogicalOperator = LogicalOperator.AND; // Default connector
+  /**
+   * We will internally store the connector and filters as a simple array
+   * of objects: { column, condition, value }.
+   * When we modify them, we will reflect those changes back to the parent.
+   */
+  const [localConnector, setLocalConnector] = useState<LogicalOperator>(
+    // Default connector can be from filterConfig if it exists; otherwise AND
+    Object.keys(filterConfig.appliedFilters).includes(LogicalOperator.OR)
+      ? LogicalOperator.OR
+      : LogicalOperator.AND
+  );
 
-  // Utility: Create a default filter for a column
-  const getDefaultFilter = (column: string) => ({
-    [column]: { equals: '' },
-  });
+  const [localFilters, setLocalFilters] = useState<
+    Array<{ column: string; condition: string; value: string }>
+  >([]);
 
-  // Add a new filter
-  const addFilter = () => {
-    const defaultColumn = Object.keys(availableColumnsTypes)[0] || ''; // Use first available column
-    const newFilter = getDefaultFilter(defaultColumn);
+  /**
+   * On mount or when filterConfig changes externally,
+   * parse the relevant connector’s array from the parent and mirror it in local state.
+   */
+  useEffect(() => {
+    const activeFilters = filterConfig.appliedFilters[localConnector] || [];
+    const parsed = activeFilters.map((flt) => {
+      const [column, conditionObj] = Object.entries(flt)[0];
+      const condition = Object.keys(conditionObj)[0];
+      const value = String(Object.values(conditionObj)[0] ?? '');
+      return { column, condition, value };
+    });
+    setLocalFilters(parsed);
+  }, [filterConfig, localConnector]);
 
+  /**
+   * Helper to push the current local state back up to the parent
+   * under the currently selected connector.
+   */
+  const syncWithParent = (
+    connector: LogicalOperator,
+    updatedLocalFilters: Array<{ column: string; condition: string; value: string }>
+  ) => {
     onFilterChange({
       ...filterConfig,
+
       appliedFilters: {
+        // Keep any existing connectors that might be in filterConfig,
+        // but overwrite the one we’re currently using
         ...filterConfig.appliedFilters,
-        [currentConnector]: [
-          ...(filterConfig.appliedFilters[currentConnector] || []),
-          newFilter,
-        ],
+        [connector]: updatedLocalFilters.map((item) => {
+          // Transform { column, condition, value } back into the original shape
+          return {
+            [item.column]: {
+              [item.condition]: item.value,
+            },
+          };
+        }),
       },
     });
   };
 
-  // Update an existing filter
-  const updateFilter = (index: number, field: 'column' | 'condition', value: any) => {
-    const existingFilters = filterConfig.appliedFilters[currentConnector] || [];
-    const updatedFilters = [...existingFilters];
+  /**
+   * Handle connector change: we do NOT reset local filters;
+   * we simply change the connector used in the parent config.
+   */
+  const handleConnectorChange = (newConnector: LogicalOperator) => {
+    setLocalConnector(newConnector);
 
-    if (field === 'column') {
-      const newFilter = getDefaultFilter(value); 
-      updatedFilters[index] = newFilter;
-    } else {
-      const currentColumn = Object.keys(existingFilters[index])[0];
-      updatedFilters[index] = { [currentColumn]: value };
+    // Also sync the local filters to the parent under the new connector
+    syncWithParent(newConnector, localFilters);
+  };
+
+  /**
+   * Add a new filter:
+   * If no columns are available, we disable the addition to avoid invalid states.
+   */
+  const addFilter = () => {
+    if (!filterConfig.columns || filterConfig.columns.length === 0) {
+      console.warn('No columns available; cannot add a new filter.');
+      return;
     }
 
-    onFilterChange({
-      ...filterConfig,
-      appliedFilters: {
-        ...filterConfig.appliedFilters,
-        [currentConnector]: updatedFilters,
-      },
+    const defaultColumn = filterConfig.columns[0] || '';
+    // Create a default filter object
+    const newFilterItem = {
+      column: defaultColumn,
+      condition: 'equals', // pick a default condition, can be changed later
+      value: '',
+    };
+
+    setLocalFilters((prev) => {
+      const updated = [...prev, newFilterItem];
+      // Sync it to the parent
+      syncWithParent(localConnector, updated);
+      return updated;
     });
   };
 
-  // Remove a filter
+  /**
+   * Update a particular filter. We sync to parent immediately.
+   */
+  const updateFilter = (
+    index: number,
+    field: 'column' | 'condition' | 'value',
+    value: string
+  ) => {
+    setLocalFilters((prev) => {
+      const updated = [...prev];
+      const oldItem = updated[index];
+
+      if (field === 'column') {
+        const oldType = getColumnType(oldItem.column, availableColumnsTypes);
+        const newType = getColumnType(value, availableColumnsTypes);
+
+        // If the user picks a column of a different data type, reset condition and value
+        // to avoid logical mismatch (optional: you could get more fine-grained).
+        if (oldType !== newType) {
+          updated[index] = { column: value, condition: '', value: '' };
+        } else {
+          updated[index] = { ...oldItem, column: value };
+        }
+      } else if (field === 'condition') {
+        updated[index] = { ...oldItem, condition: value };
+      } else if (field === 'value') {
+        // Basic numeric validation for numeric columns
+        const colType = getColumnType(oldItem.column, availableColumnsTypes);
+        let newVal = value;
+        if (
+          /(Int|BigInt|Number|number)/.test(colType) &&
+          value.trim() !== '' &&
+          isNaN(Number(value))
+        ) {
+          console.warn(`Invalid numeric input for column "${oldItem.column}": ${value}`);
+          newVal = ''; // Reset to empty if invalid
+        }
+        updated[index] = { ...oldItem, value: newVal };
+      }
+
+      // Sync changes up to parent
+      syncWithParent(localConnector, updated);
+      return updated;
+    });
+  };
+
+  /**
+   * Remove a filter from the local array; also sync to parent.
+   */
   const removeFilter = (index: number) => {
-    const existingFilters = filterConfig.appliedFilters[currentConnector] || [];
-    const updatedFilters = existingFilters.filter((_, i) => i !== index);
-
-    onFilterChange({
-      ...filterConfig,
-      appliedFilters: {
-        ...filterConfig.appliedFilters,
-        [currentConnector]: updatedFilters,
-      },
+    setLocalFilters((prev) => {
+      const updated = [...prev];
+      updated.splice(index, 1);
+      syncWithParent(localConnector, updated);
+      return updated;
     });
   };
 
-  // Get operators by data type
+  /**
+   * Utility: get operators by type to populate condition <select>.
+   */
   const getOperatorsByType = (type: string) => {
     switch (type) {
+      case 'String':
       case 'string':
         return [
           { value: 'contains', label: 'Contains' },
           { value: 'startsWith', label: 'Starts With' },
           { value: 'endsWith', label: 'Ends With' },
+          { value: 'equals', label: 'Equals' },
         ];
+      case 'Int':
+      case 'BigInt':
+      case 'Number':
       case 'number':
         return [
           { value: 'gte', label: 'Greater Than or Equal To' },
           { value: 'lte', label: 'Less Than or Equal To' },
           { value: 'equals', label: 'Equals' },
         ];
+      case 'Boolean':
       case 'boolean':
-        return [
-          { value: 'equals', label: 'Equals' },
-        ];
+        return [{ value: 'equals', label: 'Equals' }];
+      case 'DateTime':
       case 'date':
         return [
           { value: 'before', label: 'Before' },
@@ -141,18 +217,24 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
           { value: 'equals', label: 'Equals' },
         ];
       default:
-        return [];
+        return [{ value: 'equals', label: 'Equals' }];
     }
   };
 
-  const showColumns = Object.keys(availableColumnsTypes);
+  /**
+   * We only display columns that exist in both `filterConfig.columns`
+   * and `availableColumnsTypes`.
+   */
+  const orderedColumns = Object.keys(availableColumnsTypes).filter((col) =>
+    filterConfig.columns.includes(col)
+  );
 
   return (
     <div className="relative">
       <Button
         onClick={() => setIsFilterPanelOpen((prev) => !prev)}
         icon={<FunnelIcon className="w-5 h-5 mr-1" />}
-        label={`Filters (${filterConfig.appliedFilters[currentConnector]?.length || 0})`}
+        label={`Filters (${localFilters.length})`}
       />
 
       <PanelNew
@@ -162,10 +244,26 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
       >
         <div className="mb-3">
           <h4 className="font-medium text-sm text-neutral-800 mb-2">Filters</h4>
-          <div>
-            {(filterConfig.appliedFilters[currentConnector] || []).map((filter, index) => {
-              const [column, condition] = Object.entries(filter)[0];
 
+          {/* Connector Selector */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Connector
+            </label>
+            <select
+              value={localConnector}
+              onChange={(e) => handleConnectorChange(e.target.value as LogicalOperator)}
+              className="border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
+            >
+              <option value={LogicalOperator.AND}>AND</option>
+              <option value={LogicalOperator.OR}>OR</option>
+            </select>
+          </div>
+
+          <div>
+            {localFilters.map((filterItem, index) => {
+              const { column, condition, value } = filterItem;
+              const colType = getColumnType(column, availableColumnsTypes);
               return (
                 <div
                   key={index}
@@ -178,7 +276,7 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
                     className="border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
                   >
                     <option value="">Select Column</option>
-                    {showColumns.map((col) => (
+                    {orderedColumns.map((col) => (
                       <option key={col} value={col}>
                         {col}
                       </option>
@@ -187,33 +285,28 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
 
                   {/* Condition Selection */}
                   <select
-                    value={Object.keys(condition)[0] || ''}
-                    onChange={(e) =>
-                      updateFilter(index, 'condition', {
-                        [e.target.value]: Object.values(condition)[0] || '',
-                      })
-                    }
+                    value={condition || ''}
+                    onChange={(e) => updateFilter(index, 'condition', e.target.value)}
                     className="border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
+                    disabled={!column} // Disable until column is selected
                   >
                     <option value="">Select Condition</option>
-                    {getOperatorsByType(availableColumnsTypes[column]).map((op) => (
-                      <option key={op.value} value={op.value}>
-                        {op.label}
-                      </option>
-                    ))}
+                    {column &&
+                      getOperatorsByType(colType).map((op) => (
+                        <option key={op.value} value={op.value}>
+                          {op.label}
+                        </option>
+                      ))}
                   </select>
 
                   {/* Value Input */}
                   <input
                     type="text"
-                    value={Object.values(condition)[0] || ''}
-                    onChange={(e) =>
-                      updateFilter(index, 'condition', {
-                        [Object.keys(condition)[0]]: e.target.value,
-                      })
-                    }
+                    value={value || ''}
+                    onChange={(e) => updateFilter(index, 'value', e.target.value)}
                     className="border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark"
                     placeholder="Enter value"
+                    disabled={!condition} // Disable until condition is selected
                   />
 
                   {/* Remove Filter Button */}

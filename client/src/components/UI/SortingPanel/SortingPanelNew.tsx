@@ -8,9 +8,13 @@ import IconButton from '../IconButton/IconButton';
 interface SortingPanelNewProps {
   resource: string;
   filterConfig: FilterConfig;
-  availableColumnsTypes: { [key: string]: any }; 
+  availableColumnsTypes: { [key: string]: string };
   onFilterChange: (newFilterConfig: FilterConfig) => void;
 }
+
+// Utility function to format column headers
+const formatHeader = (header: string) =>
+  header.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 
 const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
   filterConfig,
@@ -32,16 +36,27 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
     const currentEntry = updatedSorting[index] || {};
 
     if (field === 'column') {
-      const direction = currentEntry[Object.keys(currentEntry)[0] || ''] || 'asc';
-      updatedSorting[index] = { [value]: direction };
+      updatedSorting[index] = { [value]: 'asc' as 'asc' | 'desc' };
+      setLocalSorting(updatedSorting);
     } else if (field === 'direction') {
       const column = Object.keys(currentEntry)[0] || '';
       if (column) {
         updatedSorting[index] = { [column]: value as 'asc' | 'desc' };
+        setLocalSorting(updatedSorting);
+
+        // Apply the sorting immediately
+        const validSorting = updatedSorting.filter((entry) => {
+          const col = Object.keys(entry)[0];
+          const dir = entry[col];
+          return col && dir;
+        });
+
+        onFilterChange({
+          ...filterConfig,
+          appliedSorting: validSorting,
+        });
       }
     }
-
-    setLocalSorting(updatedSorting);
   };
 
   const addSorting = () => {
@@ -49,22 +64,57 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
   };
 
   const removeSorting = (index: number) => {
-    setLocalSorting((prev) => prev.filter((_, i) => i !== index));
-  };
+    const updatedSorting = localSorting.filter((_, i) => i !== index);
+    setLocalSorting(updatedSorting);
 
-  const applySorting = () => {
-    const validSorting = localSorting.filter((entry) => {
-      const column = Object.keys(entry)[0];
-      const direction = entry[column];
-      return column && direction;
+    // Apply the updated sorting immediately
+    const validSorting = updatedSorting.filter((entry) => {
+      const col = Object.keys(entry)[0];
+      const dir = entry[col];
+      return col && dir;
     });
 
     onFilterChange({
       ...filterConfig,
       appliedSorting: validSorting,
     });
-    setIsSortingPanelOpen(false);
   };
+
+  // Determine if the last sorting entry is complete
+  const isLastSortComplete = () => {
+    if (localSorting.length === 0) return true;
+    const lastSort = localSorting[localSorting.length - 1];
+    const column = Object.keys(lastSort)[0];
+    const direction = lastSort[column];
+    return column !== '' && (direction === 'asc' || direction === 'desc');
+  };
+
+  // Function to get direction options based on column type
+  const getDirectionOptions = (column: string) => {
+    const type = availableColumnsTypes[column];
+    if (type === 'String') {
+      return [
+        { value: 'asc', label: 'A-Z' },
+        { value: 'desc', label: 'Z-A' },
+      ];
+    } else if (type === 'Int' || type === 'BigInt' || type === 'DateTime') {
+      return [
+        { value: 'asc', label: '1-9' },
+        { value: 'desc', label: '9-1' },
+      ];
+    } else {
+      // Default to asc/desc if type is Boolean or unsupported
+      return [
+        { value: 'asc', label: 'Ascending' },
+        { value: 'desc', label: 'Descending' },
+      ];
+    }
+  };
+
+  // Get ordered columns based on availableColumnsTypes
+  const orderedColumns = Object.keys(availableColumnsTypes).filter((col) =>
+    filterConfig.columns.includes(col)
+  );
 
   return (
     <div className="relative">
@@ -84,6 +134,9 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
           {localSorting.map((sort, index) => {
             const column = Object.keys(sort)[0] || '';
             const direction = sort[column] || 'asc';
+            const columnType = availableColumnsTypes[column];
+
+            const directionOptions = getDirectionOptions(column);
 
             return (
               <div key={index} className="flex items-center mb-1">
@@ -95,9 +148,9 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
                     className="appearance-none w-32 border border-brand rounded-md p-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
                   >
                     <option value="">Select Column</option>
-                    {Object.keys(availableColumnsTypes).map((col) => (
+                    {orderedColumns.map((col) => (
                       <option key={col} value={col}>
-                        {availableColumnsTypes[col]?.label || col}
+                        {formatHeader(col)}
                       </option>
                     ))}
                   </select>
@@ -105,15 +158,27 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
                 </div>
 
                 {/* Direction Selection */}
-                <div className="relative mr-2">
+                <div
+                  className={`relative mr-2 ${column === '' ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
+                    }`}
+                >
                   <select
-                    value={direction}
+                    value={column === '' ? '' : direction}
                     onChange={(e) => handleSortingChange(index, 'direction', e.target.value)}
                     className="appearance-none w-24 border border-brand rounded-md p-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
                     disabled={!column}
                   >
-                    <option value="asc">Ascending</option>
-                    <option value="desc">Descending</option>
+                    {column === '' ? (
+                      <option value="" disabled>
+                        Select
+                      </option>
+                    ) : (
+                      directionOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))
+                    )}
                   </select>
                   <ChevronDownIcon className="absolute right-1 top-1.5 h-4 w-4 text-gray-500 pointer-events-none" />
                 </div>
@@ -133,20 +198,11 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
             icon={<PlusIcon className="w-4 h-4 mr-1" />}
             label="Add Sorting"
             className="mt-2 text-xs"
+            disabled={!isLastSortComplete()}
           />
         </div>
 
-        <div className="flex justify-end mt-4">
-          <Button
-            onClick={() => setIsSortingPanelOpen(false)}
-            label="Cancel"
-            className="mr-2"
-          />
-          <Button
-            onClick={applySorting}
-            label="Apply"
-          />
-        </div>
+        {/* Removed Apply and Cancel buttons */}
       </Panel>
     </div>
   );

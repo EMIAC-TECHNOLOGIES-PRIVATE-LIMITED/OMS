@@ -208,6 +208,7 @@ export interface GetViewDataResponse {
         };
         appliedFilters: FilterConfig['appliedFilters'];
         appliedSorting: FilterConfig['appliedSorting'];
+        column: FilterConfig['columns'];
         views: Array<{
             id: number;
             viewName: string;
@@ -220,6 +221,8 @@ export interface GetFilteredDataRequest {
     columns: string[];
     filters: FilterConfig['appliedFilters'];
     sorting: FilterConfig['appliedSorting'];
+    page: number;
+    pageSize: number;
 }
 
 export interface GetFilteredDataResponse {
@@ -232,11 +235,13 @@ export interface GetFilteredDataResponse {
         data: Array<{
             website: string;
         }>;
-        availableColumns: {
+        availableColumns: string[];
+        availableColumnsType: {
             [key: string]: string;
         };
         appliedFilters: FilterConfig['appliedFilters'];
         appliedSorting: FilterConfig['appliedSorting'];
+        column: FilterConfig['columns'];
         views: Array<{
             id: number;
             viewName: string;
@@ -256,16 +261,11 @@ export interface CreateViewResponse {
     status: number;
     message: string;
     data: {
-        id: number;
-        userId: number;
-        tableId: string;
-        viewName: string;
-        columns: string[];
-        filters: FilterConfig['appliedFilters'];
-        sort: FilterConfig['appliedSorting'];
-        groupBy?: string[];
-        createdAt?: Record<string, any>;
-        updatedAt?: Record<string, any>;
+        viewId: number;
+        views: Array<{
+            id: number;
+            viewName: string;
+        }>;
     };
     success: boolean;
 }
@@ -283,16 +283,10 @@ export interface UpdateViewResponse {
     message: string;
     success: boolean;
     data: {
-        id: number;
-        userId: number;
-        tableId: string;
-        viewName: string;
-        columns: string[];
-        filters: FilterConfig['appliedFilters'];
-        sort: FilterConfig['appliedSorting'];
-        groupBy: string[];
-        createdAt: Record<string, any>;
-        updatedAt: Record<string, any>;
+        views: Array<{
+            id: number;
+            viewName: string;
+        }>;
     };
 }
 
@@ -304,6 +298,12 @@ export interface DeleteViewResponse {
     status: number;
     message: string;
     success: boolean;
+    data: {
+        views: Array<{
+            id: number;
+            viewName: string;
+        }>;
+    }
 }
 
 export interface HealthCheckResponse {
@@ -318,6 +318,7 @@ export enum LogicalOperator {
 }
 
 export interface FilterConfig {
+    columns: string[];
     appliedFilters: {
         [key in LogicalOperator]?: Array<{
             [key: string]: {
