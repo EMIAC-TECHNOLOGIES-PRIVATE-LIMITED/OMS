@@ -17,8 +17,12 @@ import {
   ManageRoleAccessResponse,
 } from '../../../../shared/src/types';
 
+// NEW: Framer Motion & Hero Icons imports for collapsible UI
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+
 const EditRole: React.FC = () => {
-  const { roleId } = useParams<{ roleId: string }>(); // e.g., /dashboard/manageroles/:roleId
+  const { roleId } = useParams<{ roleId: string }>();
   const navigate = useNavigate();
 
   // State: list of all permissions & resources
@@ -26,8 +30,6 @@ const EditRole: React.FC = () => {
   const [allResources, setAllResources] = useState<Resource[]>([]);
 
   // State: initial vs current overrides for this role
-  // We store them as arrays of objects { id: number; granted: boolean }
-  // for both permissions and resources
   const [initialOverrides, setInitialOverrides] = useState<{
     permissions: Array<{ id: number; granted: boolean }>;
     resources: Array<{ id: number; granted: boolean }>;
@@ -51,6 +53,9 @@ const EditRole: React.FC = () => {
   const [saving, setSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  // NEW: Track expanded/collapsed sections by permission ID
+  const [expandedPermissions, setExpandedPermissions] = useState<{ [key: number]: boolean }>({});
 
   /**
    * 1. Fetch global (all) permissions/resources
@@ -84,10 +89,7 @@ const EditRole: React.FC = () => {
           parseInt(roleId, 10)
         );
         if (rolePermsResponse.success) {
-          // rolePermsResponse.data.permissions & rolePermsResponse.data.resources
-          // are arrays of { id, name, ... } => we assume "granted: true" for each
           const { permissions, resources } = rolePermsResponse.data;
-
           const mappedPermissions = permissions.map((p) => ({
             id: p.id,
             granted: true,
@@ -153,14 +155,8 @@ const EditRole: React.FC = () => {
     const granted = e.target.checked;
 
     setCurrentOverrides((prev) => {
-      // 1. Toggle permission
-      let updatedPermissions = toggleItem(
-        prev.permissions,
-        permissionId,
-        granted
-      );
+      let updatedPermissions = toggleItem(prev.permissions, permissionId, granted);
 
-      // 2. If unchecking => uncheck all resources that belong to that permission (table)
       if (!granted) {
         // figure out permission name from allPermissions
         const permObj = allPermissions.find((p) => p.id === permissionId);
@@ -172,7 +168,6 @@ const EditRole: React.FC = () => {
           relatedResources.forEach((res) => {
             updatedResources = toggleItem(updatedResources, res.id, false);
           });
-
           return {
             ...prev,
             permissions: updatedPermissions,
@@ -237,7 +232,6 @@ const EditRole: React.FC = () => {
     setSaveSuccess(null);
 
     try {
-      // Only send the ones that are granted
       const finalPermissions = currentOverrides.permissions
         .filter((p) => p.granted)
         .map((p) => ({ id: p.id }));
@@ -252,7 +246,6 @@ const EditRole: React.FC = () => {
       );
 
       if (response.success) {
-        // reset the initial overrides
         setInitialOverrides(currentOverrides);
         setIsModified(false);
         setSaveSuccess('Role access updated successfully.');
@@ -271,6 +264,14 @@ const EditRole: React.FC = () => {
    */
   const handleCancel = () => {
     navigate('/dashboard/manageroles');
+  };
+
+  // NEW: Toggle expanded/collapsed for a particular permission section
+  const togglePermissionSection = (permissionId: number) => {
+    setExpandedPermissions((prev) => ({
+      ...prev,
+      [permissionId]: !prev[permissionId],
+    }));
   };
 
   if (loading) {
@@ -303,8 +304,37 @@ const EditRole: React.FC = () => {
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-semibold mb-6">Edit Role Permissions</h2>
+      {/* 
+        1. Action Buttons moved to top 
+        2. Title also displayed at the top 
+      */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+        <h2 className="text-2xl font-semibold mb-4 sm:mb-0">Edit Role Permissions</h2>
+        <div className="flex space-x-3">
+          <button
+            onClick={handleSave}
+            disabled={!isModified || saving}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${!isModified || saving
+                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            onClick={handleCancel}
+            disabled={saving}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${saving
+                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+                : 'bg-red-600 text-white hover:bg-red-700'
+              }`}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
 
+      {/* Feedback Messages */}
       {saveSuccess && (
         <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">
           {saveSuccess}
@@ -316,89 +346,96 @@ const EditRole: React.FC = () => {
         </div>
       )}
 
-      <div className="space-y-6">
+      {/* Collapsible sections for each permission */}
+      <div className="space-y-4">
         {permissionsWithResources.map(({ permission, resources }) => {
           // check if the permission is granted
           const permGranted = isPermissionGranted(permission.id);
+          const isExpanded = expandedPermissions[permission.id] || false;
+
+          // NEW: Show "x / y selected" for the resources
+          const selectedCount = resources.filter((r) => isResourceGranted(r.id)).length;
+          const totalCount = resources.length;
 
           return (
-            <div key={permission.id} className="border p-4 rounded shadow-sm relative">
-              {/* Permission Checkbox */}
-              <div className="flex items-center mb-4">
-                <input
-                  type="checkbox"
-                  id={`permission-${permission.id}`}
-                  checked={permGranted}
-                  onChange={handlePermissionChange(permission.id)}
-                  className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                />
-                <label
-                  htmlFor={`permission-${permission.id}`}
-                  className="font-medium text-gray-700"
-                >
-                  {permission.name.charAt(0).toUpperCase() + permission.name.slice(1)}
-                </label>
-              </div>
+            <div key={permission.id} className="bg-white shadow rounded p-4">
+              {/* Permission Header (click to expand/collapse) */}
+              <button
+                type="button"
+                onClick={() => togglePermissionSection(permission.id)}
+                className="w-full flex items-center justify-between"
+              >
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id={`permission-${permission.id}`}
+                    checked={permGranted}
+                    onChange={handlePermissionChange(permission.id)}
+                    className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor={`permission-${permission.id}`}
+                    className="font-medium text-gray-700"
+                  >
+                    {permission.name.charAt(0).toUpperCase() + permission.name.slice(1)}
+                  </label>
+                  <span className="ml-2 text-sm text-gray-500">
+                    ({selectedCount} / {totalCount} selected)
+                  </span>
+                </div>
+                {isExpanded ? (
+                  <ChevronUpIcon className="h-5 w-5 text-gray-600" />
+                ) : (
+                  <ChevronDownIcon className="h-5 w-5 text-gray-600" />
+                )}
+              </button>
 
-              {/* Resources for this permission => disabled if permission is not granted */}
-              <div className="space-y-2 pl-6">
-                {resources.map((resource) => {
-                  const resourceGranted = isResourceGranted(resource.id);
-                  return (
-                    <div key={resource.id} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id={`resource-${resource.id}`}
-                        checked={resourceGranted}
-                        onChange={handleResourceChange(resource.id)}
-                        disabled={!permGranted}
-                        className={`mr-2 h-4 w-4 ${
-                          !permGranted
-                            ? 'text-gray-300 border-gray-300 cursor-not-allowed'
-                            : 'text-blue-600 border-gray-300 rounded'
-                        }`}
-                      />
-                      <label
-                        htmlFor={`resource-${resource.id}`}
-                        className={`${
-                          !permGranted ? 'text-gray-400' : 'text-gray-700'
-                        }`}
-                      >
-                        {resource.column.charAt(0).toUpperCase() + resource.column.slice(1)}
-                      </label>
+              {/* Animate presence of resource list when expanded */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    key="resource-list"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden mt-4"
+                  >
+                    {/* Two-column layout of resources */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {resources.map((resource) => {
+                        const resourceGranted = isResourceGranted(resource.id);
+                        return (
+                          <div key={resource.id} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              id={`resource-${resource.id}`}
+                              checked={resourceGranted}
+                              onChange={handleResourceChange(resource.id)}
+                              disabled={!permGranted}
+                              className={`mr-2 h-4 w-4 ${!permGranted
+                                  ? 'text-gray-300 border-gray-300 cursor-not-allowed'
+                                  : 'text-blue-600 border-gray-300 rounded'
+                                }`}
+                            />
+                            <label
+                              htmlFor={`resource-${resource.id}`}
+                              className={`${!permGranted ? 'text-gray-400' : 'text-gray-700'
+                                }`}
+                            >
+                              {resource.column.charAt(0).toUpperCase() +
+                                resource.column.slice(1)}
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           );
         })}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="mt-6 flex space-x-4">
-        <button
-          onClick={handleSave}
-          disabled={!isModified || saving}
-          className={`px-4 py-2 rounded-md font-medium ${
-            !isModified || saving
-              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-        <button
-          onClick={handleCancel}
-          disabled={saving}
-          className={`px-4 py-2 rounded-md font-medium ${
-            saving
-              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-              : 'bg-red-600 text-white hover:bg-red-700'
-          }`}
-        >
-          Cancel
-        </button>
       </div>
     </div>
   );

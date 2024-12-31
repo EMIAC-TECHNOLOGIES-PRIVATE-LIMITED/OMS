@@ -17,6 +17,9 @@ import {
   ManageUserAccessResponse,
 } from '../../../../shared/src/types';
 
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+
 const EditUser: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
@@ -26,19 +29,10 @@ const EditUser: React.FC = () => {
    *   State Setup
    * ---------------
    */
-
-  // 1) All (global) permissions/resources from getAllPermissions()
   const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
   const [allResources, setAllResources] = useState<Resource[]>([]);
-
-  // 2) The “default” user-specific permissions/resources from getUserPermissions() response
-  //    i.e., the base set of permissions/resources that user already has (before overrides).
-  //    If userPermissionsResponse.data.permissions is the default set, we store it separately.
   const [userDefaultPermissions, setUserDefaultPermissions] = useState<Permission[]>([]);
   const [userDefaultResources, setUserDefaultResources] = useState<Resource[]>([]);
-
-  // 3) The user’s override arrays from getUserPermissions() response
-  //    (what the admin can manipulate).
   const [currentOverrides, setCurrentOverrides] = useState<{
     permissionOverride: PermissionOverride[];
     resourceOverride: ResourceOverride[];
@@ -46,8 +40,6 @@ const EditUser: React.FC = () => {
     permissionOverride: [],
     resourceOverride: [],
   });
-
-  // We still track the initial overrides so we can handle “isModified” logic
   const [initialOverrides, setInitialOverrides] = useState<{
     permissionOverride: PermissionOverride[];
     resourceOverride: ResourceOverride[];
@@ -55,23 +47,21 @@ const EditUser: React.FC = () => {
     permissionOverride: [],
     resourceOverride: [],
   });
-
-  // 4) The final combined set for rendering on the UI.
-  //    This merges default user permissions/resources with the current override list.
   const [finalPermissions, setFinalPermissions] = useState<
     Array<Permission & { granted: boolean }>
   >([]);
   const [finalResources, setFinalResources] = useState<
     Array<Resource & { granted: boolean }>
   >([]);
-
-  // Misc. states
   const [isModified, setIsModified] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  // State to handle collapsible sections (expanded/collapsed) by permission ID
+  const [expandedPermissions, setExpandedPermissions] = useState<{ [key: number]: boolean }>({});
 
   /**
    * ---------------
@@ -90,7 +80,6 @@ const EditUser: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // 1) Fetch all (global) permissions and resources
         const permissionsResponse: GetAllPermissionsResponse = await getAllPermissions();
         if (permissionsResponse.success) {
           setAllPermissions(permissionsResponse.data.permissions);
@@ -100,16 +89,13 @@ const EditUser: React.FC = () => {
           return;
         }
 
-        // 2) Fetch user-specific defaults & overrides
         const userPermissionsResponse: GetUserPermissionsResponse = await getUserPermissions(
           parseInt(userId)
         );
         if (userPermissionsResponse.success) {
-          // The “default” user-permissions/resources
           setUserDefaultPermissions(userPermissionsResponse.data.permissions);
           setUserDefaultResources(userPermissionsResponse.data.resources);
 
-          // Override arrays
           setInitialOverrides({
             permissionOverride: userPermissionsResponse.data.permissionOverrides,
             resourceOverride: userPermissionsResponse.data.resourceOverrides,
@@ -119,9 +105,7 @@ const EditUser: React.FC = () => {
             resourceOverride: userPermissionsResponse.data.resourceOverrides,
           });
         } else {
-          setError(
-            userPermissionsResponse.message || 'Failed to fetch user permissions.'
-          );
+          setError(userPermissionsResponse.message || 'Failed to fetch user permissions.');
         }
       } catch (err: any) {
         setError(err.message || 'An unexpected error occurred.');
@@ -139,37 +123,23 @@ const EditUser: React.FC = () => {
    * ----------------------------------------------------------------------------
    */
   const computeFinalPermissionsAndResources = () => {
-    // Combine allPermissions with userDefaultPermissions, but actually we’ll treat
-    // “userDefaultPermissions” as the user’s baseline for whether they have that permission by default.
-    // Then apply overrides from currentOverrides.
-
-    // Permissions
     const newFinalPermissions = allPermissions.map((perm) => {
-      // Does user have it by default?
       const userHasDefault = userDefaultPermissions.some(
         (defPerm) => defPerm.id === perm.id
       );
-
-      // Check if there’s an override for this permission
       const override = currentOverrides.permissionOverride.find(
         (o) => o.permissionId === perm.id
       );
-
-      // If user has it by default, default to granted = true
-      // Then override if we have an entry in the override array
       let granted = userHasDefault;
       if (override) {
         granted = override.granted;
       }
-
-      // Return merged object for final usage in the UI
       return {
         ...perm,
         granted,
       };
     });
 
-    // Resources
     const newFinalResources = allResources.map((res) => {
       const userHasDefault = userDefaultResources.some(
         (defRes) => defRes.id === res.id
@@ -177,12 +147,10 @@ const EditUser: React.FC = () => {
       const override = currentOverrides.resourceOverride.find(
         (o) => o.resourceId === res.id
       );
-
       let granted = userHasDefault;
       if (override) {
         granted = override.granted;
       }
-
       return {
         ...res,
         granted,
@@ -193,10 +161,15 @@ const EditUser: React.FC = () => {
     setFinalResources(newFinalResources);
   };
 
-  // Recompute final whenever global or default or currentOverrides changes.
   useEffect(() => {
     computeFinalPermissionsAndResources();
-  }, [allPermissions, allResources, userDefaultPermissions, userDefaultResources, currentOverrides]);
+  }, [
+    allPermissions,
+    allResources,
+    userDefaultPermissions,
+    userDefaultResources,
+    currentOverrides,
+  ]);
 
   /**
    * ---------------
@@ -204,7 +177,6 @@ const EditUser: React.FC = () => {
    * ---------------
    */
   useEffect(() => {
-    // Compare currentOverrides with initialOverrides
     const modified =
       JSON.stringify(initialOverrides.permissionOverride) !==
       JSON.stringify(currentOverrides.permissionOverride) ||
@@ -239,8 +211,6 @@ const EditUser: React.FC = () => {
    *   Event Handlers: toggle permission/resources -> update overrides
    * ------------------------------------------------------------------
    */
-
-  // Toggle a permission => update currentOverrides.permissionOverride
   const handlePermissionChange = (permissionId: number) => (
     e: ChangeEvent<HTMLInputElement>
   ) => {
@@ -250,26 +220,17 @@ const EditUser: React.FC = () => {
       const overrideExists = prev.permissionOverride.find(
         (po) => po.permissionId === permissionId
       );
-
       let updatedPermissionOverrides: PermissionOverride[];
       if (overrideExists) {
-        // Update the existing override
         updatedPermissionOverrides = prev.permissionOverride.map((po) =>
           po.permissionId === permissionId ? { ...po, granted } : po
         );
       } else {
-        // Add new override
         updatedPermissionOverrides = [
           ...prev.permissionOverride,
           { permissionId, granted },
         ];
       }
-
-      // If the user’s default for that permission is the same as “granted,” and the admin
-      // is effectively toggling it back to default, we could remove it from override.
-      // But that’s optional. If you want your override array to only store changes
-      // from the default, you might do something more advanced. For now, keep it simple
-      // as asked in the instructions.
 
       return {
         ...prev,
@@ -277,7 +238,6 @@ const EditUser: React.FC = () => {
       };
     });
 
-    // If permission is unchecked => disable all related resources by default
     if (!granted) {
       const relatedResources = allResources.filter(
         (resource) => resource.table === getPermissionNameById(permissionId)
@@ -309,7 +269,6 @@ const EditUser: React.FC = () => {
     }
   };
 
-  // Toggle a resource => update currentOverrides.resourceOverride
   const handleResourceChange = (resourceId: number) => (
     e: ChangeEvent<HTMLInputElement>
   ) => {
@@ -362,7 +321,6 @@ const EditUser: React.FC = () => {
       );
 
       if (response.success) {
-        // Sync up initialOverrides = currentOverrides
         setInitialOverrides({
           permissionOverride: currentOverrides.permissionOverride,
           resourceOverride: currentOverrides.resourceOverride,
@@ -380,15 +338,22 @@ const EditUser: React.FC = () => {
   };
 
   const handleCancel = () => {
-    navigate('/dashboard/manageusers'); // same UI logic as earlier
+    navigate('/dashboard/manageusers');
   };
 
-  // New “Reset to Default” -> clears current overrides, so final permission becomes the default set
   const handleReset = () => {
     setCurrentOverrides({
       permissionOverride: [],
       resourceOverride: [],
     });
+  };
+
+  // Toggle the collapsed/expanded state for a given permission ID
+  const togglePermissionSection = (permissionId: number) => {
+    setExpandedPermissions((prev) => ({
+      ...prev,
+      [permissionId]: !prev[permissionId],
+    }));
   };
 
   /**
@@ -412,8 +377,6 @@ const EditUser: React.FC = () => {
     );
   }
 
-  // Group finalPermissions by permission + relevant resources
-  // (still keep the same structure to not break UI)
   const permissionsWithResources: Array<{
     permission: Permission & { granted: boolean };
     resources: Array<Resource & { granted: boolean }>;
@@ -424,7 +387,44 @@ const EditUser: React.FC = () => {
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-semibold mb-6">Edit User Permissions</h2>
+      {/* Top Section with Title & Action Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+        <h2 className="text-2xl font-semibold mb-4 sm:mb-0">Edit User Permissions</h2>
+        <div className="flex space-x-3">
+          <button
+            onClick={handleSave}
+            disabled={!isModified || saving}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${!isModified || saving
+                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+
+          <button
+            onClick={handleCancel}
+            disabled={saving}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${saving
+                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+                : 'bg-red-600 text-white hover:bg-red-700'
+              }`}
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={handleReset}
+            disabled={saving}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${saving
+                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+                : 'bg-yellow-600 text-white hover:bg-yellow-700'
+              }`}
+          >
+            Reset to Default
+          </button>
+        </div>
+      </div>
 
       {/* Feedback Messages */}
       {saveSuccess && (
@@ -438,105 +438,91 @@ const EditUser: React.FC = () => {
         </div>
       )}
 
-      {/* Permissions Sections */}
-      <div className="space-y-6">
+      {/* Collapsible Permissions Sections */}
+      <div className="space-y-4">
         {permissionsWithResources.map(({ permission, resources }) => {
           const permissionGranted = permission.granted;
+          const selectedCount = resources.filter((r) => r.granted).length;
+          const totalCount = resources.length;
+          const isExpanded = expandedPermissions[permission.id] || false;
 
           return (
-            <div
-              key={permission.id}
-              className="border p-4 rounded shadow-sm relative"
-            >
-              {/* Permission Checkbox */}
-              <div className="flex items-center mb-4">
-                <input
-                  type="checkbox"
-                  id={`permission-${permission.id}`}
-                  checked={permissionGranted}
-                  onChange={handlePermissionChange(permission.id)}
-                  className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                />
-                <label
-                  htmlFor={`permission-${permission.id}`}
-                  className="font-medium text-gray-700"
-                >
-                  {permission.name.charAt(0).toUpperCase() +
-                    permission.name.slice(1)}
-                </label>
-              </div>
+            <div key={permission.id} className="bg-white shadow rounded p-4">
+              {/* Permission Header (Collapsible Trigger) */}
+              <button
+                type="button"
+                onClick={() => togglePermissionSection(permission.id)}
+                className="w-full flex items-center justify-between"
+              >
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id={`permission-${permission.id}`}
+                    checked={permissionGranted}
+                    onChange={handlePermissionChange(permission.id)}
+                    className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor={`permission-${permission.id}`}
+                    className="font-medium text-gray-700"
+                  >
+                    {permission.name.charAt(0).toUpperCase() + permission.name.slice(1)}
+                  </label>
+                  <span className="ml-2 text-sm text-gray-500">
+                    ({selectedCount} / {totalCount} selected)
+                  </span>
+                </div>
+                {isExpanded ? (
+                  <ChevronUpIcon className="h-5 w-5 text-gray-600" />
+                ) : (
+                  <ChevronDownIcon className="h-5 w-5 text-gray-600" />
+                )}
+              </button>
 
-              {/* Resources Checkboxes */}
-              <div className="space-y-2 pl-6">
-                {resources.map((resource) => {
-                  const resourceGranted = resource.granted;
-                  return (
-                    <div key={resource.id} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id={`resource-${resource.id}`}
-                        checked={resourceGranted}
-                        onChange={handleResourceChange(resource.id)}
-                        disabled={!permissionGranted}
-                        className={`mr-2 h-4 w-4 ${!permissionGranted
-                            ? 'text-gray-300 border-gray-300 cursor-not-allowed'
-                            : 'text-blue-600 border-gray-300 rounded'
-                          }`}
-                      />
-                      <label
-                        htmlFor={`resource-${resource.id}`}
-                        className={`${!permissionGranted ? 'text-gray-400' : 'text-gray-700'
-                          }`}
-                      >
-                        {resource.column.charAt(0).toUpperCase() +
-                          resource.column.slice(1)}
-                      </label>
+              {/* Collapsible Body (Resources) */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    key="content"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden mt-4"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {resources.map((resource) => {
+                        const resourceGranted = resource.granted;
+                        return (
+                          <div key={resource.id} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              id={`resource-${resource.id}`}
+                              checked={resourceGranted}
+                              onChange={handleResourceChange(resource.id)}
+                              disabled={!permissionGranted}
+                              className={`mr-2 h-4 w-4 ${!permissionGranted
+                                  ? 'text-gray-300 border-gray-300 cursor-not-allowed'
+                                  : 'text-blue-600 border-gray-300 rounded'
+                                }`}
+                            />
+                            <label
+                              htmlFor={`resource-${resource.id}`}
+                              className={`${!permissionGranted ? 'text-gray-400' : 'text-gray-700'
+                                }`}
+                            >
+                              {resource.column.charAt(0).toUpperCase() + resource.column.slice(1)}
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           );
         })}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="mt-6 flex space-x-4">
-        {/* Save */}
-        <button
-          onClick={handleSave}
-          disabled={!isModified || saving}
-          className={`px-4 py-2 rounded-md font-medium ${!isModified || saving
-              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-
-        {/* Cancel */}
-        <button
-          onClick={handleCancel}
-          disabled={saving}
-          className={`px-4 py-2 rounded-md font-medium ${saving
-              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-              : 'bg-red-600 text-white hover:bg-red-700'
-            }`}
-        >
-          Cancel
-        </button>
-
-        {/* Reset to Default */}
-        <button
-          onClick={handleReset}
-          disabled={saving}
-          className={`px-4 py-2 rounded-md font-medium ${saving
-              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-              : 'bg-yellow-600 text-white hover:bg-yellow-700'
-            }`}
-        >
-          Reset to Default
-        </button>
       </div>
     </div>
   );
