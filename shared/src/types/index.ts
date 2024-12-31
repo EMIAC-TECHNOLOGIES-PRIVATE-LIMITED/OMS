@@ -139,6 +139,9 @@ export interface GetUserPermissionsResponse {
     status: number;
     message: string;
     data: {
+        roleId: number;
+        name: string;
+        isSuspended: boolean;
         permissions: Array<{
             id: number;
             name: string;
@@ -182,6 +185,7 @@ export interface RevokeUserResponse {
 
 export interface ManageUserAccessRequest {
     userId: number;
+    roleId?: number;
     permissionOverride: Array<{
         permissionId: number;
         granted: boolean;
@@ -200,14 +204,14 @@ export interface ManageUserAccessResponse {
 
 export interface ManageRoleAccessRequest {
     roleId: number;
-    permissions: Array<{ id: number }>; 
-    resources: Array<{ id: number }>;  
+    permissions: Array<{ id: number }>;
+    resources: Array<{ id: number }>;
 }
 
 export interface ManageRoleAccessResponse {
-    status: number;    
-    message: string;   
-    success: boolean;  
+    status: number;
+    message: string;
+    success: boolean;
 }
 
 

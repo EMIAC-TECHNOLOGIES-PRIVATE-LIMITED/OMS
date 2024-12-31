@@ -78,7 +78,8 @@ export async function revokeUser(
 export async function manageUserAccess(
     userId: ManageUserAccessRequest['userId'],
     permissionOverride: ManageUserAccessRequest['permissionOverride'],
-    resourceOverride: ManageUserAccessRequest['resourceOverride']
+    resourceOverride: ManageUserAccessRequest['resourceOverride'],
+    roleId?: number
 ): Promise<ManageUserAccessResponse> {
     return apiRequest<ManageUserAccessResponse>(
         '/admin/manage/access/user',
@@ -86,6 +87,7 @@ export async function manageUserAccess(
         undefined,
         {
             userId,
+            roleId,
             permissionOverride,
             resourceOverride
         }

@@ -63,9 +63,21 @@ export async function revokeUser(req: Request, res: Response): Promise<Response<
 }
 
 export async function manageUserAccess(req: Request, res: Response): Promise<Response<ManageUserAccessResponse>> {
-    const { userId, permissionOverride, resourceOverride }: ManageUserAccessRequest = req.body;
+    const { userId, permissionOverride, resourceOverride, roleId }: ManageUserAccessRequest = req.body;
 
     try {
+
+        if (roleId) {
+            await prismaClient.user.update({
+                where: { id: userId }, data: {
+                    roleId,
+                    permissionOverrides: { deleteMany: {} },
+                    resourceOverrides: { deleteMany: {} },
+                }
+            });
+        }
+
+
         if (resourceOverride) {
             await prismaClient.resourceOverride.deleteMany({ where: { userId } });
 
@@ -186,6 +198,9 @@ export async function getUserAccess(req: Request, res: Response): Promise<Respon
         }
 
         const data: GetUserPermissionsResponse['data'] = {
+            roleId: user.roleId,
+            name: user.name,
+            isSuspended: user.suspended,
             permissions: user.role?.permissions.map(permission => ({
                 id: permission.id,
                 name: permission.key,

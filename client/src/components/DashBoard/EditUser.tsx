@@ -1,9 +1,13 @@
 import React, { useEffect, useState, ChangeEvent } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom'; // Removed navigate since Cancel now discards changes locally
 import {
   getAllPermissions,
   getUserPermissions,
   manageUserAccess,
+  getAllRoles,
+  getRolePermissions,
+  suspendUser,
+  revokeUser,
 } from '../../utils/apiService/adminAPI';
 import {
   Permission,
@@ -15,14 +19,29 @@ import {
   GetAllPermissionsResponse,
   GetUserPermissionsResponse,
   ManageUserAccessResponse,
+  // NEW: For roles
+  GetAllRolesResponse,
+  // NEW: For role-based fetch
+  GetRolePermissionsResponse,
+  // NEW: For suspend/revoke user
+  SuspendUserResponse,
+  RevokeUserResponse,
 } from '../../../../shared/src/types';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 
+// Types for the roles returned by getAllRoles()
+interface RoleItem {
+  id: number;
+  name: string;
+  _count: {
+    users: number;
+  };
+}
+
 const EditUser: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
-  const navigate = useNavigate();
 
   /**
    * ---------------
@@ -60,8 +79,19 @@ const EditUser: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
-  // State to handle collapsible sections (expanded/collapsed) by permission ID
+  // Collapsible sections
   const [expandedPermissions, setExpandedPermissions] = useState<{ [key: number]: boolean }>({});
+
+  // NEW: All roles for the dropdown, plus states for storing the user’s role
+  const [allRoles, setAllRoles] = useState<RoleItem[]>([]);
+  const [initialRoleId, setInitialRoleId] = useState<number | null>(null);
+  const [currentRoleId, setCurrentRoleId] = useState<number | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  // NEW: Suspended state + confirmation modals
+  const [isSuspended, setIsSuspended] = useState<boolean>(false);
+  const [showSuspendConfirm, setShowSuspendConfirm] = useState<boolean>(false);
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState<boolean>(false);
 
   /**
    * ---------------
@@ -80,6 +110,15 @@ const EditUser: React.FC = () => {
         setLoading(true);
         setError(null);
 
+        // Fetch all roles first (for dropdown)
+        const rolesResponse: GetAllRolesResponse = await getAllRoles();
+        if (rolesResponse.success) {
+          setAllRoles(rolesResponse.data);
+        } else {
+          console.error(rolesResponse.message || 'Failed to fetch roles.');
+        }
+
+        // 1) Fetch all (global) permissions and resources
         const permissionsResponse: GetAllPermissionsResponse = await getAllPermissions();
         if (permissionsResponse.success) {
           setAllPermissions(permissionsResponse.data.permissions);
@@ -89,13 +128,16 @@ const EditUser: React.FC = () => {
           return;
         }
 
+        // 2) Fetch user-specific defaults & overrides
         const userPermissionsResponse: GetUserPermissionsResponse = await getUserPermissions(
           parseInt(userId)
         );
         if (userPermissionsResponse.success) {
+          // The user’s default perms/resources
           setUserDefaultPermissions(userPermissionsResponse.data.permissions);
           setUserDefaultResources(userPermissionsResponse.data.resources);
 
+          // The override arrays
           setInitialOverrides({
             permissionOverride: userPermissionsResponse.data.permissionOverrides,
             resourceOverride: userPermissionsResponse.data.resourceOverrides,
@@ -104,6 +146,14 @@ const EditUser: React.FC = () => {
             permissionOverride: userPermissionsResponse.data.permissionOverrides,
             resourceOverride: userPermissionsResponse.data.resourceOverrides,
           });
+
+          // NEW: Store user’s role from userPermissionsResponse.data.roleId
+          setInitialRoleId(userPermissionsResponse.data.roleId);
+          setCurrentRoleId(userPermissionsResponse.data.roleId);
+          setUserName(userPermissionsResponse.data.name);
+
+          // NEW: Store isSuspended
+          setIsSuspended(userPermissionsResponse.data.isSuspended);
         } else {
           setError(userPermissionsResponse.message || 'Failed to fetch user permissions.');
         }
@@ -124,12 +174,8 @@ const EditUser: React.FC = () => {
    */
   const computeFinalPermissionsAndResources = () => {
     const newFinalPermissions = allPermissions.map((perm) => {
-      const userHasDefault = userDefaultPermissions.some(
-        (defPerm) => defPerm.id === perm.id
-      );
-      const override = currentOverrides.permissionOverride.find(
-        (o) => o.permissionId === perm.id
-      );
+      const userHasDefault = userDefaultPermissions.some((defPerm) => defPerm.id === perm.id);
+      const override = currentOverrides.permissionOverride.find((o) => o.permissionId === perm.id);
       let granted = userHasDefault;
       if (override) {
         granted = override.granted;
@@ -141,12 +187,8 @@ const EditUser: React.FC = () => {
     });
 
     const newFinalResources = allResources.map((res) => {
-      const userHasDefault = userDefaultResources.some(
-        (defRes) => defRes.id === res.id
-      );
-      const override = currentOverrides.resourceOverride.find(
-        (o) => o.resourceId === res.id
-      );
+      const userHasDefault = userDefaultResources.some((defRes) => defRes.id === res.id);
+      const override = currentOverrides.resourceOverride.find((o) => o.resourceId === res.id);
       let granted = userHasDefault;
       if (override) {
         granted = override.granted;
@@ -177,14 +219,19 @@ const EditUser: React.FC = () => {
    * ---------------
    */
   useEffect(() => {
-    const modified =
+    // Compare overrides
+    const overridesChanged =
       JSON.stringify(initialOverrides.permissionOverride) !==
       JSON.stringify(currentOverrides.permissionOverride) ||
       JSON.stringify(initialOverrides.resourceOverride) !==
       JSON.stringify(currentOverrides.resourceOverride);
 
-    setIsModified(modified);
-  }, [initialOverrides, currentOverrides]);
+    // Compare role
+    const roleChanged = currentRoleId !== initialRoleId;
+
+    // If either overrides or role changed => isModified = true
+    setIsModified(overridesChanged || roleChanged);
+  }, [initialOverrides, currentOverrides, currentRoleId, initialRoleId]);
 
   /**
    * ----------------------------------------------------------
@@ -214,6 +261,8 @@ const EditUser: React.FC = () => {
   const handlePermissionChange = (permissionId: number) => (
     e: ChangeEvent<HTMLInputElement>
   ) => {
+    if (isSuspended) return; // if user is suspended, disallow edits
+
     const granted = e.target.checked;
 
     setCurrentOverrides((prev) => {
@@ -238,6 +287,7 @@ const EditUser: React.FC = () => {
       };
     });
 
+    // If permission is unchecked => also uncheck all related resources
     if (!granted) {
       const relatedResources = allResources.filter(
         (resource) => resource.table === getPermissionNameById(permissionId)
@@ -272,6 +322,8 @@ const EditUser: React.FC = () => {
   const handleResourceChange = (resourceId: number) => (
     e: ChangeEvent<HTMLInputElement>
   ) => {
+    if (isSuspended) return; // if user is suspended, disallow edits
+
     const granted = e.target.checked;
 
     setCurrentOverrides((prev) => {
@@ -303,6 +355,7 @@ const EditUser: React.FC = () => {
    *   Actions
    * -------------
    */
+  // A) SAVE
   const handleSave = async () => {
     if (!userId) {
       setSaveError('User ID is missing.');
@@ -314,17 +367,21 @@ const EditUser: React.FC = () => {
       setSaveError(null);
       setSaveSuccess(null);
 
+      // Save permission/resource overrides
       const response: ManageUserAccessResponse = await manageUserAccess(
         parseInt(userId),
         currentOverrides.permissionOverride,
-        currentOverrides.resourceOverride
+        currentOverrides.resourceOverride,
+        currentRoleId ? currentRoleId : undefined
       );
 
       if (response.success) {
+        // Sync up initial state
         setInitialOverrides({
           permissionOverride: currentOverrides.permissionOverride,
           resourceOverride: currentOverrides.resourceOverride,
         });
+        setInitialRoleId(currentRoleId);
         setIsModified(false);
         setSaveSuccess('User access updated successfully.');
       } else {
@@ -337,24 +394,100 @@ const EditUser: React.FC = () => {
     }
   };
 
+  // B) CANCEL => revert to initial overrides, revert to initial role, clear success/error
   const handleCancel = () => {
-    navigate('/dashboard/manageusers');
+    setCurrentOverrides({
+      permissionOverride: [...initialOverrides.permissionOverride],
+      resourceOverride: [...initialOverrides.resourceOverride],
+    });
+    setCurrentRoleId(initialRoleId);
+    setSaveError(null);
+    setSaveSuccess(null);
+    setIsModified(false);
+    // We intentionally do NOT navigate anywhere now
   };
 
+  // C) RESET => empty the current override arrays (not the same as CANCEL)
   const handleReset = () => {
+    if (isSuspended) return; // if user is suspended, do nothing
     setCurrentOverrides({
       permissionOverride: [],
       resourceOverride: [],
     });
   };
 
-  // Toggle the collapsed/expanded state for a given permission ID
-  const togglePermissionSection = (permissionId: number) => {
-    setExpandedPermissions((prev) => ({
-      ...prev,
-      [permissionId]: !prev[permissionId],
-    }));
+  // D) Role change => fetch that role’s permissions/resources => set as userDefault
+  const handleRoleChange = async (newRoleId: number) => {
+    if (!userId) return;
+
+    try {
+      // 1) Clear overrides
+      setCurrentOverrides({
+        permissionOverride: [],
+        resourceOverride: [],
+      });
+
+      // 2) fetch the new role’s default perms/resources
+      const rolePermsResponse: GetRolePermissionsResponse = await getRolePermissions(newRoleId);
+      if (rolePermsResponse.success) {
+        // 3) update userDefaultPermissions/resources
+        setUserDefaultPermissions(rolePermsResponse.data.permissions);
+        setUserDefaultResources(rolePermsResponse.data.resources);
+      } else {
+        // handle error
+        console.error(rolePermsResponse.message || 'Failed to fetch role-based perms/resources');
+      }
+
+      // 4) set currentRoleId to new
+      setCurrentRoleId(newRoleId);
+    } catch (error: any) {
+      console.error(error.message);
+    }
   };
+
+  /**
+   * Suspend / Revoke handlers + confirmation modals
+   */
+  const handleSuspendClick = () => {
+    setShowSuspendConfirm(true);
+  };
+  const confirmSuspend = async () => {
+    if (!userId) return;
+    setShowSuspendConfirm(false);
+    try {
+      const resp: SuspendUserResponse = await suspendUser(parseInt(userId));
+      if (resp.success) {
+        setIsSuspended(true);
+        setSaveSuccess('User has been suspended.');
+      } else {
+        setSaveError(resp.message || 'Failed to suspend user.');
+      }
+    } catch (err: any) {
+      setSaveError(err.message || 'Error while suspending user.');
+    }
+  };
+
+  const handleRevokeClick = () => {
+    setShowRevokeConfirm(true);
+  };
+  const confirmRevoke = async () => {
+    if (!userId) return;
+    setShowRevokeConfirm(false);
+    try {
+      const resp: RevokeUserResponse = await revokeUser(parseInt(userId));
+      if (resp.success) {
+        setIsSuspended(false);
+        setSaveSuccess('User has been revoked (active).');
+      } else {
+        setSaveError(resp.message || 'Failed to revoke user.');
+      }
+    } catch (err: any) {
+      setSaveError(err.message || 'Error while revoking user.');
+    }
+  };
+
+  const closeSuspendModal = () => setShowSuspendConfirm(false);
+  const closeRevokeModal = () => setShowRevokeConfirm(false);
 
   /**
    * ---------------
@@ -387,38 +520,152 @@ const EditUser: React.FC = () => {
 
   return (
     <div className="p-6">
+      {/* Confirmation Modal for Suspend */}
+      <AnimatePresence>
+        {showSuspendConfirm && (
+          <motion.div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white p-6 rounded shadow-lg max-w-md w-full"
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+            >
+              <h3 className="text-xl font-semibold mb-4 text-red-700">Suspend User</h3>
+              <p className="mb-4 text-gray-600">
+                Are you sure you want to suspend this user? They will lose all access.
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={closeSuspendModal}
+                  className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSuspend}
+                  className="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Suspend
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Modal for Revoke */}
+      <AnimatePresence>
+        {showRevokeConfirm && (
+          <motion.div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white p-6 rounded shadow-lg max-w-md w-full"
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+            >
+              <h3 className="text-xl font-semibold mb-4 text-green-700">Revoke Suspension</h3>
+              <p className="mb-4 text-gray-600">
+                Are you sure you want to revoke the suspension? This user will be re-activated.
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={closeRevokeModal}
+                  className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRevoke}
+                  className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Revoke
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Top Section with Title & Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h2 className="text-2xl font-semibold mb-4 sm:mb-0">Edit User Permissions</h2>
-        <div className="flex space-x-3">
+        <h2 className="text-2xl font-semibold mb-4 sm:mb-0">{`Edit User Permissions : ${userName}`}</h2>
+
+        <div className="flex flex-wrap gap-3 items-center justify-end">
+          {/* NEW: Suspend/Revoke button (conditional color & label) */}
+          {isSuspended ? (
+            <button
+              onClick={handleRevokeClick}
+              className="px-4 py-2 rounded-md font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
+            >
+              Revoke
+            </button>
+          ) : (
+            <button
+              onClick={handleSuspendClick}
+              className="px-4 py-2 rounded-md font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
+            >
+              Suspend
+            </button>
+          )}
+
+          {/* NEW: Role dropdown */}
+          <select
+            className="px-3 py-2 rounded-md border border-gray-300 text-gray-700"
+            value={currentRoleId ?? ''}
+            onChange={(e) => handleRoleChange(Number(e.target.value))}
+            disabled={isSuspended || saving}
+          >
+            <option value="" disabled>
+              Select Role
+            </option>
+            {allRoles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Save Button */}
           <button
             onClick={handleSave}
             disabled={!isModified || saving}
             className={`px-4 py-2 rounded-md font-medium transition-colors ${!isModified || saving
-                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
           >
             {saving ? 'Saving...' : 'Save'}
           </button>
 
+          {/* Cancel Button */}
           <button
             onClick={handleCancel}
             disabled={saving}
             className={`px-4 py-2 rounded-md font-medium transition-colors ${saving
-                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                : 'bg-red-600 text-white hover:bg-red-700'
+              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+              : 'bg-gray-500 text-white hover:bg-gray-600'
               }`}
           >
             Cancel
           </button>
 
+          {/* Reset to Default */}
           <button
             onClick={handleReset}
-            disabled={saving}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${saving
-                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                : 'bg-yellow-600 text-white hover:bg-yellow-700'
+            disabled={saving || isSuspended}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${saving || isSuspended
+              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+              : 'bg-yellow-600 text-white hover:bg-yellow-700'
               }`}
           >
             Reset to Default
@@ -451,7 +698,10 @@ const EditUser: React.FC = () => {
               {/* Permission Header (Collapsible Trigger) */}
               <button
                 type="button"
-                onClick={() => togglePermissionSection(permission.id)}
+                onClick={() => setExpandedPermissions((prev) => ({
+                  ...prev,
+                  [permission.id]: !prev[permission.id],
+                }))}
                 className="w-full flex items-center justify-between"
               >
                 <div className="flex items-center">
@@ -460,6 +710,7 @@ const EditUser: React.FC = () => {
                     id={`permission-${permission.id}`}
                     checked={permissionGranted}
                     onChange={handlePermissionChange(permission.id)}
+                    disabled={isSuspended}
                     className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded"
                   />
                   <label
@@ -500,18 +751,19 @@ const EditUser: React.FC = () => {
                               id={`resource-${resource.id}`}
                               checked={resourceGranted}
                               onChange={handleResourceChange(resource.id)}
-                              disabled={!permissionGranted}
-                              className={`mr-2 h-4 w-4 ${!permissionGranted
-                                  ? 'text-gray-300 border-gray-300 cursor-not-allowed'
-                                  : 'text-blue-600 border-gray-300 rounded'
+                              disabled={!permissionGranted || isSuspended}
+                              className={`mr-2 h-4 w-4 ${!permissionGranted || isSuspended
+                                ? 'text-gray-300 border-gray-300 cursor-not-allowed'
+                                : 'text-blue-600 border-gray-300 rounded'
                                 }`}
                             />
                             <label
                               htmlFor={`resource-${resource.id}`}
-                              className={`${!permissionGranted ? 'text-gray-400' : 'text-gray-700'
+                              className={`${!permissionGranted || isSuspended ? 'text-gray-400' : 'text-gray-700'
                                 }`}
                             >
-                              {resource.column.charAt(0).toUpperCase() + resource.column.slice(1)}
+                              {resource.column.charAt(0).toUpperCase() +
+                                resource.column.slice(1)}
                             </label>
                           </div>
                         );
