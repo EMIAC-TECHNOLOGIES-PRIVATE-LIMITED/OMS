@@ -13,6 +13,8 @@ import {
     RevokeUserResponse,
     ManageUserAccessRequest,
     ManageUserAccessResponse,
+    ManageRoleAccessRequest,
+    ManageRoleAccessResponse,
 } from '../../../../shared/src/types';
 
 export async function getAllRoles(): Promise<GetAllRolesResponse> {
@@ -30,33 +32,79 @@ export async function getAllPermissions(): Promise<GetAllPermissionsResponse> {
 export async function getRolePermissions(
     roleId: GetRolePermissionsRequest['roleId']
 ): Promise<GetRolePermissionsResponse> {
-    return apiRequest<GetRolePermissionsResponse>('/admin/info/access/role', 'GET', { roleId });
+    // Pass roleId in the request body (data)
+    return apiRequest<GetRolePermissionsResponse>(
+        '/admin/info/access/role',
+        'POST',
+        undefined,
+        { roleId }
+    );
 }
 
 export async function getUserPermissions(
     userId: GetUserPermissionsRequest['userId']
 ): Promise<GetUserPermissionsResponse> {
-    return apiRequest<GetUserPermissionsResponse>('/admin/info/access/user', 'GET', { userId });
+    // Pass userId in the request body (data)
+    return apiRequest<GetUserPermissionsResponse>(
+        '/admin/info/access/user',
+        'POST',
+        undefined, // No query params
+        { userId }  // Data in the body
+    );
 }
 
 export async function suspendUser(
     userId: SuspendUserRequest['userId']
 ): Promise<SuspendUserResponse> {
-    return apiRequest<SuspendUserResponse>('/admin/manage/suspend', 'POST', undefined, { userId });
+    return apiRequest<SuspendUserResponse>(
+        '/admin/manage/suspend',
+        'POST',
+        undefined,
+        { userId }
+    );
 }
 
 export async function revokeUser(
     userId: RevokeUserRequest['userId']
 ): Promise<RevokeUserResponse> {
-    return apiRequest<RevokeUserResponse>('/admin/manage/revoke', 'POST', undefined, { userId });
+    return apiRequest<RevokeUserResponse>(
+        '/admin/manage/revoke',
+        'POST',
+        undefined,
+        { userId }
+    );
 }
 
 export async function manageUserAccess(
     userId: ManageUserAccessRequest['userId'],
-    permissionOverride: ManageUserAccessRequest['permissionOverride']
+    permissionOverride: ManageUserAccessRequest['permissionOverride'],
+    resourceOverride: ManageUserAccessRequest['resourceOverride']
 ): Promise<ManageUserAccessResponse> {
-    return apiRequest<ManageUserAccessResponse>('/admin/manage/access/user', 'POST', undefined, {
-        userId,
-        permissionOverride,
-    });
+    return apiRequest<ManageUserAccessResponse>(
+        '/admin/manage/access/user',
+        'POST',
+        undefined,
+        {
+            userId,
+            permissionOverride,
+            resourceOverride
+        }
+    );
+}
+
+export async function manageRoleAccess(
+    roleId: ManageRoleAccessRequest['roleId'],
+    permissions: ManageRoleAccessRequest['permissions'],
+    resources: ManageRoleAccessRequest['resources']
+): Promise<ManageRoleAccessResponse> {
+    return apiRequest<ManageRoleAccessResponse>(
+        '/admin/manage/access/role',
+        'POST',
+        undefined,
+        {
+            roleId,
+            permissions,
+            resources,
+        }
+    );
 }

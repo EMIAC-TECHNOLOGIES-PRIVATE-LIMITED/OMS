@@ -143,10 +143,18 @@ export interface GetUserPermissionsResponse {
             id: number;
             name: string;
         }>;
+        permissionOverrides: Array<{
+            permissionId: number;
+            granted: boolean;
+        }>;
         resources: Array<{
             id: number;
             table: string;
             column: string;
+        }>;
+        resourceOverrides: Array<{
+            resourceId: number;
+            granted: boolean;
         }>;
     };
     success: boolean;
@@ -189,6 +197,20 @@ export interface ManageUserAccessResponse {
     message: string;
     success: boolean;
 }
+
+export interface ManageRoleAccessRequest {
+    roleId: number;
+    permissions: Array<{ id: number }>; 
+    resources: Array<{ id: number }>;  
+}
+
+export interface ManageRoleAccessResponse {
+    status: number;    
+    message: string;   
+    success: boolean;  
+}
+
+
 
 export interface GetViewDataResponse {
     status: number;

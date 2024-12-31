@@ -8,8 +8,8 @@ router.get('/info/roles', adminMiddleware, getRoles)
 router.get('/info/users', adminMiddleware, getUsers)
 
 router.get('/info/access', adminMiddleware, getAllAccess)
-router.get('/info/access/role', adminMiddleware, getRoleAccess)
-router.get('/info/acess/user', adminMiddleware, getUserAccess)
+router.post('/info/access/role', adminMiddleware, getRoleAccess)
+router.post('/info/access/user', adminMiddleware, getUserAccess)
 
 router.post('/manage/suspend', adminMiddleware, suspendUser);
 router.post('/manage/revoke', adminMiddleware, revokeUser);

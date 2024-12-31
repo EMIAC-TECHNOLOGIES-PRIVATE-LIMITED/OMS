@@ -1,25 +1,44 @@
 import { useEffect } from 'react';
-import { RouterProvider, createBrowserRouter, createRoutesFromElements, Route, Navigate, Outlet } from 'react-router-dom';
+import {
+  RouterProvider,
+  createBrowserRouter,
+  createRoutesFromElements,
+  Route,
+  Navigate,
+  Outlet,
+} from 'react-router-dom';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
-import { authAtom } from './store/atoms/atoms';
+import { authAtom } from "./store/atoms/atoms";
 import { getUserInfo } from './utils/apiService/userAPI';
 import Layout from './Layout';
 import Home from './components/Home/Home';
-import Dashboard from './pages/publicPages/Landing/Dashboard';
+import DashboardLayout from './components/DashBoard/DashboardLayout';
+import ManageRoles from './components/DashBoard/ManageRoles';
+import EditRole from './components/DashBoard/EditRole';
+import ManageUsers from './components/DashBoard/ManageUsers';
+import EditUser from './components/DashBoard/EditUser';
 import Sites from './pages/protectedPages/dataPages/Sites';
 import Vendors from './pages/protectedPages/dataPages/Vendors';
 import LoginPage from './pages/publicPages/LoginPage';
 import Clients from './pages/protectedPages/dataPages/Clients';
 import Orders from './pages/protectedPages/dataPages/Orders';
 
-const ProtectedRoute = () => {
-  const { isAuthenticated, loading } = useRecoilValue(authAtom);
+const ProtectedRoute = ({ allowedRoles = [] }: { allowedRoles?: string[] }) => {
+  const { isAuthenticated, loading, userInfo } = useRecoilValue(authAtom);
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(userInfo.role.name)) {
+    return <Navigate to="/login" />;
+  }
+
+  return <Outlet />;
 };
 
 // Conditional Home Route
@@ -28,8 +47,6 @@ const HomeRoute = () => {
   return isAuthenticated ? <Navigate to="/dashboard" /> : <Home />;
 };
 
-
-
 // Router Configuration
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -37,15 +54,28 @@ const router = createBrowserRouter(
       <Route path="/" element={<Layout />}>
         <Route index element={<HomeRoute />} />
 
+        {/* Public Route */}
+        <Route path="login" element={<LoginPage />} />
+
+        {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
-          <Route path="dashboard" element={<Dashboard />} />
+          {/* Dashboard Routes */}
+          <Route path="dashboard" element={<DashboardLayout />}>
+            <Route index element={<Navigate to="manageroles" replace />} />
+            <Route path="manageroles" element={<ManageRoles />} />
+            <Route path="manageroles/:roleId" element={<EditRole />} />
+            <Route path="manageusers" element={<ManageUsers />} />
+            <Route path="manageusers/:userId" element={<EditUser />} />
+          </Route>
+
+          {/* Other Protected Routes */}
           <Route path="site" element={<Sites />} />
           <Route path="vendor" element={<Vendors />} />
           <Route path="client" element={<Clients />} />
           <Route path="order" element={<Orders />} />
         </Route>
       </Route>
-      <Route path="login" element={<LoginPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </>
   )
 );
@@ -59,14 +89,11 @@ function App() {
         const userInfo = await getUserInfo();
         const { data } = userInfo;
 
-
         setAuth({
           isAuthenticated: true,
           loading: false,
           userInfo: data,
         });
-
-
       } catch (error) {
         setAuth({
           isAuthenticated: false,
@@ -85,7 +112,7 @@ function App() {
       }
     };
     fetchAuth();
-  }, []);
+  }, [setAuth]);
 
   return <RouterProvider router={router} />;
 }

@@ -120,7 +120,7 @@ export async function getUsers(req: Request, res: Response): Promise<Response<Ge
     try {
         const skip = (page - 1) * pageSize;
 
-    
+
         type UserWithRole = {
             id: number;
             name: string;
@@ -169,7 +169,43 @@ export async function getUserAccess(req: Request, res: Response): Promise<Respon
     }
 
     try {
-        const data: GetUserPermissionsResponse['data'] = await getUserPermissionsAndResources(userId);
+        const user = await prismaClient.user.findUnique({
+            where: { id: userId },
+            include: {
+                permissionOverrides: true,
+                resourceOverrides: true,
+                role: {
+                    include: { permissions: true, resources: true },
+                },
+            },
+        });
+
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        const data: GetUserPermissionsResponse['data'] = {
+            permissions: user.role?.permissions.map(permission => ({
+                id: permission.id,
+                name: permission.key,
+            })) || [],
+            permissionOverrides: user.permissionOverrides.map(permissionOverride => ({
+                permissionId: permissionOverride.permissionId,
+                granted: permissionOverride.granted,
+            })) || [],
+            resources: user.role?.resources.map(resource => ({
+                id: resource.id,
+                table: resource.table,
+                column: resource.column,
+            })) || [],
+            resourceOverrides: user.resourceOverrides.map(resourceOverride => ({
+                resourceId: resourceOverride.resourceId,
+                granted: resourceOverride.granted,
+            })) || [],
+        };
+
+
 
         return res.status(200).json(new APIResponse(200, 'User permissions and resources fetched successfully', data, true).toJSON());
     } catch (error) {
@@ -218,10 +254,10 @@ export async function manageRoleAccess(req: Request, res: Response): Promise<Res
             where: { id: roleId },
             data: {
                 permissions: {
-                    connect: permissions.map((perm: { id: number }) => ({ id: perm.id })),
+                    set: permissions.map((perm: { id: number }) => ({ id: perm.id })),
                 },
                 resources: {
-                    connect: resources.map((res: { id: number }) => ({ id: res.id })),
+                    set: resources.map((res: { id: number }) => ({ id: res.id })),
                 },
             },
         });
