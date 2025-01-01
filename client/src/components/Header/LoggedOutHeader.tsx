@@ -1,97 +1,149 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
-const transition = {
-  type: "spring",
-  mass: 0.5,
-  damping: 11.5,
-  stiffness: 100,
-  restDelta: 0.001,
-  restSpeed: 0.001,
+const menuItems = {
+  Pricing: [
+    { title: "Basic Plan", description: "Ideal for small businesses.", href: "" },
+    { title: "Pro Plan", description: "Advanced features for growing teams.", href: "" },
+    { title: "Enterprise Plan", description: "Custom solutions for large organizations.", href: "" },
+  ],
+  "Learn SEO": [
+    { title: "SEO Basics", description: "Kickstart your SEO journey.", href: "" },
+    { title: "Advanced SEO", description: "Deep dive into expert techniques.", href: "" },
+    { title: "SEO Tools", description: "Explore essential optimization tools.", href: "" },
+  ],
+  "White Label SEO": [
+    { title: "Reseller Program", description: "Expand services under your own brand.", href: "" },
+    { title: "Custom Reports", description: "Provide branded reports to your clients.", href: "" },
+    { title: "Dedicated Support", description: "Prioritized assistance and training.", href: "" },
+  ],
+  Affiliates: [
+    { title: "Join Program", description: "Earn by promoting our platform.", href: "" },
+    { title: "Marketing Materials", description: "Access resources to advertise effectively.", href: "" },
+    { title: "Payout Details", description: "Learn how earnings are calculated.", href: "" },
+  ],
 };
 
-const MenuItem = ({
-  setActive,
-  active,
-  item,
-  children,
-}: {
-  setActive: (item: string) => void;
-  active: string | null;
-  item: string;
-  children?: React.ReactNode;
-}) => {
+const LoggedOutHeader: React.FC = () => {
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+
+  const handleMouseEnterMenu = (menu: string) => {
+    setActiveMenu(menu);
+  };
+
+  const handleMouseLeaveAll = () => {
+    setActiveMenu(null);
+  };
+
   return (
-    <div onMouseEnter={() => setActive(item)} className="relative">
-      <motion.p
-        transition={{ duration: 0.3 }}
-        className="cursor-pointer text-white hover:opacity-[0.9]"
-      >
-        {item}
-      </motion.p>
-      {active !== null && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={transition}
+    <header className="bg-brand text-white shadow-premium sticky top-0 z-50">
+      <div className="container mx-auto flex items-center justify-between p-4">
+        <a href="/" className="flex items-center space-x-2 bg">
+          <img
+            src="./image.png"
+            alt="Brand Logo"
+            className="h-8 w-8"
+          />
+          <span className="font-bold text-lg">EMIAC
+            Technologies</span>
+        </a>
+
+        <div
+          className="relative"
+          onMouseLeave={handleMouseLeaveAll}
         >
-          {active === item && (
-            <div className="absolute top-[calc(100%_+_1.2rem)] left-1/2 transform -translate-x-1/2 pt-4">
-              <motion.div
-                transition={transition}
-                layoutId="active"
-                className="bg-brand text-white backdrop-blur-sm rounded-2xl overflow-hidden border border-white/[0.2] shadow-xl"
+          <nav className="flex space-x-6 font-medium">
+            {Object.keys(menuItems).map((menuTitle) => (
+              <div
+                key={menuTitle}
+                onMouseEnter={() => handleMouseEnterMenu(menuTitle)}
+                className="relative"
               >
-                <motion.div
-                  layout
-                  className="w-max h-full p-4"
-                >
-                  {children}
-                </motion.div>
-              </motion.div>
+                <button className="flex items-center space-x-1 hover:text-brand-light transition">
+                  <span>{menuTitle}</span>
+                  <motion.svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    animate={{ rotate: activeMenu === menuTitle ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 9l6 6 6-6"
+                    />
+                  </motion.svg>
+                </button>
+              </div>
+            ))}
+          </nav>
+
+          <div
+            onMouseEnter={() => setActiveMenu(activeMenu)}
+            className={`
+              absolute left-1/2 top-full mt-1
+              transform -translate-x-1/2
+              w-[400px] bg-white text-brand shadow-lg rounded-md
+              ${activeMenu ? "block" : "hidden"}
+            `}
+          >
+            <div
+              className="p-6"
+              style={{ paddingTop: "12px" }} // Added buffer space between button and menu
+            >
+              <AnimatePresence mode="wait">
+                {activeMenu && (
+                  <motion.div
+                    key={activeMenu}
+                    initial={{ x: 50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: -50, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <ul className="space-y-4">
+                      {menuItems[activeMenu as keyof typeof menuItems].map(
+                        (item, idx) => (
+                          <li
+                            key={idx}
+                            className="hover:bg-neutral-100 rounded-lg p-4"
+                          >
+                            <a href={item.href} className="block">
+                              <div className="font-medium">{item.title}</div>
+                              <p className="text-sm text-neutral-500">
+                                {item.description}
+                              </p>
+                            </a>
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          )}
-        </motion.div>
-      )}
-    </div>
-  );
-};
+          </div>
+        </div>
 
-const Menu = ({
-  setActive,
-  children,
-}: {
-  setActive: (item: string | null) => void;
-  children: React.ReactNode;
-}) => {
-  return (
-    <nav
-      onMouseLeave={() => setActive(null)}
-      className="relative rounded-full border border-transparent bg-brand text-white shadow-input flex justify-center space-x-4 px-8 py-6"
-    >
-      {children}
-    </nav>
-  );
-};
-
-const LoggedOutHeader = () => {
-  const [active, setActive] = useState<string | null>(null);
-
-  return (
-    <Menu setActive={setActive}>
-      <MenuItem setActive={setActive} active={active} item="Home">
-        <div>Home Content</div>
-      </MenuItem>
-      <MenuItem setActive={setActive} active={active} item="About">
-        <div>About Content</div>
-      </MenuItem>
-      <MenuItem setActive={setActive} active={active} item="Services">
-        <div>Services Content</div>
-      </MenuItem>
-      <MenuItem setActive={setActive} active={active} item="Contact">
-        <div>Contact Content</div>
-      </MenuItem>
-    </Menu>
+        <div className="hidden sm:flex space-x-4">
+          <a
+            href="/login"
+            className="px-4 py-2 bg-white text-brand font-medium rounded-md shadow hover:bg-neutral-100 transition"
+          >
+            Login
+          </a>
+          <a
+            href="/signup"
+            className="px-4 py-2 bg-brand-light text-white font-medium rounded-md shadow hover:bg-brand-dark transition"
+          >
+            Sign Up
+          </a>
+        </div>
+      </div>
+    </header>
   );
 };
 

@@ -1,15 +1,15 @@
-import CanvasRevealEffectDemo from "./components/canvasReveal"
-
+import ParallaxFeatureSection from "./components/Features"
+import HeroSection from "./components/Hero"
+import StatsSection from "./components/Stats"
+import VideoCardSection from "./components/VideoCards"
 
 function Home() {
   return (
     <>
-      <div className="bg-brand text-white py-20 flex flex-col items-center justify-center">
-
-        <CanvasRevealEffectDemo />
-        <CanvasRevealEffectDemo />
-        <CanvasRevealEffectDemo />
-      </div>
+      <HeroSection />
+      {/* <ParallaxFeatureSection /> */}
+      <VideoCardSection />
+      <StatsSection />
     </>
   )
 }
