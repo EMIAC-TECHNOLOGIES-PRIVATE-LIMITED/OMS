@@ -138,7 +138,7 @@ const LoggedOutHeader: React.FC = () => {
             TALK TO SALES
           </a>
           <a
-            href="/signup"
+            href="/login"
             className="px-4 py-2 bg-brand text-white font-medium rounded-md shadow hover:bg-gray-700 transition"
           >
             GET STARTED

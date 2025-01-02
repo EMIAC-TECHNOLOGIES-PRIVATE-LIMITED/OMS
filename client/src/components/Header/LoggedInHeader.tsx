@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
+import { motion, AnimatePresence } from 'framer-motion';
 import { authAtom } from '../../store/atoms/atoms';
 import { signOut } from '../../utils/apiService/authAPI';
 
 function LoggedInHeader() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileMenuOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const profileModalRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const auth = useRecoilValue(authAtom);
   const setAuth = useSetRecoilState(authAtom);
@@ -37,16 +39,16 @@ function LoggedInHeader() {
   };
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (
-        mobileMenuRef.current &&
-        !mobileMenuRef.current.contains(event.target as Node)
+        profileModalRef.current &&
+        !profileModalRef.current.contains(event.target as Node)
       ) {
-        setIsMobileMenuOpen(false);
+        setIsProfileModalOpen(false);
       }
-    }
+    };
 
-    if (isMobileMenuOpen) {
+    if (isProfileModalOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     } else {
       document.removeEventListener('mousedown', handleClickOutside);
@@ -55,7 +57,11 @@ function LoggedInHeader() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isMobileMenuOpen]);
+  }, [isProfileModalOpen]);
+
+  const handleProfileButtonClick = () => {
+    setIsProfileModalOpen((prev) => !prev); // Toggle modal open/close state
+  };
 
   if (auth.loading) {
     return (
@@ -77,10 +83,6 @@ function LoggedInHeader() {
   }
 
   const permissions = auth.userInfo?.permissions || [];
-
-  // useEffect(() => {
-  //   console.log('The auth object state currently is : ', auth);
-  // }, [auth]);
 
   return (
     <header className="bg-white shadow-premium">
@@ -111,35 +113,61 @@ function LoggedInHeader() {
               ))}
             </nav>
           </div>
-          <div className="flex items-center">
-            <button
-              onClick={handleLogout}
-              className="hidden md:block bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition"
-            >
-              Logout
-            </button>
-            <div className="flex md:hidden">
+          <div className="flex items-center space-x-4">
+            {/* User Icon */}
+            <div className="relative" ref={profileModalRef}>
               <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                type="button"
-                className="inline-flex items-center justify-center p-2 rounded-md text-neutral-700 hover:text-brand hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand transition duration-300"
-                aria-controls="mobile-menu"
-                aria-expanded={isMobileMenuOpen}
+                onClick={handleProfileButtonClick}
+                className="w-10 h-10 rounded-full border-2 border-brand bg-gray-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-brand-dark transition"
               >
-                <span className="sr-only">Open main menu</span>
-                {isMobileMenuOpen ? (
-                  <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-                )}
+                <img
+                  src="/user.png"
+                  alt="User Avatar"
+                  className="w-8 h-8 rounded-full"
+                />
               </button>
+
+              {/* Profile Modal */}
+              <AnimatePresence>
+                {isProfileModalOpen && (
+                  <motion.div
+                    initial={{ rotateY: -90, opacity: 0 }}
+                    animate={{ rotateY: 0, opacity: 1 }}
+                    exit={{ rotateY: -90, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    className="absolute top-12 right-0 bg-white shadow-lg rounded-lg p-4 w-64 z-50"
+                    style={{
+                      boxShadow:
+                        '0 4px 6px rgba(0, 0, 0, 0.1), 0 10px 20px rgba(0, 0, 0, 0.1)',
+                    }}
+                  >
+                    <div className="flex flex-col items-center">
+                      <img
+                        src="/user.png" // Replace with user's avatar
+                        alt="User Avatar"
+                        className="w-16 h-16 rounded-full border-2 border-brand"
+                      />
+                      <h2 className="mt-2 text-lg font-bold text-neutral-800">
+                        {auth.userInfo?.name}
+                      </h2>
+                      <p className="text-sm text-neutral-600">{(auth.userInfo.role.name)}</p>
+                      <button
+                        onClick={handleLogout}
+                        className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
       </div>
       {isMobileMenuOpen && (
         <div className="md:hidden" id="mobile-menu" ref={mobileMenuRef}>
-          <nav className="px-2 pt-2 pb-3 space-y-1 sm:px-3 animate-fadeIn scale-in">
+          <nav className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {permissions.map((item) => (
               <NavLink
                 key={item.id}

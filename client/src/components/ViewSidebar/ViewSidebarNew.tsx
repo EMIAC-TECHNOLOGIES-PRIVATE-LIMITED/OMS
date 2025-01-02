@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { TrashIcon, XMarkIcon, TableCellsIcon, ChartBarSquareIcon } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import { View } from '../../../../shared/src/types';
+import { Trash2, Grid, BarChart2, X } from 'lucide-react'; // Replace with your chosen icons
 
 interface ViewSidebarNewProps {
   resource: string;
@@ -80,7 +79,6 @@ const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
       setViewToDelete(null);
     } catch (error) {
       console.error('Error deleting view:', error);
-      // Optionally, you can add error handling UI here
     }
   };
 
@@ -113,27 +111,25 @@ const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
           <li key={view.id} className="group flex items-center justify-between mb-2">
             <button
               onClick={() => handleSelectView(view.id)}
-              className={`flex items-center w-full p-2 rounded-md transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-brand-dark ${view.id === currentViewId
-                ? 'bg-brand text-white'
-                : 'text-neutral-700 hover:bg-brand-light hover:text-white'
-                }`}
+              className={`flex items-center w-full p-2 rounded-md transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-brand-dark ${
+                view.id === currentViewId
+                  ? 'bg-brand text-white'
+                  : 'text-neutral-700 hover:bg-brand-light hover:text-white'
+              }`}
             >
-              {/* Fixed container for the icon */}
               <span className="flex items-center justify-center w-8 h-8">
                 {view.viewName === 'grid' ? (
-                  <TableCellsIcon className="w-6 h-6 text-neutral-700" />
+                  <Grid className="w-6 h-6 text-neutral-700" />
                 ) : (
-                  <ChartBarSquareIcon className="w-6 h-6 text-neutral-700" />
+                  <BarChart2 className="w-6 h-6 text-neutral-700" />
                 )}
               </span>
-              {/* Name (visible only when expanded) */}
               {isHovered && (
                 <span className="ml-2">
                   {view.viewName === 'grid' ? 'Default Grid' : view.viewName}
                 </span>
               )}
             </button>
-            {/* Delete Button (visible on hover and not for 'grid' view) */}
             {view.viewName !== 'grid' && (
               <button
                 onClick={() => handleDeleteClick(view)}
@@ -141,7 +137,7 @@ const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
                 aria-label={`Delete view ${view.viewName}`}
                 title="Delete View"
               >
-                <TrashIcon className="w-5 h-5" />
+                <Trash2 className="w-5 h-5" />
               </button>
             )}
           </li>
@@ -153,7 +149,7 @@ const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <motion.div
             ref={modalRef}
-            className="bg-white rounded-lg p-6 w-80 shadow-lg"
+            className="bg-white rounded-lg p-6 w-80 shadow-xl"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
@@ -166,7 +162,7 @@ const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
                 className="text-neutral-500 hover:text-neutral-700 focus:outline-none"
                 aria-label="Close Modal"
               >
-                <XMarkIcon className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
             <p className="text-neutral-700 mb-4">
@@ -176,13 +172,13 @@ const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
             <div className="flex justify-end space-x-2">
               <button
                 onClick={handleCancelDelete}
-                className="flex items-center px-3 py-1 bg-neutral-300 text-neutral-700 rounded-md hover:bg-neutral-400 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-neutral-500"
+                className="px-4 py-2 bg-neutral-300 text-neutral-700 rounded-md hover:bg-neutral-400 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-neutral-500"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="flex items-center px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-red-800"
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-800"
               >
                 Delete
               </button>
@@ -194,5 +190,4 @@ const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
   );
 };
 
-// Memoize the component to prevent unnecessary re-renders
 export default memo(ViewSidebarNew);
