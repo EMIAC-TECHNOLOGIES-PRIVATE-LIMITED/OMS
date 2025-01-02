@@ -1,176 +1,165 @@
-import React, { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, useTransform, useScroll } from "framer-motion";
+import { useRef, FC } from "react";
 
-const features = [
+type TextSectionProps = {
+  title: string;
+  content: string;
+  highlight?: string;
+  stat?: string;
+};
+
+type ImageSectionProps = {
+  images: string[];
+  colors: string[];
+};
+
+const textSections: TextSectionProps[] = [
   {
-    title: "Collaboration",
-    subtitle: "Communicate in countless ways from one place.",
-    description:
-      "Slack is built for bringing people and information together. Type things out. Talk things through. Invite external organisations into the conversation.",
-    stat: "80%",
-    statDescription:
-      "of the Fortune 100 use Slack Connect to work with partners and customers.",
-    imageSrc: "/features/collaboration.png",
-    color: "#017A3C",
+    title: "Content Strategy",
+    content:
+      "Elevate your brand with an effective content marketing strategy. Our SEO agency helps craft high-quality, optimized content to increase engagement and drive organic traffic to your site.",
+    highlight: "3x",
+    stat: "boost in website traffic for our clients within 6 months.",
   },
   {
-    title: "Project Management",
-    subtitle: "Manage projects and move work forwards faster.",
-    description:
-      "Prioritise tasks, share ideas and stay aligned. Slack brings every piece of your project together from start to finish.",
-    stat: "47%",
-    statDescription: "increase in productivity for teams using Slack.",
-    imageSrc: "/features/project-management.png",
-    color: "#FCC003",
+    title: "Guest Posting",
+    content:
+      "Grow your authority and reach with premium guest posting. We connect you with high-authority websites to build backlinks and showcase your expertise effectively.",
+    highlight: "92%",
+    stat: "of clients experience significant SEO improvement through guest posting.",
   },
   {
-    title: "Integrations",
-    subtitle: "Tap into the tools that you already use.",
-    description:
-      "Over 2,600 apps are ready to connect in Slack, so you can automate everyday tasks in the flow of work and save your team precious time.",
-    stat: "35%",
-    statDescription: "increase in time saved due to automation for Slack users.",
-    imageSrc: "/features/integrations.png",
-    color: "#1AB9FF",
+    title: "Link Building",
+    content:
+      "Strengthen your SEO foundation with strategic link-building services. We ensure quality links from trusted sources to improve your website's rankings and credibility.",
+    highlight: "80%",
+    stat: "better ranking potential for clients who use our link-building services.",
+  },
+  {
+    title: "Performance Insights",
+    content:
+      "Understand your growth metrics with in-depth analytics and performance reports. Our insights guide you in optimizing strategies for consistent, long-term results.",
+    highlight: "60%",
+    stat: "average increase in ROI for our content marketing clients.",
   },
 ];
 
-const FeaturesSection = () => {
-  const sectionRef = useRef<HTMLElement | null>(null);
-  const [currentFeatureIndex, setCurrentFeatureIndex] = useState(0);
-  const [hasReachedSticky, setHasReachedSticky] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+const backgroundImages: string[] = ["./1.png", "./2.png", "./3.png", "./4.png"];
+const overlayImages: string[] = ["./a.png", "./b.png", "./c.png", "./d.png"];
+const colors: string[] = ["#3498db", "#e74c3c", "#2ecc71", "#f39c12"];
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!sectionRef.current) return;
+const TextSection: FC<TextSectionProps> = ({
+  title,
+  content,
+  highlight,
+  stat,
+}) => {
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
 
-      const section = sectionRef.current;
-      const sectionRect = section.getBoundingClientRect();
-      const sectionTop = window.scrollY + sectionRect.top;
-      const scrollPosition = window.scrollY;
-      const viewportHeight = window.innerHeight;
-      
-      // Adjust the sticky trigger point to activate earlier (e.g., 40% instead of 25%)
-      const stickyTriggerPoint = sectionTop - viewportHeight * 0.6;
-      setHasReachedSticky(scrollPosition > stickyTriggerPoint);
-
-      // Calculate progress for feature switching
-      const scrollableArea = sectionRect.height - viewportHeight;
-      const progress = (scrollPosition - sectionTop) / scrollableArea;
-      setScrollProgress(Math.max(0, Math.min(1, progress)));
-
-      // Calculate current feature index
-      const normalizedProgress = Math.max(0, Math.min(1, progress));
-      const featureIndex = Math.min(
-        features.length - 1,
-        Math.floor(normalizedProgress * features.length)
-      );
-      setCurrentFeatureIndex(featureIndex);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    handleScroll();
-
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const currentFeature = features[currentFeatureIndex];
-
-  // Adjust the initial Y position to ensure smooth transition
-  const imageEntryY = hasReachedSticky ? 0 : 100;
+  const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [0, 1, 0]);
+  const y = useTransform(scrollYProgress, [0, 0.5, 1], [100, 0, -100]);
 
   return (
-    <section
+    <motion.div
       ref={sectionRef}
-      className="relative bg-gradient-to-b from-gray-50 to-white py-40"
+      className="h-screen flex items-center"
+      style={{ opacity, y }}
     >
-      <div className="container mx-auto">
-        <div className="flex flex-col lg:flex-row relative">
-          {/* Text Section */}
-          <div className="w-full lg:w-1/2 space-y-[100vh] first:pt-[50vh]">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                className="h-screen flex items-center px-6 lg:px-12"
-              >
-                <motion.div
-                  className="space-y-6"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{
-                    opacity: currentFeatureIndex === index ? 1 : 0.3,
-                    y: currentFeatureIndex === index ? 0 : 20,
-                  }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <h2
-                    className="text-5xl lg:text-6xl font-bold"
-                    style={{ color: feature.color }}
-                  >
-                    {feature.title}
-                  </h2>
-                  <h3 className="text-2xl lg:text-3xl text-gray-700 font-semibold">
-                    {feature.subtitle}
-                  </h3>
-                  <p className="text-lg text-gray-600">{feature.description}</p>
-                  <div className="mt-6">
-                    <span
-                      className="text-4xl font-bold"
-                      style={{ color: feature.color }}
-                    >
-                      {feature.stat}
-                    </span>
-                    <p className="text-gray-500 text-lg">
-                      {feature.statDescription}
-                    </p>
-                  </div>
-                </motion.div>
-              </motion.div>
-            ))}
+      <div className="max-w-2xl mx-auto px-6">
+        <h2 className="text-4xl font-bold mb-6">{title}</h2>
+        <p className="text-lg text-gray-700 mb-6">{content}</p>
+        {highlight && (
+          <div className="flex items-center">
+            <span className="text-6xl font-bold text-brand mr-4">
+              {highlight}
+            </span>
+            <span className="text-lg text-gray-700">{stat}</span>
           </div>
-
-          {/* Image Section */}
-          <motion.div
-            className={`w-full lg:w-1/2 ${
-              hasReachedSticky
-                ? "lg:fixed lg:top-[40%] lg:right-0 lg:w-1/2 lg:-translate-y-[40%]"
-                : "relative"
-            }`}
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ 
-              opacity: hasReachedSticky ? 1 : 0,
-              y: imageEntryY,
-            }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="relative w-[540px] h-[540px] mx-auto">
-              {/* Background Shape */}
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{ backgroundColor: currentFeature.color }}
-                animate={{ backgroundColor: currentFeature.color }}
-                transition={{ duration: 0.5 }}
-              />
-
-              {/* Feature Image */}
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={currentFeature.imageSrc}
-                  src={currentFeature.imageSrc}
-                  alt={currentFeature.title}
-                  className="absolute inset-0 w-full h-full object-cover rounded-lg shadow-lg z-10"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.4 }}
-                />
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        </div>
+        )}
       </div>
-    </section>
+    </motion.div>
   );
 };
 
-export default FeaturesSection;
+const ImageSection: FC<ImageSectionProps> = () => {
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+
+  return (
+    <div ref={sectionRef} className="h-[400vh]">
+      <div className="sticky top-0 h-screen overflow-hidden flex items-center justify-center">
+        <div className="relative flex w-full h-[90vmin]">
+          {/* Overlay Images - Shifted more to the right */}
+          <div className="relative w-[95vmin] h-[45vmin] self-center -right-32 z-10">
+            {overlayImages.map((src, index) => {
+              const visible = useTransform(
+                scrollYProgress,
+                [index * 0.25, (index + 0.5) * 0.25, (index + 1) * 0.25],
+                [0, 1, 0]
+              );
+              return (
+                <motion.img
+                  key={src}
+                  src={src}
+                  alt={`Overlay ${index + 1}`}
+                  className="absolute top-0 left-0 w-full h-full object-cover rounded-lg shadow-xl"
+                  style={{ opacity: visible }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Background Images - Increased size by 50% */}
+          <div className="relative w-[95vmin] h-[95vmin] -left-24">
+            {backgroundImages.map((src, index) => {
+              const visible = useTransform(
+                scrollYProgress,
+                [index * 0.25, (index + 0.5) * 0.25, (index + 1) * 0.25],
+                [0, 1, 0]
+              );
+              return (
+                <motion.img
+                  key={src}
+                  src={src}
+                  alt={`Background ${index + 1}`}
+                  className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+                  style={{ opacity: visible }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ParallaxSection: FC = () => {
+  return (
+    <div className="flex justify-center items-start mx-auto max-w-[1900px]">
+      <div className="w-[40%] px-4">
+        {textSections.map((section, index) => (
+          <TextSection
+            key={index}
+            title={section.title}
+            content={section.content}
+            highlight={section.highlight}
+            stat={section.stat}
+          />
+        ))}
+      </div>
+      <div className="w-[60%] px-4">
+        <ImageSection images={[...backgroundImages, ...overlayImages]} colors={colors} />
+      </div>
+    </div>
+  );
+};
+
+export default ParallaxSection;

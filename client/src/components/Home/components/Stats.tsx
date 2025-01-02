@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
 const metrics = [
   {
@@ -41,42 +42,93 @@ const PremiumStatsSection = () => {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative">
-      {/* Concave Arc Background */}
-      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-brand-light to-brand-dark transform -translate-y-[50%] z-[-1] rounded-b-full"></div>
+    <>
+      {/* Animated SVG Section */}
+      <motion.div
+        className="w-full overflow-hidden"
+        style={{ height: "200px" }}
+        initial={{ opacity: 0, y: 50 }}
+        animate={hasAnimated ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
+        <svg
+          viewBox="0 0 1440 200"
+          className="w-full h-full"
+          preserveAspectRatio="none"
+        >
+          <motion.path
+            d="M0,0 C480,200 960,200 1440,0 L1440,200 L0,200 Z"
+            fill="#005a2d" // brand dark
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          />
+        </svg>
+      </motion.div>
 
-      <div className="container mx-auto text-center py-16 px-6">
-        {/* Headline */}
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-10">
-          We’re in the business of growing businesses.
-        </h2>
+      <motion.section
+        ref={sectionRef}
+        className="relative bg-brand-dark py-24"
+        initial={{ opacity: 0, y: 50 }}
+        animate={hasAnimated ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
+        <div className="container mx-auto text-center px-6">
+          {/* Headline */}
+          <motion.h2
+            className="text-4xl md:text-5xl font-bold text-white mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            animate={hasAnimated ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            We’re in the business of growing businesses.
+          </motion.h2>
 
-        {/* Cards Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-          {metrics.map((metric) => (
-            <div
-              key={metric.id}
-              className="bg-white rounded-lg shadow-md p-6 flex flex-col items-center"
-            >
-              {/* Animated Stat */}
-              <div className="flex items-baseline justify-center space-x-2">
-                <h3 className="text-6xl font-bold text-brand-primary">
-                  {hasAnimated ? <Counter endValue={metric.stat} /> : 0}
-                </h3>
-                {metric.id !== 2 && (
-                  <span className="text-3xl text-brand-primary font-bold">
-                    %
-                  </span>
-                )}
-              </div>
+          {/* Cards Section */}
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-3 gap-16"
+            initial="hidden"
+            animate={hasAnimated ? "visible" : "hidden"}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.2 },
+              },
+            }}
+          >
+            {metrics.map((metric) => (
+              <motion.div
+                key={metric.id}
+                className="flex flex-col items-center space-y-6"
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  visible: { opacity: 1, y: 0 },
+                }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              >
+                {/* Animated Stat */}
+                <div className="flex items-baseline justify-center space-x-1">
+                  <h3 className="text-8xl font-extrabold text-brand-light">
+                    {hasAnimated ? <Counter endValue={metric.stat} /> : 0}
+                  </h3>
+                  {metric.id !== 2 && (
+                    <span className="text-5xl font-extrabold text-brand-light">
+                      %
+                    </span>
+                  )}
+                </div>
 
-              {/* Description */}
-              <p className="text-gray-700 text-center mt-4">{metric.description}</p>
-            </div>
-          ))}
+                {/* Description */}
+                <p className="text-white text-xl font-semibold text-center">
+                  {metric.description}
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
-      </div>
-    </section>
+      </motion.section>
+    </>
   );
 };
 

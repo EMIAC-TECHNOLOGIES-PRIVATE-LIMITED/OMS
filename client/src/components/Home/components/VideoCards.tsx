@@ -6,22 +6,22 @@ const videoCards = [
     id: 1,
     title: "OpenAI",
     description: "How OpenAI connects with customers and expands ChatGPT with Slack.",
-    videoSrc: "/card.mp4",
-    thumbnail: "/thumb.png",
+    videoSrc: "/card2.webm",
+    thumbnail: "/thumb1.png",
   },
   {
     id: 2,
     title: "Spotify",
     description: "How Spotify boosted ad sales and streamlined operations with Slack.",
-    videoSrc: "/card.mp4",
-    thumbnail: "/thumb.png",
+    videoSrc: "/card3.mp4",
+    thumbnail: "/thumb2.png",
   },
   {
     id: 3,
     title: "IBM",
     description: "IBM shifted into a higher gear of productivity by partnering with Slack.",
-    videoSrc: "/card.mp4",
-    thumbnail: "/thumb.png",
+    videoSrc: "/card1.webm",
+    thumbnail: "/thumb3.png",
   },
   {
     id: 4,
@@ -40,28 +40,53 @@ const VideoCardSection = () => {
   };
 
   return (
-    <section className="py-20 bg-gray-100">
-      <div className="container mx-auto text-center">
-        <h2 className="text-4xl font-bold mb-10">
-          The most innovative companies run their business in Slack.
-        </h2>
-        <div className="flex justify-center items-center space-x-6">
+    <motion.section
+      className="py-20 "
+      initial={{ opacity: 0, y: 50 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+    >
+      <div className="container mx-auto text-center font-mediumt">
+        <motion.h2
+          className="text-4xl font-bold mb-10"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
+          The most innovative companies grow their business with EMIAC
+        </motion.h2>
+        <motion.div
+          className="flex justify-center items-center space-x-6"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.2 },
+            },
+          }}
+        >
           {videoCards.map((card) => (
             <motion.div
               key={card.id}
-              className={`relative overflow-hidden rounded-lg cursor-pointer shadow-lg transition-all duration-500 ${
-                activeCardId === card.id
+              className={`relative overflow-hidden rounded-lg cursor-pointer shadow-lg transition-all duration-500 ${activeCardId === card.id
                   ? "w-[600px] h-[300px]"
                   : "w-[200px] h-[300px]"
-              }`}
+                }`}
               onMouseEnter={() => handleMouseEnter(card.id)}
               style={{
                 backgroundImage: `url(${card.thumbnail})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0 },
+              }}
               transition={{ type: "spring", stiffness: 150, damping: 15 }}
             >
               {/* Overlay for collapsed cards */}
@@ -85,7 +110,11 @@ const VideoCardSection = () => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ type: "spring", stiffness: 120, damping: 15 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 120,
+                      damping: 15,
+                    }}
                   />
                 )}
               </AnimatePresence>
@@ -98,19 +127,21 @@ const VideoCardSection = () => {
                     className="text-sm mt-1"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: "spring", stiffness: 120, damping: 15 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 120,
+                      damping: 15,
+                    }}
                   >
                     {card.description}
                   </motion.p>
                 )}
               </div>
-
-              
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 };
 

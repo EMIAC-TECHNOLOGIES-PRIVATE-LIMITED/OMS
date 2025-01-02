@@ -36,16 +36,21 @@ const LoggedOutHeader: React.FC = () => {
   };
 
   return (
-    <header className="bg-brand text-white shadow-premium sticky top-0 z-50">
+    <motion.header
+      className="bg-white text-black shadow-md sticky top-0 z-50 rounded-full"
+      style={{ maxWidth: "90%", margin: "0 auto", padding: "10px" }}
+      initial={{ y: -100, opacity: 0 }} // Start position
+      animate={{ y: 0, opacity: 1 }} // End position
+      transition={{ duration: 0.5, ease: "easeOut" }} // Animation duration and easing
+    >
       <div className="container mx-auto flex items-center justify-between p-4">
-        <a href="/" className="flex items-center space-x-2 bg">
+        <a href="/" className="flex items-center space-x-2">
           <img
             src="./image.png"
             alt="Brand Logo"
             className="h-8 w-8"
           />
-          <span className="font-bold text-lg">EMIAC
-            Technologies</span>
+          <span className="font-bold text-lg">EMIAC Technologies</span>
         </a>
 
         <div
@@ -59,7 +64,7 @@ const LoggedOutHeader: React.FC = () => {
                 onMouseEnter={() => handleMouseEnterMenu(menuTitle)}
                 className="relative"
               >
-                <button className="flex items-center space-x-1 hover:text-brand-light transition">
+                <button className="flex items-center space-x-1 hover:text-gray-500 transition">
                   <span>{menuTitle}</span>
                   <motion.svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -87,14 +92,11 @@ const LoggedOutHeader: React.FC = () => {
             className={`
               absolute left-1/2 top-full mt-1
               transform -translate-x-1/2
-              w-[400px] bg-white text-brand shadow-lg rounded-md
+              w-[400px] bg-white text-black shadow-lg rounded-md
               ${activeMenu ? "block" : "hidden"}
             `}
           >
-            <div
-              className="p-6"
-              style={{ paddingTop: "12px" }} // Added buffer space between button and menu
-            >
+            <div className="p-6">
               <AnimatePresence mode="wait">
                 {activeMenu && (
                   <motion.div
@@ -131,19 +133,19 @@ const LoggedOutHeader: React.FC = () => {
         <div className="hidden sm:flex space-x-4">
           <a
             href="/login"
-            className="px-4 py-2 bg-white text-brand font-medium rounded-md shadow hover:bg-neutral-100 transition"
+            className="px-4 py-2 border-2 border-brand text-brand font-medium rounded-md shadow hover:bg-gray-200 transition"
           >
-            Login
+            TALK TO SALES
           </a>
           <a
             href="/signup"
-            className="px-4 py-2 bg-brand-light text-white font-medium rounded-md shadow hover:bg-brand-dark transition"
+            className="px-4 py-2 bg-brand text-white font-medium rounded-md shadow hover:bg-gray-700 transition"
           >
-            Sign Up
+            GET STARTED
           </a>
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 };
 
