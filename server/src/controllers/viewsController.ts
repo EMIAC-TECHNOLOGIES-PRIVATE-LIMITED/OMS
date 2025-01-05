@@ -434,6 +434,7 @@ function sanitizeFilters(filters: any, permittedColumns: string[]): any {
     const operators = ['AND', 'OR'];
     const keys = Object.keys(filters);
 
+    // Ensure only one logical operator is provided
     if (keys.length !== 1 || !operators.includes(keys[0])) {
         return {};
     }
@@ -445,16 +446,39 @@ function sanitizeFilters(filters: any, permittedColumns: string[]): any {
         return {};
     }
 
-    const filteredConditions = conditions.filter((cond: any) => {
+    // Validate and sanitize conditions
+    const sanitizedConditions = conditions.map((cond: any) => {
         const field = Object.keys(cond)[0];
-        return permittedColumns.includes(field);
-    });
+        const value = cond[field];
 
-    if (filteredConditions.length === 0) {
-        return {};
-    }
+        // Ensure the field is permitted
+        if (!permittedColumns.includes(field)) {
+            return null;
+        }
 
-    return { [operator]: filteredConditions };
+        // Validate the value conforms to Prisma filter syntax
+        if (typeof value !== 'object') {
+            return null;
+        }
+
+        const validFilterClauses = [
+            'equals', 'not', 'in', 'notIn', 'lt', 'lte', 'gt', 'gte',
+            'contains', 'startsWith', 'endsWith', 'mode', 'some', 'every', 'none', 'is', 'isNot',
+        ];
+
+        const sanitizedValue = Object.keys(value).reduce((acc: any, key) => {
+            if (validFilterClauses.includes(key)) {
+                acc[key] = value[key];
+            }
+            return acc;
+        }, {});
+
+        // Return null if no valid clauses remain
+        return Object.keys(sanitizedValue).length > 0 ? { [field]: sanitizedValue } : null;
+    }).filter(Boolean); // Remove null values
+
+    // Return sanitized filters if valid conditions remain
+    return sanitizedConditions.length > 0 ? { [operator]: sanitizedConditions } : {};
 }
 
 function sanitizeSorting(sorting: any, permittedColumns: string[]): any[] {

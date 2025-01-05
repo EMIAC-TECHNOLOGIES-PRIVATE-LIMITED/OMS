@@ -5,6 +5,7 @@ import Panel from '../Panel/Panel';
 import { EyeSlashIcon } from '@heroicons/react/24/outline';
 import ColumnSelector from '../ColumnSelector/ColumnSelector';
 import { availableColumnsTypes } from '../../../types';
+import { col } from 'framer-motion/client';
 
 interface ColumnPanelNewProps {
   resource: string;
@@ -28,8 +29,46 @@ const ColumnPanelNew: React.FC<ColumnPanelNewProps> = ({
   // Derive available columns from availableColumnsTypes
   const availableColumns = Object.keys(availableColumnsTypes);
 
+  // Sanitize applied filters and sorting based on selected columns 
+  const sanitizeFilterConfig = (columns: string[]) => {
+    const updatedFilterConfig = { ...filterConfig };
+
+    if (updatedFilterConfig.appliedFilters.AND) {
+      updatedFilterConfig.appliedFilters.AND = updatedFilterConfig.appliedFilters.AND.filter((filter) => {
+        const column = Object.keys(filter)[0];
+        return columns.includes(column);
+      });
+
+      if (updatedFilterConfig.appliedFilters.AND.length === 0) {
+        delete updatedFilterConfig.appliedFilters.AND;
+      }
+    } else if (updatedFilterConfig.appliedFilters.OR) {
+      updatedFilterConfig.appliedFilters.OR = updatedFilterConfig.appliedFilters.OR.filter((filter) => {
+        const column = Object.keys(filter)[0];
+        return columns.includes(column);
+      });
+
+      if (updatedFilterConfig.appliedFilters.OR.length === 0) {
+        delete updatedFilterConfig.appliedFilters.OR;
+      }
+    }
+
+    // Remove sorting for columns that are not selected
+    updatedFilterConfig.appliedSorting = updatedFilterConfig.appliedSorting.filter((sorting) => {
+      const column = Object.keys(sorting)[0];
+      return columns.includes(column);
+    });
+
+    return updatedFilterConfig;
+  };
+
+
+
   // Handle changes to selected columns
   const handleColumnsChange = (updatedColumns: string[]) => {
+
+    const filterConfig = sanitizeFilterConfig(updatedColumns);
+
     onFilterChange({
       ...filterConfig,
       columns: updatedColumns,

@@ -18,6 +18,7 @@ import FilterComponentNew from "../FilterComponent/FilterComponentNew";
 import DataTableNew from "../DataTable/DataTableNew";
 import ViewSidebarNew from "../ViewSidebar/ViewSidebarNew";
 import { getRandomCartoonName } from "../../utils/cartoons";
+import handleApiError from "../../utils/ErrorHandlers/APIError";
 
 interface DataPageNewProps {
   apiEndpoint: string;
@@ -39,7 +40,6 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
 
-  // Store the server's initial page & pageSize, so we know if the user changed them
   const [initialPage, setInitialPage] = useState<number>(1);
   const [initialPageSize, setInitialPageSize] = useState<number>(25);
 
@@ -70,13 +70,13 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
       setLoading(true);
       setError(null);
 
+      let retryAttempted = false;
+
       try {
-        let response: GetViewDataResponse;
-        if (viewId) {
-          response = await getViewData(resource, viewId);
-        } else {
-          response = await getViewData(resource);
-        }
+        const response = viewId
+          ? await getViewData(resource, viewId)
+          : await getViewData(resource);
+
         if (response.success) {
           const data = response.data;
 
@@ -112,13 +112,50 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
           setInitialViewName(data.viewName);
         }
       } catch (err: any) {
-        const errorMessage = err.response?.data?.message;
-        if (typeof errorMessage === "string") {
-          setError(errorMessage);
-        } else if (typeof errorMessage === "object" && errorMessage !== null) {
-          setError(JSON.stringify(errorMessage));
+        if (!retryAttempted) {
+          retryAttempted = true;
+          try {
+            const retryResponse = await getViewData(resource);
+            if (retryResponse.success) {
+              const data = retryResponse.data;
+
+              if (data.viewId !== currentViewId) {
+                setCurrentViewId(data.viewId);
+                window.localStorage.setItem(
+                  `${resource}-viewId`,
+                  data.viewId.toString()
+                );
+              }
+
+              setTableData(data.data);
+              setViews(data.views);
+              setTotalRecords(data.totalRecords);
+              setPage(data.page);
+              setPageSize(data.pageSize);
+              setInitialPage(data.page);
+              setInitialPageSize(data.pageSize);
+
+              setAvailableColumns(data.availableColumnsType);
+
+              setInitialFilterConfig({
+                columns: Object.keys(data.column),
+                appliedFilters: data.appliedFilters,
+                appliedSorting: data.appliedSorting,
+              });
+              setCurrentFilterConfig({
+                columns: Object.keys(data.column),
+                appliedFilters: data.appliedFilters,
+                appliedSorting: data.appliedSorting,
+              });
+              setCurrentViewName(data.viewName);
+              setInitialViewName(data.viewName);
+              return;
+            }
+          } catch (retryErr: any) {
+            setError(handleApiError(retryErr, "Retry failed while fetching view data."));
+          }
         } else {
-          setError("An error occurred while fetching view data.");
+          setError(handleApiError(err, "An error occurred while fetching view data."));
         }
       } finally {
         setLoading(false);
@@ -140,9 +177,6 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
   useEffect(() => {
     if (innitalLoading) return;
 
-    // If the user hasn't changed filters/sorting or the view name,
-    // AND hasn't changed pagination from the server-provided defaults,
-    // skip sending a second fetch.
     const isSameFilterAsServer =
       JSON.stringify(currentFilterConfig) === JSON.stringify(initialFilterConfig) &&
       currentViewName === initialViewName;
@@ -150,7 +184,6 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
     const isSamePaginationAsServer =
       page === initialPage && pageSize === initialPageSize;
 
-    // Only skip if both filter/sorting + pagination match server state
     if (isSameFilterAsServer && isSamePaginationAsServer) {
       return;
     }
@@ -184,14 +217,7 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
           setError("Failed to fetch filtered data.");
         }
       } catch (err: any) {
-        const errorMessage = err.response?.data?.message;
-        if (typeof errorMessage === "string") {
-          setError(errorMessage);
-        } else if (typeof errorMessage === "object" && errorMessage !== null) {
-          setError(JSON.stringify(errorMessage));
-        } else {
-          setError("An error occurred while fetching filtered data.");
-        }
+        setError(handleApiError(err, "An error occurred while fetching filtered data."));
       } finally {
         setLoading(false);
       }
@@ -205,30 +231,10 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
     resource,
     innitalLoading,
     initialFilterConfig,
-    currentViewName,
-    initialViewName,
     initialPage,
-    initialPageSize
+    initialPageSize,
   ]);
 
-  // Check if user changed filters/sorting or changed the view name
-  useEffect(() => {
-    const modified =
-      JSON.stringify(initialFilterConfig) !== JSON.stringify(currentFilterConfig) ||
-      initialViewName !== currentViewName;
-    setIsModified(modified);
-  }, [initialFilterConfig, currentFilterConfig, initialViewName, currentViewName]);
-
-  // Handle switching to a different saved view
-  const handleViewChange = useCallback(
-    (viewId: number) => {
-      window.localStorage.setItem(`${resource}-viewId`, viewId.toString());
-      fetchViewData(viewId);
-    },
-    [resource, fetchViewData]
-  );
-
-  // Save a new or updated view
   const handleSaveView = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -275,14 +281,7 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
         }
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message;
-      if (typeof errorMessage === "string") {
-        setError(errorMessage);
-      } else if (typeof errorMessage === "object" && errorMessage !== null) {
-        setError(JSON.stringify(errorMessage));
-      } else {
-        setError("An error occurred while saving the view.");
-      }
+      setError(handleApiError(err, "An error occurred while saving the view."));
     } finally {
       setLoading(false);
     }
@@ -294,7 +293,6 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
     initialViewName,
   ]);
 
-  // Delete an existing view
   const handleDeleteView = useCallback(
     async (viewToDelete: View) => {
       setLoading(true);
@@ -311,34 +309,12 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
           setError("Failed to refresh views after deletion.");
         }
       } catch (err: any) {
-        const errorMessage = err.response?.data?.message;
-        if (typeof errorMessage === "string") {
-          setError(errorMessage);
-        } else if (typeof errorMessage === "object" && errorMessage !== null) {
-          setError(JSON.stringify(errorMessage));
-        } else {
-          setError("An error occurred while deleting the view.");
-        }
+        setError(handleApiError(err, "An error occurred while deleting the view."));
       } finally {
         setLoading(false);
       }
     },
     [resource, currentViewId, fetchViewData]
-  );
-
-  // Filter changes
-  const handleFilterChange = useCallback((newFilterConfig: FilterConfig) => {
-    setPage(1);
-    setCurrentFilterConfig(newFilterConfig);
-  }, []);
-
-  // Pagination changes
-  const handlePageChange = useCallback(
-    (newPage?: number, newPageSize?: number) => {
-      if (newPage) setPage(newPage);
-      if (newPageSize) setPageSize(newPageSize);
-    },
-    []
   );
 
   return (
@@ -347,11 +323,17 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
         resource={resource}
         pageTitle={pageTitle}
         filterConfig={currentFilterConfig}
-        onFilterChange={handleFilterChange}
+        onFilterChange={(newFilterConfig) => {
+          setPage(1);
+          setCurrentFilterConfig(newFilterConfig);
+        }}
         page={page}
         pageSize={pageSize}
         totalPages={Math.ceil(totalRecords / pageSize)}
-        handlePageChange={handlePageChange}
+        handlePageChange={(newPage, newPageSize) => {
+          if (newPage) setPage(newPage);
+          if (newPageSize) setPageSize(newPageSize);
+        }}
         currentViewName={currentViewName}
         setCurrentViewName={setCurrentViewName}
         availableColumnsTypes={availableColumns}
@@ -362,7 +344,10 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
             views={views}
             resource={resource}
             currentViewId={currentViewId}
-            onSelectView={handleViewChange}
+            onSelectView={(viewId) => {
+              window.localStorage.setItem(`${resource}-viewId`, viewId.toString());
+              fetchViewData(viewId);
+            }}
             onDeleteView={handleDeleteView}
           />
         </div>

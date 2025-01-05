@@ -1,5 +1,5 @@
 import { atom, atomFamily, selectorFamily } from 'recoil';
-import { FrontendAvailableColumns, FilterConfig, View } from '../../types';
+import { FrontendAvailableColumns, FilterConfig, View } from '../../../../shared/src/types/';
 
 type ResourceKey = string;
 

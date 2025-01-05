@@ -10,7 +10,7 @@ export interface UserTableRow {
   srNo: number;
   name: string;
   role: string;
-  isActive: string;
+  isActive: JSX.Element;
   id: number;
 }
 

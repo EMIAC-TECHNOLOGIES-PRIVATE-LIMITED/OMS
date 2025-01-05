@@ -2,15 +2,20 @@ import Footer from './components/Footer/Footer';
 import { Outlet } from 'react-router-dom';
 import LoggedInHeader from './components/Header/LoggedInHeader';
 import LoggedOutHeader from './components/Header/LoggedOutHeader';
-import Cookies from 'js-cookie';
+import { useRecoilValue } from 'recoil';
+import { authAtom } from "./store/atoms/atoms";
 
 function Layout() {
+    const { isAuthenticated, loading } = useRecoilValue(authAtom);
 
-    const initialAuthFlag = Cookies.get('isAuthenticated') === 'true';
+    
+    if (loading) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <>
-            {initialAuthFlag ? <LoggedInHeader /> : <LoggedOutHeader />}
+            {isAuthenticated ? <LoggedInHeader /> : <LoggedOutHeader />}
             <Outlet />
             <Footer />
         </>

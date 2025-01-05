@@ -343,24 +343,78 @@ export enum LogicalOperator {
     OR = 'OR'
 }
 
+export interface FilterCondition {
+    equals?: string | number | boolean | Date;
+    not?: string | number | boolean | Date | FilterCondition;
+    in?: Array<string | number | boolean | Date>;
+    notIn?: Array<string | number | boolean | Date>;
+    lt?: string | number | Date;
+    lte?: string | number | Date;
+    gt?: string | number | Date;
+    gte?: string | number | Date;
+    contains?: string;
+    startsWith?: string;
+    endsWith?: string;
+    mode?: 'default' | 'insensitive';
+    some?: FilterCondition;
+    every?: FilterCondition;
+    none?: FilterCondition;
+    is?: FilterCondition;
+    isNot?: FilterCondition;
+}
+
+// Interface for Sorting
+export interface SortingConfig {
+    [key: string]: 'asc' | 'desc';
+}
+
+// Main FilterConfig Interface
 export interface FilterConfig {
     columns: string[];
     appliedFilters: {
         [key in LogicalOperator]?: Array<{
-            [key: string]: {
-                contains?: string;
-                equals?: string | number;
-                startsWith?: string;
-                endsWith?: string;
-            };
+            [key: string]: FilterCondition;
         }>;
     };
-    appliedSorting: Array<{
-        [key: string]: 'asc' | 'desc';
-    }>;
+    appliedSorting: SortingConfig[];
 }
+
+
+// export interface FilterConfig {
+//     columns: string[];
+//     appliedFilters: {
+//         [key in LogicalOperator]?: Array<{
+//             [key: string]: {
+//                 contains?: string;
+//                 equals?: string | number;
+//                 startsWith?: string;
+//                 endsWith?: string;
+//             };
+//         }>;
+//     };
+//     appliedSorting: Array<{
+//         [key: string]: 'asc' | 'desc';
+//     }>;
+// }
 
 export interface View {
     id: number;
     viewName: string;
 }
+
+export interface APIResponse<T = any> {
+    status: number; // HTTP status code
+    message: string; // Success or descriptive message
+    data: T; // The response data, can be of any type or specified type
+    success: boolean; // Indicates if the request was successful
+}
+
+export interface APIError {
+    status: number; // HTTP status code
+    message: string; // Error message
+    errors: any; // Detailed error information, can be any type
+    success: boolean; // Always false for API errors
+}
+
+
+

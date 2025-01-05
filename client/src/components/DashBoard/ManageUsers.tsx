@@ -5,6 +5,7 @@ import { getAllUsers } from '../../utils/apiService/adminAPI';
 import { useNavigate } from 'react-router-dom';
 import AdminDataTable from './AdminDataTable';
 import { UserTableRow } from '../../types/adminTable';
+import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 
 interface Column<T> {
   header: string;
@@ -26,7 +27,17 @@ const ManageUsers: React.FC = () => {
             srNo: index + 1,
             name: user.name,
             role: user.role.name,
-            isActive: user.suspended ? 'No' : 'Yes',
+            isActive: user.suspended ? (
+              <div className="flex items-center">
+                <XCircleIcon className="w-5 h-5 text-red-500 mr-2" />
+                <span className="text-red-500 font-medium">Suspended</span>
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <CheckCircleIcon className="w-5 h-5 text-green-500 mr-2" />
+                <span className="text-green-500 font-medium">Active</span>
+              </div>
+            ),
             id: user.id,
           }));
           setUsers(mappedUsers);
@@ -47,7 +58,7 @@ const ManageUsers: React.FC = () => {
     { header: 'Sr No', accessor: 'srNo' },
     { header: 'Name', accessor: 'name' },
     { header: 'Role', accessor: 'role' },
-    { header: 'Is Active', accessor: 'isActive' },
+    { header: 'Status', accessor: 'isActive' },
   ];
 
   const handleRowClick = (row: UserTableRow) => {

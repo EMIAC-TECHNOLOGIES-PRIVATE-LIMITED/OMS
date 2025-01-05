@@ -119,11 +119,13 @@ const ImageSection: FC<ImageSectionProps> = () => {
           {/* Background Images - Increased size by 50% */}
           <div className="relative w-[95vmin] h-[95vmin] -left-24">
             {backgroundImages.map((src, index) => {
-              const visible = useTransform(
-                scrollYProgress,
-                [index * 0.25, (index + 0.5) * 0.25, (index + 1) * 0.25],
-                [0, 1, 0]
-              );
+              // Updated opacity mapping to remove fade-in and fade-out effects
+              const visible = useTransform(scrollYProgress, (latest) => {
+                const start = index * 0.25;
+                const end = (index + 1) * 0.25;
+                return latest >= start && latest < end ? 1 : 0;
+              });
+
               return (
                 <motion.img
                   key={src}
@@ -144,7 +146,7 @@ const ImageSection: FC<ImageSectionProps> = () => {
 const ParallaxSection: FC = () => {
   return (
     <div className="flex justify-center items-start mx-auto max-w-[1900px]">
-      <div className="w-[40%] px-4">
+      <div className="w-[40%] px-16">
         {textSections.map((section, index) => (
           <TextSection
             key={index}

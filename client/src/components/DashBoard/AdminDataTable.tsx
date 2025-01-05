@@ -1,5 +1,5 @@
 
-import { Spinner } from '../UI'; // Ensure Spinner is correctly imported
+import { Spinner } from '../UI'; 
 
 interface Column<T> {
   header: string;

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FilterConfig } from '../../../../../shared/src/types';
 import Button from '../Button/Button';
 import Panel from '../Panel/Panel';
@@ -23,8 +23,15 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
 }) => {
   const [isSortingPanelOpen, setIsSortingPanelOpen] = useState<boolean>(false);
   const [localSorting, setLocalSorting] = useState<{ [key: string]: 'asc' | 'desc' }[]>(
-    filterConfig.appliedSorting || []
+    filterConfig.appliedSorting
   );
+
+  useEffect(() => {
+    setLocalSorting(filterConfig.appliedSorting);
+  }, [filterConfig.appliedSorting]);
+
+  console.log(`The received value for filterConfig.appliedSorting is `, filterConfig.appliedSorting);
+
   const panelRef = useRef<HTMLDivElement>(null);
 
   const toggleSortingPanel = () => {
@@ -121,7 +128,7 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
       <Button
         onClick={toggleSortingPanel}
         icon={<ArrowsUpDownIcon className="w-5 h-5 mr-1" />}
-        label={`Sort (${filterConfig.appliedSorting.length})`}
+        label={`Sort(${filterConfig.appliedSorting.length})`}
       />
 
       <Panel
@@ -159,7 +166,7 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
 
                 {/* Direction Selection */}
                 <div
-                  className={`relative mr-2 ${column === '' ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
+                  className={`relative mr - 2 ${column === '' ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
                     }`}
                 >
                   <select

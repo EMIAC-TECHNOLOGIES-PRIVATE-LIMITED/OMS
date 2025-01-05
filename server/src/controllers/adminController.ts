@@ -100,6 +100,16 @@ export async function manageUserAccess(req: Request, res: Response): Promise<Res
                     granted: override.granted,
                 })),
             });
+
+            await prismaClient.view.deleteMany({
+                where: {
+                    AND: [
+                        { userId },
+                        { viewName: 'grid' },
+                    ],
+                },
+            });
+
         }
 
         return res.status(200).json(new APIResponse(200, 'User access updated successfully', {}, true).toJSON());
@@ -280,6 +290,15 @@ export async function manageRoleAccess(req: Request, res: Response): Promise<Res
         if (!role) {
             return res.status(404).json(new APIError(404, 'Role not found or unable to update', [], false).toJSON());
         }
+
+        await prismaClient.view.deleteMany({
+            where: {
+                AND: [
+                    { viewName: 'grid' },
+                    { user: { roleId } },
+                ],
+            },
+        });
 
         return res.status(200).json(new APIResponse(200, 'Role updated successfully', {}, true).toJSON());
     } catch (error) {

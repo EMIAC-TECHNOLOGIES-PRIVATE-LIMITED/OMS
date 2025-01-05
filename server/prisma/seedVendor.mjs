@@ -1,4 +1,3 @@
-// seed-vendors.mjs
 
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs/promises';

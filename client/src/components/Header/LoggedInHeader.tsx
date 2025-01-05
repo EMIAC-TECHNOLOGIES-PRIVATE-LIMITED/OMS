@@ -32,6 +32,10 @@ function LoggedInHeader() {
         }
       });
 
+      //clear local storage
+      localStorage.clear();
+
+
       navigate('/');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -82,7 +86,11 @@ function LoggedInHeader() {
     );
   }
 
-  const permissions = auth.userInfo?.permissions || [];
+
+  const permissions = [...(auth.userInfo?.permissions || [])];
+
+  permissions.sort((a, b) => a.name.localeCompare(b.name));
+
 
   return (
     <header className="bg-white shadow-premium">
