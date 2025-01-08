@@ -416,5 +416,12 @@ export interface APIError {
     success: boolean; // Always false for API errors
 }
 
+export interface UpdateDataResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data: Record<string, any>;
+}
+
 
 

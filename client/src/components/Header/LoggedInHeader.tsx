@@ -87,9 +87,12 @@ function LoggedInHeader() {
   }
 
 
-  const permissions = [...(auth.userInfo?.permissions || [])];
+  let permissions = [...(auth.userInfo?.permissions || [])];
 
   permissions.sort((a, b) => a.name.localeCompare(b.name));
+  permissions = permissions.filter((item) => item.name.charAt(0) !== '_');
+
+  console.log(permissions);
 
 
   return (

@@ -25,6 +25,7 @@ const viewsMiddleware = async (
     res: Response,
     next: NextFunction
 ): Promise<Response | void> => {
+    // console.log("Views Middleware Invoked");
     const { resource, viewId } = req.params;
     const accessToken = req.cookies.accessToken;
 

@@ -12,7 +12,7 @@ const DashboardLayout: React.FC = () => {
     return <div>Loading...</div>;
   }
 
-  if (userInfo.role.name !== 'admin') {
+  if (userInfo.role.name !== 'Admin') {
     return <>
       <UserDashboard />
     </>

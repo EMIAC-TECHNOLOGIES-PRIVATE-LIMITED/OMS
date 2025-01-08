@@ -34,7 +34,7 @@ export async function adminMiddleware(req: CustomRequest, res: Response, next: N
     try {
         const decoded = jwt.verify(token, jwtSecret) as { email: string; userId: number; role: { name: string } };
 
-        if (decoded.role.name !== 'admin') {
+        if (decoded.role.name !== 'Admin') {
             return res
                 .status(STATUS_CODES.FORBIDDEN)
                 .json(

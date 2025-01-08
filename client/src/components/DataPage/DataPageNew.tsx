@@ -15,7 +15,7 @@ import {
   View,
 } from "../../../../shared/src/types";
 import FilterComponentNew from "../FilterComponent/FilterComponentNew";
-import DataTableNew from "../DataTable/DataTableNew";
+import DataTableNew from "../DataTable/DataTable";
 import ViewSidebarNew from "../ViewSidebar/ViewSidebarNew";
 import { getRandomCartoonName } from "../../utils/cartoons";
 import handleApiError from "../../utils/ErrorHandlers/APIError";
@@ -235,6 +235,15 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
     initialPageSize,
   ]);
 
+  // setting isModified state 
+  useEffect(() => {
+    const isSameFilterAsInitial =
+      JSON.stringify(currentFilterConfig) === JSON.stringify(initialFilterConfig);
+    const isSameViewNameAsInitial = currentViewName === initialViewName;
+
+    setIsModified(!isSameFilterAsInitial || !isSameViewNameAsInitial);
+  }, [currentFilterConfig, initialFilterConfig, currentViewName, initialViewName]);
+
   const handleSaveView = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -358,6 +367,13 @@ const DataPageNew: React.FC<DataPageNewProps> = ({
               availableColumns={Object.keys(availableColumns)}
               loading={loading}
               error={error}
+              resource={resource}
+              handleDataChange={(data) => {
+                setTableData(data);
+              }}
+              handleTotalRecordsChange={() => {
+                setTotalRecords(prev => prev - 1);
+              }}
             />
             <img
               src="./image.png"

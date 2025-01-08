@@ -350,7 +350,7 @@ export const getRolePermissionsAndResources = async function (
 export const getAllPermissionsAndResources = async function (): Promise<{
     permissions: { id: number; name: string }[];
     resources: { id: number; table: string; column: string }[];
-}> {
+    }> {
     try {
         const cacheData = permissionCache.get("allPermissionsAndResources") as {
             permissions: { id: number; name: string }[];

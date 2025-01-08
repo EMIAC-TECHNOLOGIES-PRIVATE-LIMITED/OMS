@@ -7,8 +7,10 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
+    "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../shared/types/*"]
+      "@shared/*": ["../shared/types/*"],
+      "@/*": ["./src/*"]
     },
 
     /* Bundler mode */

@@ -5,7 +5,6 @@ import Panel from '../Panel/Panel';
 import { EyeSlashIcon } from '@heroicons/react/24/outline';
 import ColumnSelector from '../ColumnSelector/ColumnSelector';
 import { availableColumnsTypes } from '../../../types';
-import { col } from 'framer-motion/client';
 
 interface ColumnPanelNewProps {
   resource: string;

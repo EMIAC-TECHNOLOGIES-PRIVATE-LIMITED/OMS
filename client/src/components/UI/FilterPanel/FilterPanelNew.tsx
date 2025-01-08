@@ -348,7 +348,7 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
     }
   }, []);
 
-  // Order columns based on availability
+
   const orderedColumns = useMemo(
     () => Object.keys(availableColumnsTypes).filter((col) => filterConfig.columns.includes(col)),
     [availableColumnsTypes, filterConfig.columns]

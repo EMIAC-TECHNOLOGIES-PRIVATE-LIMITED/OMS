@@ -74,3 +74,21 @@ export async function deleteView(
     viewId: number): Promise<DeleteViewResponse> {
     return apiRequest<DeleteViewResponse>(`/data/${route}/${viewId}`, 'DELETE');
 }
+
+
+export async function deleteData(
+    route: string,
+    data: {
+        id: number;
+    }
+): Promise<any> {
+    return apiRequest<any>(`/data/${route}/delete`, 'DELETE', undefined, data);
+}
+
+
+export async function updateData(
+    route: string,
+    data: Record<string, any>
+): Promise<any> {
+    return apiRequest<any>(`/data/${route}/update`, 'PUT', undefined, data);
+}

@@ -10,10 +10,10 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// TODO : remove cors and configure proxy from frontend
+// TODO: remove cors and configure proxy from frontend
 app.use(cors({
     origin: 'http://localhost:5173',
-    credentials : true
+    credentials: true
 }));
 
 const port = process.env.PORT || 3000;
@@ -25,6 +25,7 @@ app.get('/api/v1/health', (req, res) => {
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/data', dataRouter);
 app.use('/api/v1/admin', adminRouter);
+
 
 app.listen(port, () => {
     console.log(`Server Started at port : ${port}`);
