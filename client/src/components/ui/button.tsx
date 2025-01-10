@@ -20,9 +20,13 @@ const buttonVariants = cva(
         secondary:
           "bg-slate-100 text-slate-900 hover:bg-slate-100/80 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-800/80 rounded-full px-6 py-2 font-bold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out",
 
+        secondaryFlat: "bg-slate-100 text-slate-900 hover:bg-slate-100/80 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-800/80 rounded-full px-6 py-2 font-bold transition-all duration-300 ease-in-out border border-transparent focus-visible:ring-2 focus-visible:ring-slate-300 dark:focus-visible:ring-slate-600",
+
+
+
         // Ghost Button
         ghost:
-          "hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-50 rounded-full px-6 py-2 font-bold transition-all duration-300 ease-in-out",
+          "hover:bg-red-200 hover:text-red-900   tedark:hover:bg-slate-800 dark:hover:text-slate-50 rounded-full  px-6 py-2 font-bold transition-all duration-300 ease-in-out",
 
         // Link Button
         link:
@@ -47,7 +51,7 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
+        sm: "h-8  px-2",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
       },

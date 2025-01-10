@@ -6,7 +6,7 @@ import Spinner from "./Spinner/Spinner";
 import PaginationControlsRecoil from "./PaginationControls/PaginationControlsRecoil";
 import FilterListRecoil from "./FilterList/FilterListRecoil";
 import ColumnSelectorRecoil from "./ColumnSelector/ColumnSelectorRecoil";
-import Button from "./Button/Button";
+
 import Panel from "./Panel/Panel";
 import FilterPanelNew from "./FilterPanel/FilterPanelNew";
 import ColumnPanelNew from "./ColumnPanel/ColumnPanelNew";
@@ -15,4 +15,4 @@ import PaginationControlsNew from "./PaginationControls/PaginationControlsNew";
 
 
 
-export { PaginationControlsNew, SortingPanelNew, ColumnPanelNew, FilterPanelNew, Panel, Button, ColumnSelectorRecoil, FilterListRecoil, PaginationControlsRecoil, Spinner, ColumnSelector, FilterList, PaginationControls, SortingList }
+export { PaginationControlsNew, SortingPanelNew, ColumnPanelNew, FilterPanelNew, Panel, ColumnSelectorRecoil, FilterListRecoil, PaginationControlsRecoil, Spinner, ColumnSelector, FilterList, PaginationControls, SortingList }

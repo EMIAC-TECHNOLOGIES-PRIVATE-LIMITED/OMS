@@ -259,8 +259,8 @@ const DataTable: React.FC<DataTableNewProps> = ({
                             className={`btn ${!auth.userInfo.permissions.some(
                               (p: any) => p.name === `_update_${resource}`
                             )
-                                ? 'cursor-not-allowed'
-                                : 'cursor-pointer'
+                              ? 'cursor-not-allowed'
+                              : 'cursor-pointer'
                               }`}
                             disabled={
                               !auth.userInfo.permissions.some(
@@ -328,8 +328,8 @@ const DataTable: React.FC<DataTableNewProps> = ({
                             className={`btn ${!auth.userInfo.permissions.some(
                               (p: any) => p.name === `_delete_${resource}`
                             )
-                                ? 'cursor-not-allowed'
-                                : 'cursor-pointer'
+                              ? 'cursor-not-allowed'
+                              : 'cursor-pointer'
                               }`}
                             disabled={
                               !auth.userInfo.permissions.some(

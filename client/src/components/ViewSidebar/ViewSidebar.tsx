@@ -1,193 +1,185 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-  memo,
-} from "react"
-import { motion } from "framer-motion"
-import { View } from "../../../../shared/src/types"
-import { Trash2, Grid, BarChart2, X } from "lucide-react"
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { motion } from "framer-motion";
+import { Trash2, Grid, BarChart2, X } from "lucide-react";
+import { View } from "../../../../shared/src/types";
+
+// Shadcn sidebar components
 import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarRail,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
-  SidebarRail,
-} from "@/components/ui/sidebar"
+  SidebarInput,
+} from "@/components/ui/sidebar";
+import { Label } from "@/components/ui/label";
 
-/**
- * Props for ViewSidebarNew.
- */
 interface ViewSidebarNewProps {
-  resource: string
+  resource: string;
   views: Array<{
-    id: number
-    viewName: string
-  }>
-  currentViewId: number | null
-  onSelectView: (viewId: number) => void
-  onDeleteView: (view: View) => Promise<void>
+    id: number;
+    viewName: string;
+  }>;
+  currentViewId: number | null;
+  onSelectView: (viewId: number) => void;
+  onDeleteView: (view: View) => Promise<void>;
 }
 
-/**
- * Renders a shadcn-based sidebar for displaying and managing "views".
- */
 const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
   views,
   currentViewId,
   onSelectView,
   onDeleteView,
 }) => {
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
-  const [viewToDelete, setViewToDelete] = useState<View | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [viewToDelete, setViewToDelete] = useState<View | null>(null);
 
-  const modalRef = useRef<HTMLDivElement>(null)
+  // Searching among views
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Sort views: default "grid" first, then the rest alphabetically
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // 1) Sort: "grid" first, then alpha
   const sortedViews = useMemo(() => {
-    const defaultView = views.filter((v) => v.viewName === "grid")
+    const defaultView = views.filter((v) => v.viewName === "grid");
     const otherViews = views
       .filter((v) => v.viewName !== "grid")
-      .sort((a, b) => a.viewName.localeCompare(b.viewName))
-    return [...defaultView, ...otherViews]
-  }, [views])
+      .sort((a, b) => a.viewName.localeCompare(b.viewName));
+    return [...defaultView, ...otherViews];
+  }, [views]);
 
-  // Handle clicking outside the modal to close it
+  // 2) Filter by search
+  const filteredViews = useMemo(() => {
+    if (!searchQuery.trim()) return sortedViews;
+    const lowSearch = searchQuery.toLowerCase();
+    return sortedViews.filter((v) =>
+      v.viewName.toLowerCase().includes(lowSearch)
+    );
+  }, [searchQuery, sortedViews]);
+
+  // Close modal on outside click
   const handleClickOutside = useCallback(
     (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        setIsModalOpen(false)
-        setViewToDelete(null)
+        setIsModalOpen(false);
+        setViewToDelete(null);
       }
     },
     []
-  )
+  );
 
   useEffect(() => {
     if (isModalOpen) {
-      document.addEventListener("mousedown", handleClickOutside)
+      document.addEventListener("mousedown", handleClickOutside);
     } else {
-      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("mousedown", handleClickOutside);
     }
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [isModalOpen, handleClickOutside])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isModalOpen, handleClickOutside]);
 
-  // Handle selecting a view
+  // ---------------
+  // Handlers
+  // ---------------
   const handleSelectView = (viewId: number) => {
-    onSelectView(viewId)
-  }
+    onSelectView(viewId);
+  };
 
-  // Handle delete button click
   const handleDeleteClick = (view: View) => {
-    setViewToDelete(view)
-    setIsModalOpen(true)
-  }
+    setViewToDelete(view);
+    setIsModalOpen(true);
+  };
 
-  // Confirm deletion
   const handleConfirmDelete = async () => {
-    if (!viewToDelete) return
+    if (!viewToDelete) return;
     try {
-      await onDeleteView(viewToDelete)
-      setIsModalOpen(false)
-      setViewToDelete(null)
+      await onDeleteView(viewToDelete);
+      setIsModalOpen(false);
+      setViewToDelete(null);
     } catch (error) {
-      console.error("Error deleting view:", error)
+      console.error("Error deleting view:", error);
     }
-  }
+  };
 
-  // Cancel deletion
   const handleCancelDelete = () => {
-    setIsModalOpen(false)
-    setViewToDelete(null)
-  }
+    setIsModalOpen(false);
+    setViewToDelete(null);
+  };
 
+  // ---------------
+  // Render
+  // ---------------
   return (
-    <>
-      {/* Shadcn Sidebar */}
-      <Sidebar className="h-full bg-neutral-100 border-r border-neutral-200">
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
-                {/* You can replace this with any heading, icon, or brand. */}
-                <div className="flex items-center gap-2">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <Grid className="size-4" />
-                  </div>
-                  <div className="leading-none">
-                    <span className="font-semibold text-neutral-800">
-                      All Views
-                    </span>
-                  </div>
-                </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
+    <Sidebar className="w-64 shrink-0">
+      <SidebarHeader>
+        {/* Minimal search input for filtering views */}
+        <div className="relative">
+          <Label htmlFor="view-search" className="sr-only">
+            Search Views
+          </Label>
+          <SidebarInput
+            id="view-search"
+            placeholder="Search views..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </SidebarHeader>
 
-        <SidebarContent>
-          <SidebarGroup>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Views</SidebarGroupLabel>
+          <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                {/* We treat "Views" as a top-level label. */}
-                <SidebarMenuButton asChild>
-                  <span className="font-medium text-neutral-800 cursor-default">
-                    Views
-                  </span>
-                </SidebarMenuButton>
-                {/* Submenu items: each sorted view. */}
-                <SidebarMenuSub>
-                  {sortedViews.map((view) => (
-                    <SidebarMenuSubItem key={view.id}>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={view.id === currentViewId}
-                      >
-                        <button
-                          className="flex w-full items-center justify-between gap-2"
-                          onClick={() => handleSelectView(view.id)}
-                        >
-                          <div className="flex items-center gap-2">
-                            {view.viewName === "grid" ? (
-                              <Grid className="w-5 h-5" />
-                            ) : (
-                              <BarChart2 className="w-5 h-5" />
-                            )}
-                            <span>{view.viewName}</span>
-                          </div>
-                          {view.viewName !== "grid" && (
-                            <Trash2
-                              className="w-5 h-5 text-red-500 hover:text-red-700"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDeleteClick(view)
-                              }}
-                            />
-                          )}
-                        </button>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              </SidebarMenuItem>
+              {filteredViews.map((view) => (
+                <SidebarMenuItem key={view.id}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={view.id === currentViewId}
+                  >
+                    <button
+                      onClick={() => handleSelectView(view.id)}
+                      className="flex w-full items-center gap-2 px-2 py-1 focus:outline-none"
+                    >
+                      {view.viewName === "grid" ? (
+                        <Grid className="w-5 h-5" />
+                      ) : (
+                        <BarChart2 className="w-5 h-5" />
+                      )}
+                      <span>
+                        {view.viewName === "grid" ? "Default Grid" : view.viewName}
+                      </span>
+                    </button>
+                  </SidebarMenuButton>
+
+                  {/* Delete button for non-grid views */}
+                  {view.viewName !== "grid" && (
+                    <button
+                      onClick={() => handleDeleteClick(view)}
+                      className="ml-2 text-red-500 hover:text-red-700 focus:outline-none"
+                      aria-label={`Delete view ${view.viewName}`}
+                      title="Delete View"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
-          </SidebarGroup>
-        </SidebarContent>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
 
-        <SidebarRail />
-      </Sidebar>
+      {/* This adds a small collapsed rail that appears if the user shrinks the sidebar */}
+      <SidebarRail />
 
-      {/* Deletion Confirmation Modal (still uses framer-motion for animation) */}
+      {/* Deletion Confirmation Modal */}
       {isModalOpen && viewToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <motion.div
@@ -212,8 +204,8 @@ const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
             </div>
             <p className="text-neutral-700 mb-4">
               Are you sure you want to delete the view "
-              <span className="font-bold">{viewToDelete.viewName}</span>"? This
-              action cannot be undone.
+              <span className="font-bold">{viewToDelete.viewName}</span>
+              "? This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-2">
               <button
@@ -232,8 +224,8 @@ const ViewSidebarNew: React.FC<ViewSidebarNewProps> = ({
           </motion.div>
         </div>
       )}
-    </>
-  )
-}
+    </Sidebar>
+  );
+};
 
-export default memo(ViewSidebarNew)
+export default memo(ViewSidebarNew);

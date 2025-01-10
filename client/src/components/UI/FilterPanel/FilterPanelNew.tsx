@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { FilterConfig, LogicalOperator } from '../../../../../shared/src/types';
-import Button from '../Button/Button';
+
 import { FunnelIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import IconButton from '../IconButton/IconButton';
 import { availableColumnsTypes } from '../../../types';
+import { Button } from '@/components/ui/button';
 
 // Custom hook for debouncing
 const useDebounce = <T extends (...args: any[]) => void>(callback: T, delay: number): T => {
@@ -454,9 +455,12 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
     <div className="relative">
       <Button
         onClick={() => setIsFilterPanelOpen((prev) => !prev)}
-        icon={<FunnelIcon className="w-5 h-5 mr-1" />}
-        label={`Filters (${appliedFilters.length})`}
-      />
+        variant="secondary"
+      >
+        <FunnelIcon className="w-5 h-5 mr-1" />
+        {`Filters (${appliedFilters.length})`}
+
+      </Button>
 
       {isFilterPanelOpen && (
         <div

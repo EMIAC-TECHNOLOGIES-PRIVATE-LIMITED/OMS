@@ -1,4 +1,35 @@
+"use client"
+
 import React from 'react';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ArrowBigDown, ArrowDown } from 'lucide-react';
+
+const pageSizeOptions = [
+  { value: 25, label: "25" },
+  { value: 50, label: "50" },
+  { value: 100, label: "100" },
+];
 
 interface PaginationControlsProps {
   page: number;
@@ -7,65 +38,141 @@ interface PaginationControlsProps {
   handlePageChange: (page: number, pageSize: number) => void;
 }
 
-const PaginationControlsNew: React.FC<PaginationControlsProps> = ({
+export default function PaginationControlsNew({
   page,
   pageSize,
   totalPages,
   handlePageChange,
-}) => {
+}: PaginationControlsProps) {
+  const [open, setOpen] = React.useState(false);
+  const [selectedPageSize, setSelectedPageSize] = React.useState<number>(pageSize);
+
+  React.useEffect(() => {
+    // Sync local state with prop updates if needed
+    setSelectedPageSize(pageSize);
+  }, [pageSize]);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+
+    if (totalPages >= 1) pages.push(1);
+    if (totalPages >= 2) pages.push(2);
+
+    if (totalPages > 5 && page > 3) {
+      pages.push('ellipsis-prev');
+    }
+
+    if (page > 2 && page < totalPages - 1) {
+      pages.push(page - 1);
+      pages.push(page);
+      pages.push(page + 1);
+    } else if (page === totalPages - 1) {
+      pages.push(page - 1);
+      pages.push(page);
+      pages.push(page + 1);
+    } else if (page === 1 || page === 2) {
+      pages.push(3);
+      if (totalPages > 5) pages.push('ellipsis-next');
+    }
+
+    if (totalPages > 4) {
+      pages.push(totalPages - 1);
+      pages.push(totalPages);
+    }
+
+    const uniquePages = Array.from(new Set(pages)).filter(
+      (p) => p !== 'ellipsis-prev' && p !== 'ellipsis-next' && typeof p === 'number' && p >= 1 && p <= totalPages
+    ) as number[];
+
+    return uniquePages;
+  };
+
+  const onPageClick = (selectedPage: number) => {
+    if (selectedPage !== page) {
+      handlePageChange(selectedPage, selectedPageSize);
+    }
+  };
 
   return (
-    <div className="pagination-controls mt-4 flex items-center space-x-4">
-      {/* Page Size Selection */}
-      <label className="flex items-center space-x-2">
-        <span>Page Size:</span>
-        <select
-          value={pageSize}
-          onChange={(e) => handlePageChange(1, parseInt(e.target.value, 10))}
-          className="border rounded p-1"
-        >
-          <option value="25">25</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-        </select>
-      </label>
+    <div className="pagination-controls mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+      {/* Page Size Dropdown using shadcn Popover and Command */}
+      <div className="flex items-center space-x-2">
+        <span className="font-medium text-sm text-muted-foreground">Page Size:</span>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="secondaryFlat" size="sm" className="w-[100px] justify-between">
+              {selectedPageSize ? selectedPageSize : "Select"}
+              <ArrowDown className="ml-1" size={16} />
+            </Button>
 
-      {/* Current Page Input */}
-      <label className="flex items-center space-x-2">
-        <span>Page:</span>
-        <input
-          type="number"
-          value={page}
-          min={1}
-          max={totalPages}
-          onChange={(e) => {
-            const newPage = Math.min(Math.max(parseInt(e.target.value, 10), 1), totalPages);
-            handlePageChange(newPage, pageSize);
-          }}
-          className="w-16 border rounded p-1 text-center"
-        />
-        <span>/ {totalPages}</span>
-      </label>
+          </PopoverTrigger>
+          <PopoverContent className="p-0" side="right" align="start">
+            <Command>
+              <CommandList>
+                <CommandEmpty>No results found.</CommandEmpty>
+                <CommandGroup>
+                  {pageSizeOptions.map((option) => (
+                    <CommandItem
+                      key={option.value}
+                      value={option.value.toString()}
+                      onSelect={(value) => {
+                        const newSize = parseInt(value, 10);
+                        setSelectedPageSize(newSize);
+                        setOpen(false);
+                        // Reset to first page when page size changes
+                        handlePageChange(1, newSize);
+                      }}
+                    >
+                      <span>{option.label}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
 
-      {/* Previous Page Button */}
-      <button
-        onClick={() => handlePageChange(page - 1, pageSize)}
-        disabled={page <= 1}
-        className="border rounded px-2 py-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        &lt;
-      </button>
+      {/* Pagination Component */}
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={(e) => {
+                e.preventDefault();
+                if (page > 1) handlePageChange(page - 1, selectedPageSize);
+              }}
+              isActive={page > 1}
+            />
+          </PaginationItem>
 
-      {/* Next Page Button */}
-      <button
-        onClick={() => handlePageChange(page + 1, pageSize)}
-        disabled={page >= totalPages}
-        className="border rounded px-2 py-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        &gt;
-      </button>
+          {getPageNumbers().map((pageNumber) => (
+            <PaginationItem key={pageNumber}>
+              <PaginationLink
+                href="#"
+                isActive={pageNumber === page}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onPageClick(pageNumber);
+                }}
+
+              >
+                {pageNumber}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+
+          <PaginationItem>
+            <PaginationNext
+              onClick={(e) => {
+                e.preventDefault();
+                if (page < totalPages) handlePageChange(page + 1, selectedPageSize);
+              }}
+              isActive={page < totalPages}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
     </div>
   );
-};
-
-export default PaginationControlsNew;
+}

@@ -3,26 +3,26 @@ import React from 'react';
 interface PaginationControlsProps {
   page: number;
   pageSize: number;
-  totalRecords: number;
-  onPageChange: (page: number, pageSize: number) => void;
+  totalPages: number;
+  handlePageChange: (page: number, pageSize: number) => void;
 }
 
-const PaginationControls: React.FC<PaginationControlsProps> = ({
+const PaginationControlsNew: React.FC<PaginationControlsProps> = ({
   page,
   pageSize,
-  totalRecords,
-  onPageChange,
+  totalPages,
+  handlePageChange,
 }) => {
-  const totalPages = Math.ceil(totalRecords / pageSize);
 
   return (
-    <div className="pagination-control mt-4 flex items-center space-x-4">
-      <label>
-        Page Size:
+    <div className="pagination-controls mt-4 flex items-center space-x-4">
+      {/* Page Size Selection */}
+      <label className="flex items-center space-x-2">
+        <span>Page Size:</span>
         <select
           value={pageSize}
-          onChange={(e) => onPageChange(page, parseInt(e.target.value))}
-          className="ml-2 border rounded p-1"
+          onChange={(e) => handlePageChange(1, parseInt(e.target.value, 10))}
+          className="border rounded p-1"
         >
           <option value="25">25</option>
           <option value="50">50</option>
@@ -30,32 +30,37 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
         </select>
       </label>
 
-      <label>
-        Page Number
+      {/* Current Page Input */}
+      <label className="flex items-center space-x-2">
+        <span>Page:</span>
         <input
-          className="mx-3 border rounded p-1"
           type="number"
           value={page}
           min={1}
           max={totalPages}
           onChange={(e) => {
-            onPageChange(parseInt(e.target.value), pageSize);
+            const newPage = Math.min(Math.max(parseInt(e.target.value, 10), 1), totalPages);
+            handlePageChange(newPage, pageSize);
           }}
+          className="w-16 border rounded p-1 text-center"
         />
-        / of {totalPages} pages.
+        <span>/ {totalPages}</span>
       </label>
+
+      {/* Previous Page Button */}
       <button
-        onClick={() => onPageChange(page - 1, pageSize)}
-        disabled={page === 1}
-        className="border rounded px-2 py-1"
+        onClick={() => handlePageChange(page - 1, pageSize)}
+        disabled={page <= 1}
+        className="border rounded px-2 py-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         &lt;
       </button>
 
+      {/* Next Page Button */}
       <button
-        onClick={() => onPageChange(page + 1, pageSize)}
-        disabled={page === totalPages}
-        className="border rounded px-2 py-1"
+        onClick={() => handlePageChange(page + 1, pageSize)}
+        disabled={page >= totalPages}
+        className="border rounded px-2 py-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         &gt;
       </button>
@@ -63,4 +68,4 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
   );
 };
 
-export default PaginationControls;
+export default PaginationControlsNew;

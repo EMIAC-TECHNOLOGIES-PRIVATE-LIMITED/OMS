@@ -365,7 +365,7 @@ export interface FilterCondition {
 
 // Interface for Sorting
 export interface SortingConfig {
-    [key: string]: 'asc' | 'desc';
+    [key: string]: 'asc' | 'desc'
 }
 
 // Main FilterConfig Interface

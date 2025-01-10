@@ -1,9 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FilterConfig } from '../../../../../shared/src/types';
-import Button from '../Button/Button';
-import Panel from '../Panel/Panel';
-import { ArrowsUpDownIcon, ChevronDownIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
-import IconButton from '../IconButton/IconButton';
+import { ArrowUpDownIcon, PlusIcon, Check, ChevronsUpDown, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 interface SortingPanelNewProps {
   resource: string;
@@ -12,7 +24,11 @@ interface SortingPanelNewProps {
   onFilterChange: (newFilterConfig: FilterConfig) => void;
 }
 
-// Utility function to format column headers
+interface SortingEntry {
+  column: string;
+  hasDirection: boolean;
+}
+
 const formatHeader = (header: string) =>
   header.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 
@@ -21,82 +37,103 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
   availableColumnsTypes,
   onFilterChange,
 }) => {
-  const [isSortingPanelOpen, setIsSortingPanelOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const [localSorting, setLocalSorting] = useState<{ [key: string]: 'asc' | 'desc' }[]>(
     filterConfig.appliedSorting
   );
+  const [pendingEntries, setPendingEntries] = useState<SortingEntry[]>([
+    { column: '', hasDirection: false }
+  ]);
 
+  // Synchronize local state with global filterConfig when it changes
   useEffect(() => {
-    setLocalSorting(filterConfig.appliedSorting);
+    const validSorting = filterConfig.appliedSorting;
+    setLocalSorting(validSorting);
+    setPendingEntries(
+      validSorting.length > 0
+        ? validSorting.map(sort => {
+          const column = Object.keys(sort)[0];
+          return { column, hasDirection: true };
+        })
+        : [{ column: '', hasDirection: false }]
+    );
   }, [filterConfig.appliedSorting]);
 
-  console.log(`The received value for filterConfig.appliedSorting is `, filterConfig.appliedSorting);
-
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  const toggleSortingPanel = () => {
-    setIsSortingPanelOpen((prev) => !prev);
-  };
-
   const handleSortingChange = (index: number, field: 'column' | 'direction', value: string) => {
-    const updatedSorting = [...localSorting];
-    const currentEntry = updatedSorting[index] || {};
-
     if (field === 'column') {
-      updatedSorting[index] = { [value]: 'asc' as 'asc' | 'desc' };
-      setLocalSorting(updatedSorting);
+      const newPendingEntries = [...pendingEntries];
+      newPendingEntries[index] = { column: value, hasDirection: false };
+      setPendingEntries(newPendingEntries);
+
+      const newSorting = [...localSorting];
+      newSorting[index] = { [value]: 'asc' };
+      setLocalSorting(newSorting);
     } else if (field === 'direction') {
-      const column = Object.keys(currentEntry)[0] || '';
+      const newPendingEntries = [...pendingEntries];
+      newPendingEntries[index].hasDirection = true;
+      setPendingEntries(newPendingEntries);
+
+      const column = pendingEntries[index].column;
       if (column) {
-        updatedSorting[index] = { [column]: value as 'asc' | 'desc' };
-        setLocalSorting(updatedSorting);
+        const newSorting = [...localSorting];
+        newSorting[index] = { [column]: value as 'asc' | 'desc' };
+        setLocalSorting(newSorting);
 
-        // Apply the sorting immediately
-        const validSorting = updatedSorting.filter((entry) => {
-          const col = Object.keys(entry)[0];
-          const dir = entry[col];
-          return col && dir;
-        });
-
-        onFilterChange({
-          ...filterConfig,
-          appliedSorting: validSorting,
-        });
+        // **Only** update filter if the current sorting entry is complete
+        if (newPendingEntries[index].hasDirection) {
+          const validSorting = newSorting.filter((sort, i) => {
+            const sortKey = Object.keys(sort)[0];
+            return sortKey !== '' && newPendingEntries[i]?.hasDirection;
+          });
+          console.log('Calling onFilterChange from handleSortingChange');
+          onFilterChange({
+            ...filterConfig,
+            appliedSorting: validSorting,
+          });
+        }
       }
     }
   };
 
   const addSorting = () => {
+    setPendingEntries([...pendingEntries, { column: '', hasDirection: false }]);
     setLocalSorting([...localSorting, { '': 'asc' }]);
   };
 
   const removeSorting = (index: number) => {
-    const updatedSorting = localSorting.filter((_, i) => i !== index);
-    setLocalSorting(updatedSorting);
+    const newPendingEntries = pendingEntries.filter((_, i) => i !== index);
+    const newSorting = localSorting.filter((_, i) => i !== index);
 
-    // Apply the updated sorting immediately
-    const validSorting = updatedSorting.filter((entry) => {
-      const col = Object.keys(entry)[0];
-      const dir = entry[col];
-      return col && dir;
-    });
+    setPendingEntries(newPendingEntries.length > 0 ? newPendingEntries : [{ column: '', hasDirection: false }]);
+    setLocalSorting(newSorting);
 
+    const validSorting = newSorting.filter((_, i) => newPendingEntries[i]?.hasDirection);
+    console.log('Calling onFilterChange from removeSorting');
     onFilterChange({
       ...filterConfig,
       appliedSorting: validSorting,
     });
   };
 
-  // Determine if the last sorting entry is complete
-  const isLastSortComplete = () => {
-    if (localSorting.length === 0) return true;
-    const lastSort = localSorting[localSorting.length - 1];
-    const column = Object.keys(lastSort)[0];
-    const direction = lastSort[column];
-    return column !== '' && (direction === 'asc' || direction === 'desc');
+  const handlePanelClose = () => {
+    const validEntries = pendingEntries.filter(entry => entry.column !== '' && entry.hasDirection);
+    const validSorting = localSorting.filter((_, index) =>
+      pendingEntries[index]?.column !== '' && pendingEntries[index]?.hasDirection
+    );
+
+    setPendingEntries(validEntries.length > 0 ? validEntries : [{ column: '', hasDirection: false }]);
+    setLocalSorting(validSorting);
+
+    console.log('Panel closed without calling onFilterChange');
+    setIsOpen(false);
   };
 
-  // Function to get direction options based on column type
+  const isLastSortComplete = () => {
+    if (pendingEntries.length === 0) return true;
+    const last = pendingEntries[pendingEntries.length - 1];
+    return last.column !== '' && last.hasDirection;
+  };
+
   const getDirectionOptions = (column: string) => {
     const type = availableColumnsTypes[column];
     if (type === 'String') {
@@ -110,7 +147,6 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
         { value: 'desc', label: '9-1' },
       ];
     } else {
-      // Default to asc/desc if type is Boolean or unsupported
       return [
         { value: 'asc', label: 'Ascending' },
         { value: 'desc', label: 'Descending' },
@@ -118,99 +154,165 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
     }
   };
 
-  // Get ordered columns based on availableColumnsTypes
-  const orderedColumns = Object.keys(availableColumnsTypes).filter((col) =>
-    filterConfig.columns.includes(col)
-  );
+  const orderedColumns = Object.keys(availableColumnsTypes)
+    .filter((col) => filterConfig.columns.includes(col))
+    .map(col => ({
+      value: col,
+      label: formatHeader(col)
+    }));
 
   return (
     <div className="relative">
-      <Button
-        onClick={toggleSortingPanel}
-        icon={<ArrowsUpDownIcon className="w-5 h-5 mr-1" />}
-        label={`Sort(${filterConfig.appliedSorting.length})`}
-      />
-
-      <Panel
-        isOpen={isSortingPanelOpen}
-        onClose={() => setIsSortingPanelOpen(false)}
-        title="Sorting Options"
-        panelRef={panelRef}
-      >
-        <div>
-          {localSorting.map((sort, index) => {
-            const column = Object.keys(sort)[0] || '';
-            const direction = sort[column] || 'asc';
-            const columnType = availableColumnsTypes[column];
-
-            const directionOptions = getDirectionOptions(column);
-
-            return (
-              <div key={index} className="flex items-center mb-1">
-                {/* Column Selection */}
-                <div className="relative mr-2">
-                  <select
-                    value={column}
-                    onChange={(e) => handleSortingChange(index, 'column', e.target.value)}
-                    className="appearance-none w-32 border border-brand rounded-md p-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
-                  >
-                    <option value="">Select Column</option>
-                    {orderedColumns.map((col) => (
-                      <option key={col} value={col}>
-                        {formatHeader(col)}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon className="absolute right-1 top-1.5 h-4 w-4 text-gray-500 pointer-events-none" />
-                </div>
-
-                {/* Direction Selection */}
-                <div
-                  className={`relative mr - 2 ${column === '' ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
-                    }`}
-                >
-                  <select
-                    value={column === '' ? '' : direction}
-                    onChange={(e) => handleSortingChange(index, 'direction', e.target.value)}
-                    className="appearance-none w-24 border border-brand rounded-md p-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
-                    disabled={!column}
-                  >
-                    {column === '' ? (
-                      <option value="" disabled>
-                        Select
-                      </option>
-                    ) : (
-                      directionOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <ChevronDownIcon className="absolute right-1 top-1.5 h-4 w-4 text-gray-500 pointer-events-none" />
-                </div>
-
-                {/* Remove Sorting Button */}
-                <IconButton
-                  icon={<TrashIcon className="w-4 h-4 text-red-500" />}
-                  ariaLabel="Remove Sorting"
-                  onClick={() => removeSorting(index)}
-                />
-              </div>
-            );
-          })}
-
+      <Popover open={isOpen} onOpenChange={(open) => !open && handlePanelClose()}>
+        <PopoverTrigger asChild>
           <Button
-            onClick={addSorting}
-            icon={<PlusIcon className="w-4 h-4 mr-1" />}
-            label="Add Sorting"
-            className="mt-2 text-xs"
-            disabled={!isLastSortComplete()}
-          />
-        </div>
+            variant="secondaryFlat"
+            size="default"
+            className={`
+              flex items-center gap-2
+              transition-colors duration-300 ease-in-out
+              ${filterConfig.appliedSorting.length > 0
+                ? "bg-green-100 hover:bg-green-200 dark:bg-red-900/30 dark:hover:bg-red-900/50"
+                : ""}
+            `}
+            aria-label={`Toggle column visibility. ${filterConfig.appliedSorting.length} columns shown`}
+            onClick={() => setIsOpen(true)}
+          >
+            <ArrowUpDownIcon className="w-4 h-4" />
+            <span className="hidden sm:block">{`Sorting (${filterConfig.appliedSorting.length})`}</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h4 className="font-medium leading-none">Sort Data</h4>
+              <p className="text-sm text-muted-foreground">
+                Select columns and sort direction to organize your data.
+              </p>
+            </div>
 
-        {/* Removed Apply and Cancel buttons */}
-      </Panel>
+            <div className="space-y-2">
+              {pendingEntries.map((entry, index) => {
+                const sort = localSorting[index] || { '': 'asc' };
+                const column = entry.column;
+                const direction = column ? sort[column] : 'asc';
+                const directionOptions = getDirectionOptions(column);
+
+                return (
+                  <div key={index} className="flex items-center gap-2 w-full max-w-[100%]">
+                    <div className="flex items-center gap-2 flex-nowrap overflow-hidden pr-2">
+                      {/* Column Selection */}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="secondaryFlat"
+                            role="combobox"
+                            size="sm"
+                            className="w-[200px] justify-between"
+                          >
+                            {column ? formatHeader(column) : "Select Column"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0">
+                          <Command>
+                            <CommandInput placeholder="Search column..." />
+                            <CommandList>
+                              <CommandEmpty>No column found.</CommandEmpty>
+                              <CommandGroup>
+                                {orderedColumns.map((col) => (
+                                  <CommandItem
+                                    key={col.value}
+                                    value={col.value}
+                                    onSelect={(currentValue) => {
+                                      handleSortingChange(index, 'column', currentValue);
+                                    }}
+                                  >
+                                    {col.label}
+                                    <Check
+                                      className={cn(
+                                        "ml-auto h-4 w-4",
+                                        column === col.value ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+
+                      {/* Direction Selection */}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="secondaryFlat"
+                            size="sm"
+                            role="combobox"
+                            className="w-[140px] justify-between"
+                            disabled={!column}
+                          >
+                            {column && entry.hasDirection ?
+                              directionOptions.find(opt => opt.value === direction)?.label
+                              : "Select Order"
+                            }
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[140px] p-0">
+                          <Command>
+                            <CommandList>
+                              <CommandGroup>
+                                {directionOptions.map((option) => (
+                                  <CommandItem
+                                    key={option.value}
+                                    value={option.value}
+                                    onSelect={(currentValue) => {
+                                      handleSortingChange(index, 'direction', currentValue);
+                                    }}
+                                  >
+                                    {option.label}
+                                    <Check
+                                      className={cn(
+                                        "ml-auto h-4 w-4",
+                                        direction === option.value && entry.hasDirection ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+
+                      {column && <Button variant="ghost" size="sm"
+                        onClick={() => removeSorting(index)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <Button
+                onClick={addSorting}
+                variant="brandOutline"
+                className="w-full mt-2"
+                size="sm"
+                disabled={!isLastSortComplete()}
+              >
+                <PlusIcon className="w-4 h-4 " />
+                Add Sorting
+              </Button>
+            </div>
+
+            {/* No Apply Button as per your request */}
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };
