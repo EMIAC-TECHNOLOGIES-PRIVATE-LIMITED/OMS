@@ -39,7 +39,7 @@ const buttonVariants = cva(
         brandLight: "bg-brand-light text-white font-bold hover:bg-brand/90 dark:bg-brand-light dark:hover:bg-brand-light/80 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out",
 
         // Destructive Button
-        destructive: "bg-red-600 text-white  font-bold hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out",
+        destructive: "bg-red-700 text-white  font-bold hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out",
 
         // Destructive Outline Button
         destructiveOutline: "bg-white border border-red-600 text-red-600  font-bold hover:bg-red-50 dark:border-red-700 dark:text-red-700 dark:hover:bg-red-800/10 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out",

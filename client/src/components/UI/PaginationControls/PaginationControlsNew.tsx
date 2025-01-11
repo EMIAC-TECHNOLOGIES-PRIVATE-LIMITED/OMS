@@ -97,12 +97,13 @@ export default function PaginationControlsNew({
     <div className="pagination-controls mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
       {/* Page Size Dropdown using shadcn Popover and Command */}
       <div className="flex items-center space-x-2">
-        <span className="font-medium text-sm text-muted-foreground">Page Size:</span>
-        <Popover open={open} onOpenChange={setOpen}>
+        <span className="font-medium  text-muted-foreground">Page Size:</span>
+        <Popover>
           <PopoverTrigger asChild>
-            <Button variant="secondaryFlat" size="sm" className="w-[100px] justify-between">
+            <Button variant="secondaryFlat" size="sm"
+              role='combobox' className="w-[100px] justify">
               {selectedPageSize ? selectedPageSize : "Select"}
-              <ArrowDown className="ml-1" size={16} />
+              <ArrowDown className="" size={16} />
             </Button>
 
           </PopoverTrigger>

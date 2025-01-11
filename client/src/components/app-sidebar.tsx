@@ -79,7 +79,7 @@ export function AppSidebar({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger
-              className="font-medium text-base mt-2 text-gray-800 flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 hover:bg-gray-100 transition-colors duration-200 w-full"
+              className="font-medium text-base mt-2 text-gray-800 flex items-center bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 hover:bg-gray-100 transition-colors duration-200 w-full"
             >
               <ChevronsLeftRightEllipsis className="w-5 h-5 text-gray-600 mr-2" />
               <span>Views</span>
@@ -110,17 +110,17 @@ export function AppSidebar({
               {filteredViews.map((view) => (
 
                 <SidebarMenuItem
-                  className="flex items-center gap-2 w-full px-2 py-1 hover:bg-slate-100 rounded-lg"
+                  className={cn(
+                    "flex items-center gap-2 w-full px-2 py-1 rounded-lg transition-colors duration-200 ease-in-out",
+                    view.id === currentViewId ? "bg-slate-100 text-gray-950 font-medium transition-colors duration-200 ease-in-out" : "hover:bg-slate-100 transition-colors duration-200 ease-in-out"
+                  )}
                   key={view.id}
                 >
-                  <SidebarMenuButton asChild isActive={view.id === currentViewId}>
+                  {/* View button */}
+                  <SidebarMenuButton asChild>
                     <button
                       onClick={() => onSelectView(view.id)}
-                      className={cn(
-                        view.id === currentViewId && "bg-red-200 text-gray-800 font-medium",
-                        "flex items-center gap-2 w-full px-2 py-1 hover:bg-slate-100 rounded-lg",
-                      )}
-                      data-active={view.id === currentViewId}
+                      className="flex items-center gap-2 w-full"
                     >
                       {view.viewName === "grid" ? (
                         <Grid className="w-5 h-5" />
@@ -133,36 +133,25 @@ export function AppSidebar({
                     </button>
                   </SidebarMenuButton>
 
-
-                  {/* Optional delete button for non-grid views */}
+                  {/* Delete button */}
                   {view.viewName !== "grid" && (
                     <AlertDialog>
                       <AlertDialogTrigger>
-                        <Button
-                          variant="ghost"
-                          className=""
-                          size="sm"
-                        >
+                        <Button variant="ghost" size="sm" className="p-1">
                           <Trash2 className="w-5 h-5 red-600" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Are you absolutely sure?
-                          </AlertDialogTitle>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action cannot be undone. This will
-                            permanently delete and remove the data from our
-                            servers.
+                            This action cannot be undone. It will permanently delete this view.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            className="bg-white border border-brand text-brand font-bold hover:bg-brand-light/20 hover:text-brand-dark 
-                 dark:border-brand-dark dark:text-brand-dark dark:hover:bg-brand-dark/10 
-                 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out"
+                            className="bg-white border border-brand text-brand font-bold hover:bg-brand-light/20 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out"
                             onClick={() => handleConfirmDelete(view)}
                           >
                             Confirm
@@ -172,6 +161,7 @@ export function AppSidebar({
                     </AlertDialog>
                   )}
                 </SidebarMenuItem>
+
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -179,6 +169,6 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarRail />
-    </Sidebar>
+    </Sidebar >
   );
 }

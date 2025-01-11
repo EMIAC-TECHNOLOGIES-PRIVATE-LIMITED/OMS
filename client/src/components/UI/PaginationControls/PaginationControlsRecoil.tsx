@@ -1,73 +1,103 @@
+// import { Button } from "@/components/ui/button";
+// import {
+//   Command,
+//   CommandEmpty,
+//   CommandGroup,
+//   CommandItem,
+//   CommandList,
+// } from "@/components/ui/command";
+// import {
+//   Popover,
+//   PopoverContent,
+//   PopoverTrigger,
+// } from "@/components/ui/popover";
 
-import React from 'react';
-import { useRecoilState, useRecoilValue } from 'recoil';
-import {
-  pageState,
-  pageSizeState,
-  totalRecordsState,
-} from '../../../store/atoms/atoms';
+// import { ChevronRight, ChevronLeft } from 'lucide-react';
 
-interface PaginationControlsProps {
-  resource: string;
+
+// interface PaginationControlsRecoilProps {
+//   page: number;
+//   pageSize: number;
+//   totalPages: number;
+//   handlePageChange: (page: number, pageSize: number) => void;
+// }
+
+// const pageSizeOptions = [
+//   { value: 25, label: "25" },
+//   { value: 50, label: "50" },
+//   { value: 100, label: "100" },
+// ];
+
+// function PaginationControlsRecoil(
+//   page: number,
+//   pageSize: number,
+//   totalPages: number,
+//   handlePageChange: (page: number, pageSize: number) => void,
+// ) {
+//   return (
+//     <div>
+//       <div className="flex items-center space-x-2">
+//         <span className="font-medium  text-muted-foreground">Page Size:</span>
+//         <Popover>
+//           <PopoverTrigger asChild>
+//             <Button variant="secondaryFlat" size="sm"
+//               role='combobox' className="w-[100px] justify">
+//               {selectedPageSize ? selectedPageSize : "Select"}
+//               <ArrowDown className="" size={16} />
+//             </Button>
+
+//           </PopoverTrigger>
+//           <PopoverContent className="p-0" side="right" align="start">
+//             <Command>
+//               <CommandList>
+//                 <CommandEmpty>No results found.</CommandEmpty>
+//                 <CommandGroup>
+//                   {pageSizeOptions.map((option) => (
+//                     <CommandItem
+//                       key={option.value}
+//                       value={option.value.toString()}
+//                       onSelect={(value) => {
+//                         const newSize = parseInt(value, 10);
+//                         setSelectedPageSize(newSize);
+//                         setOpen(false);
+//                         // Reset to first page when page size changes
+//                         handlePageChange(1, newSize);
+//                       }}
+//                     >
+//                       <span>{option.label}</span>
+//                     </CommandItem>
+//                   ))}
+//                 </CommandGroup>
+//               </CommandList>
+//             </Command>
+//           </PopoverContent>
+//         </Popover>
+//       </div>
+
+
+
+
+//       <Button
+//         variant={"secondaryFlat"}
+//         disabled={page === 1}
+//         onClick={() => handlePageChange(page - 1, pageSize)}
+//       >
+//         <ChevronLeft />
+//       </Button>
+
+//     </div>
+//   )
+// }
+
+// export default PaginationControlsRecoil
+
+
+import React from 'react'
+
+function PaginationControlsRecoil() {
+  return (
+    <div>PaginationControlsRecoil</div>
+  )
 }
 
-const PaginationControlsRecoil: React.FC<PaginationControlsProps> = ({ resource }) => {
-  const [page, setPage] = useRecoilState<number>(pageState(resource));
-  const [pageSize, setPageSize] = useRecoilState<number>(pageSizeState(resource));
-  const totalRecords = useRecoilValue<number>(totalRecordsState(resource));
-
-  const totalPages = Math.ceil(totalRecords / pageSize);
-
-  return (
-    <div className="pagination-control mt-4 flex items-center space-x-4">
-      <label>
-        Page Size:
-        <select
-          value={pageSize}
-          onChange={(e) => {
-            const newPageSize = parseInt(e.target.value);
-            setPageSize(newPageSize);
-            setPage(1); // Reset to page 1 when page size changes
-          }}
-          className="ml-2 border rounded p-1"
-        >
-          <option value="25">25</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-        </select>
-      </label>
-
-      <label>
-        Page Number
-        <input
-          className="mx-3 border rounded p-1"
-          type="number"
-          value={page}
-          min={1}
-          max={totalPages}
-          onChange={(e) => {
-            setPage(parseInt(e.target.value));
-          }}
-        />
-        / of {totalPages} pages.
-      </label>
-      <button
-        onClick={() => setPage(page - 1)}
-        disabled={page === 1}
-        className="border rounded px-2 py-1"
-      >
-        &lt;
-      </button>
-
-      <button
-        onClick={() => setPage(page + 1)}
-        disabled={page === totalPages}
-        className="border rounded px-2 py-1"
-      >
-        &gt;
-      </button>
-    </div>
-  );
-};
-
-export default PaginationControlsRecoil;
+export default PaginationControlsRecoil

@@ -10,7 +10,7 @@ const Table = React.forwardRef<
       ref={ref}
       className={cn(
         // "table-fixed" + "border-collapse" => columns respect set widths & improved grid lines
-        "table-fixed border-collapse w-full caption-bottom text-sm text-slate-700 dark:text-slate-300",
+        "table-fixed border-collapse  w-full caption-bottom text-sm text-slate-700 dark:text-slate-300",
         className
       )}
       {...props}

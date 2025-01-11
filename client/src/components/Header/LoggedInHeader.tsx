@@ -4,6 +4,7 @@ import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authAtom } from '../../store/atoms/atoms';
 import { signOut } from '../../utils/apiService/authAPI';
+import { Button } from '../ui/button';
 
 function LoggedInHeader() {
   const [isMobileMenuOpen] = useState(false);
@@ -162,12 +163,13 @@ function LoggedInHeader() {
                         {auth.userInfo?.name}
                       </h2>
                       <p className="text-sm text-neutral-600">{(auth.userInfo.role.name)}</p>
-                      <button
+                      <Button
+                        variant="destructive"
                         onClick={handleLogout}
-                        className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
+
                       >
                         Logout
-                      </button>
+                      </Button>
                     </div>
                   </motion.div>
                 )}
@@ -178,7 +180,7 @@ function LoggedInHeader() {
       </div>
       {isMobileMenuOpen && (
         <div className="md:hidden" id="mobile-menu" ref={mobileMenuRef}>
-          <nav className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+          <nav className="px-2 pt-2  pb-3 space-y-1 sm:px-3">
             {permissions.map((item) => (
               <NavLink
                 key={item.id}
@@ -191,7 +193,7 @@ function LoggedInHeader() {
                 {item.name.charAt(0).toUpperCase() + item.name.slice(1)}
               </NavLink>
             ))}
-            <div className="mt-3 px-3">
+            <div className="mt-3 px-3 ">
               <button
                 onClick={handleLogout}
                 className="w-full bg-red-500 text-white py-2 rounded-md hover:bg-red-600 transition"

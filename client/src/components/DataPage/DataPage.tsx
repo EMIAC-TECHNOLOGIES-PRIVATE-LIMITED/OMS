@@ -2,11 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 
 import { AppSidebar } from "@/components/app-sidebar";
-// ^ Adjust path if needed.
-
-import FilterComponentNew from "../FilterComponent/FilterComponentNew";
 import DataTableNew from "../DataTable/DataTable";
-
 import {
   deleteView,
   getFilteredData,
@@ -16,7 +12,6 @@ import {
 } from "../../utils/apiService/dataAPI";
 import { getRandomCartoonName } from "../../utils/cartoons";
 import handleApiError from "../../utils/ErrorHandlers/APIError";
-
 import {
   DeleteViewResponse,
   FilterConfig,
@@ -24,7 +19,6 @@ import {
   GetFilteredDataResponse,
   View,
 } from "../../../../shared/src/types";
-
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -42,7 +36,9 @@ import {
 import { Input } from "../ui/input";
 
 import ColumnPanelNew from "../UI/ColumnPanel/ColumnPanelNew";
-import { FilterPanelNew, PaginationControlsNew, SortingPanelNew } from "../UI";
+import { PaginationControlsNew, SortingPanelNew } from "../UI";
+import FilterPanelNew from "../UI/FilterPanel/FilterPanel2";
+import { TableDemo } from "../DataTable/dt";
 
 interface DataPageProps {
   apiEndpoint: string;
@@ -225,7 +221,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
           setError(handleApiError(err, "An error occurred while fetching view data."));
         }
       } finally {
-        setLoading(false);
+        // setLoading(false);
         setInitialLoading(false);
         hasFetchedInitialData.current = true;
       }
@@ -244,13 +240,13 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   useEffect(() => {
     if (initialLoading) return;
 
-    const sameFilter =
-      JSON.stringify(currentFilterConfig) === JSON.stringify(initialFilterConfig) &&
-      currentViewName === initialViewName;
+    // const sameFilter =
+    //   JSON.stringify(currentFilterConfig) === JSON.stringify(initialFilterConfig) &&
+    //   currentViewName === initialViewName;
 
-    const samePagination = page === initialPage && pageSize === initialPageSize;
+    // const samePagination = page === initialPage && pageSize === initialPageSize;
 
-    if (sameFilter && samePagination) return;
+    // if (sameFilter && samePagination) return;
 
     const fetchFilteredData = async () => {
       setLoading(true);
@@ -479,8 +475,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       availableColumnsTypes={availableColumns}
                     />
                   </BreadcrumbItem>
-                  <BreadcrumbItem>
-                    {/* <  PaginationControlsNew
+                  {/* <BreadcrumbItem>
+                    <  PaginationControlsNew
                       page={page}
                       pageSize={pageSize}
                       handlePageChange={(newPage, newPageSize) => {
@@ -488,14 +484,14 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                         if (newPageSize) setPageSize(newPageSize);
                       }}
                       totalPages={Math.ceil(totalRecords / pageSize)}
-                    /> */}
-                  </BreadcrumbItem>
+                    />
+                  </BreadcrumbItem> */}
                 </BreadcrumbList>
               </Breadcrumb>
             </header>
 
             {/* Body area: filters + table */}
-            <div className="flex flex-1 flex-col gap-4 p-4">
+            <div className="flex flex-1 flex-col gap-4 ">
 
               {/* Filter component */}
               {/* <FilterComponentNew
@@ -519,9 +515,9 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
               /> */}
 
               {/* Main content container (table) */}
-              <div className="relative h-full rounded-xl bg-muted/50 p-4">
-                <div className="relative h-full w-full rounded-lg bg-white shadow-md">
-                  <DataTableNew
+              <div className="relative h-full rounded-xl bg-muted/50 ">
+                <div className="relative h-full w-full overflow-y-auto rounded-lg bg-white shadow-md">
+                  {/* <DataTableNew
                     data={tableData}
                     availableColumns={Object.keys(availableColumns)}
                     loading={loading}
@@ -531,7 +527,9 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                     handleTotalRecordsChange={() =>
                       setTotalRecords((prev) => prev - 1)
                     }
-                  />
+                  /> */}
+
+                  <TableDemo />
 
                   {/* Watermark overlay */}
                   <img
