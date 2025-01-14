@@ -5,6 +5,7 @@ import 'dotenv/config';
 import userRouter from '../routers/userRouter'
 import dataRouter from '../routers/dataRouter'
 import adminRouter from "../routers/adminRouter";
+import toolsRouter from "../routers/toolsRouter";
 
 const app = express();
 app.use(express.json());
@@ -25,6 +26,7 @@ app.get('/api/v1/health', (req, res) => {
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/data', dataRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/tools', toolsRouter); 
 
 
 app.listen(port, () => {

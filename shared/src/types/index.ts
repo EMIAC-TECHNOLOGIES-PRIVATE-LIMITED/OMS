@@ -338,7 +338,7 @@ export interface HealthCheckResponse {
     success: boolean;
 }
 
-export enum LogicalOperator {
+export enum LogicalOperator {   
     AND = 'AND',
     OR = 'OR'
 }

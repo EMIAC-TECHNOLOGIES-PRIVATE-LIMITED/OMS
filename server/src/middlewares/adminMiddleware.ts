@@ -53,6 +53,19 @@ export async function adminMiddleware(req: CustomRequest, res: Response, next: N
         if (error instanceof jwt.TokenExpiredError) {
             const refreshed = await generateAccessToken(req, res);
             if (refreshed) {
+                const decoded = jwt.decode(req.cookies.accessToken) as { email: string; userId: number; role: { name: string } };
+                if (decoded.role.name !== 'Admin') {
+                    return res
+                        .status(STATUS_CODES.FORBIDDEN)
+                        .json(
+                            new APIError(
+                                STATUS_CODES.FORBIDDEN,
+                                "You are not authorized to access this route",
+                                [],
+                                false
+                            )
+                        );
+                }
                 return next();
             }
         }

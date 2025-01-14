@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+// DataPage.tsx
 
+import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
-import DataTableNew from "../DataTable/DataTable";
+import DataTableNew from "../DataTable/DataTableNew";
 import {
   deleteView,
   getFilteredData,
@@ -22,7 +23,6 @@ import {
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -36,9 +36,11 @@ import {
 import { Input } from "../ui/input";
 
 import ColumnPanelNew from "../UI/ColumnPanel/ColumnPanelNew";
-import { PaginationControlsNew, SortingPanelNew } from "../UI";
+import { SortingPanelNew } from "../UI";
 import FilterPanelNew from "../UI/FilterPanel/FilterPanel2";
-import { TableDemo } from "../DataTable/dt";
+
+// Import Progress component from Shad CN
+import { Progress } from "@/components/ui/progress";
 
 interface DataPageProps {
   apiEndpoint: string;
@@ -47,7 +49,6 @@ interface DataPageProps {
 }
 
 const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
-
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
@@ -85,6 +86,9 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     [key: string]: string;
   }>({});
 
+  // Progress State
+  const [progress, setProgress] = useState<number>(0);
+
   // For tracking if we have fetched data
   const hasFetchedInitialData = useRef<boolean>(false);
 
@@ -119,7 +123,6 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     };
   }, [isModalOpen, handleClickOutside]);
 
-
   const fetchViewData = useCallback(
     async (viewId: number | null) => {
       if (viewId === currentViewId && hasFetchedInitialData.current) return;
@@ -137,10 +140,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
 
           if (data.viewId !== currentViewId) {
             setCurrentViewId(data.viewId);
-            window.localStorage.setItem(
-              `${resource}-viewId`,
-              data.viewId.toString()
-            );
+            window.localStorage.setItem(`${resource}-viewId`, data.viewId.toString());
           }
 
           setTableData(data.data);
@@ -182,10 +182,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
 
               if (data.viewId !== currentViewId) {
                 setCurrentViewId(data.viewId);
-                window.localStorage.setItem(
-                  `${resource}-viewId`,
-                  data.viewId.toString()
-                );
+                window.localStorage.setItem(`${resource}-viewId`, data.viewId.toString());
               }
 
               setTableData(data.data);
@@ -240,14 +237,6 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   useEffect(() => {
     if (initialLoading) return;
 
-    // const sameFilter =
-    //   JSON.stringify(currentFilterConfig) === JSON.stringify(initialFilterConfig) &&
-    //   currentViewName === initialViewName;
-
-    // const samePagination = page === initialPage && pageSize === initialPageSize;
-
-    // if (sameFilter && samePagination) return;
-
     const fetchFilteredData = async () => {
       setLoading(true);
       setError(null);
@@ -294,20 +283,13 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     initialPageSize,
   ]);
 
-
   // set-reset IsModified
   useEffect(() => {
     const sameFilter =
       JSON.stringify(currentFilterConfig) === JSON.stringify(initialFilterConfig);
     const sameName = currentViewName === initialViewName;
     setIsModified(!sameFilter || !sameName);
-  }, [
-    currentFilterConfig,
-    initialFilterConfig,
-    currentViewName,
-    initialViewName,
-  ]);
-
+  }, [currentFilterConfig, initialFilterConfig, currentViewName, initialViewName]);
 
   const handleSaveView = useCallback(async () => {
     setLoading(true);
@@ -329,10 +311,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
         );
         if (resp.success) {
           setCurrentViewId(resp.data.viewId);
-          window.localStorage.setItem(
-            `${resource}-viewId`,
-            resp.data.viewId.toString()
-          );
+          window.localStorage.setItem(`${resource}-viewId`, resp.data.viewId.toString());
           setViews(resp.data.views);
           setInitialFilterConfig(currentFilterConfig);
           setInitialViewName(finalName);
@@ -359,13 +338,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     } finally {
       setLoading(false);
     }
-  }, [
-    resource,
-    currentViewId,
-    initialViewName,
-    currentViewName,
-    currentFilterConfig,
-  ]);
+  }, [resource, currentViewId, initialViewName, currentViewName, currentFilterConfig]);
 
   const handleDeleteView = useCallback(
     async (view: View) => {
@@ -398,41 +371,96 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   };
 
   const handleConfirmDelete = async (viewId: View) => {
-
     await handleDeleteView(viewId);
   };
 
+  // ------------------------------------------------
+  // Progress Bar Effect
+  // ------------------------------------------------
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+
+    if (loading) {
+      setProgress(0); // Reset progress when loading starts
+
+      // Increment progress every 500ms up to 90%
+      timer = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) return prev; // Cap at 90% to leave room for completion
+          return prev + Math.random() * 10; // Increment by a random value to simulate progress
+        });
+      }, 500);
+    } else {
+      // When loading finishes, set progress to 100% and then reset after a short delay
+      setProgress(100);
+
+      // Hide the progress bar after it reaches 100%
+      timer = setTimeout(() => {
+        setProgress(0);
+      }, 500); // Adjust the delay as needed
+    }
+
+    // Cleanup the timer on component unmount or when loading state changes
+    return () => clearInterval(timer);
+  }, [loading]);
+
+  // ------------------------------------------------
+  // Compute Filtered and Sorted Columns
+  // ------------------------------------------------
+  const filteredColumns = useMemo(() => {
+    const columns = new Set<string>();
+    Object.values(currentFilterConfig.appliedFilters || {}).forEach(filterGroup => {
+      filterGroup?.forEach(filter => {
+        Object.keys(filter).forEach(column => {
+          columns.add(column);
+        });
+      });
+    });
+    return columns;
+  }, [currentFilterConfig.appliedFilters]);
+
+  const sortedColumns = useMemo(() => {
+    const columns = new Set<string>();
+    currentFilterConfig.appliedSorting.forEach(sort => {
+      Object.keys(sort).forEach(column => {
+        columns.add(column);
+      });
+    });
+    return columns;
+  }, [currentFilterConfig.appliedSorting]);
 
   // ------------------------------------------------
   // 7) RENDER: Mirroring Your Home.tsx Structure
   // ------------------------------------------------
   return (
-    <div className="">
+    <div className="overflow-hidden"> {/* Prevent entire page from scrolling */}
       <SidebarProvider>
-        <div className="flex min-h-[calc(100vh-5rem)] border-t">
-          {/* SIDEBAR: placed exactly as in Home.tsx */}
+        <div className="flex min-h-[calc(100vh-5rem)] border-t overflow-hidden"> {/* Added overflow-hidden */}
+          {/* SIDEBAR */}
           <AppSidebar
             className="shrink-0 border-r"
             views={views}
             currentViewId={currentViewId}
             onSelectView={(id) => fetchViewData(id)}
-            handleConfirmDelete={(v: View) => handleConfirmDelete(v)}
+            handleConfirmDelete={(v: View) => confirmDeleteView(v)}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
           />
 
-          {/* MAIN CONTENT: wrapped in SidebarInset */}
-          <SidebarInset className="flex flex-1 flex-col">
+          {/* MAIN CONTENT */}
+          <SidebarInset className="flex flex-1 flex-col overflow-hidden"> {/* Added overflow-hidden */}
+            {/* Progress Bar */}
+          
+            <Progress value={progress} className="w-full h-0.5" />
+
             {/* Header with trigger + breadcrumb */}
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+            <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 relative">
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mr-2 h-4" />
               <Breadcrumb>
-                <BreadcrumbList>
+                <BreadcrumbList className="flex flex-wrap"> {/* Added flex-wrap */}
                   <BreadcrumbItem className="hidden md:block">
-                    {
-                      `${pageTitle}`
-                    }
+                    {pageTitle}
                   </BreadcrumbItem>
                   <BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden md:block" />
@@ -442,7 +470,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                         className="rounded-md"
                         value={currentViewName}
                         onChange={(e) => setCurrentViewName(e.target.value)}
-                        placeholder="View Name" />
+                        placeholder="View Name"
+                      />
                     </BreadcrumbPage>
                   </BreadcrumbItem>
                   <BreadcrumbItem>
@@ -475,61 +504,31 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       availableColumnsTypes={availableColumns}
                     />
                   </BreadcrumbItem>
-                  {/* <BreadcrumbItem>
-                    <  PaginationControlsNew
-                      page={page}
-                      pageSize={pageSize}
-                      handlePageChange={(newPage, newPageSize) => {
-                        if (newPage) setPage(newPage);
-                        if (newPageSize) setPageSize(newPageSize);
-                      }}
-                      totalPages={Math.ceil(totalRecords / pageSize)}
-                    />
-                  </BreadcrumbItem> */}
                 </BreadcrumbList>
               </Breadcrumb>
             </header>
 
             {/* Body area: filters + table */}
-            <div className="flex flex-1 flex-col gap-4 ">
-
-              {/* Filter component */}
-              {/* <FilterComponentNew
-                resource={resource}
-                pageTitle={pageTitle}
-                filterConfig={currentFilterConfig}
-                onFilterChange={(newConfig) => {
-                  setPage(1);
-                  setCurrentFilterConfig(newConfig);
-                }}
-                page={page}
-                pageSize={pageSize}
-                totalPages={Math.ceil(totalRecords / pageSize)}
-                handlePageChange={(newPage, newPageSize) => {
-                  if (newPage) setPage(newPage);
-                  if (newPageSize) setPageSize(newPageSize);
-                }}
-                currentViewName={currentViewName}
-                setCurrentViewName={setCurrentViewName}
-                availableColumnsTypes={availableColumns}
-              /> */}
-
+            <div className="flex flex-1 flex-col gap-4 overflow-hidden"> {/* Added overflow-hidden */}
               {/* Main content container (table) */}
-              <div className="relative h-full rounded-xl bg-muted/50 ">
+              <div className="relative flex-1 rounded-xl bg-muted/50"> {/* Added flex-1 */}
                 <div className="relative h-full w-full overflow-y-auto rounded-lg bg-white shadow-md">
-                  {/* <DataTableNew
-                    data={tableData}
-                    availableColumns={Object.keys(availableColumns)}
-                    loading={loading}
-                    error={error}
-                    resource={resource}
-                    handleDataChange={(data) => setTableData(data)}
-                    handleTotalRecordsChange={() =>
-                      setTotalRecords((prev) => prev - 1)
-                    }
-                  /> */}
-
-                  <TableDemo />
+                  {/* Horizontal scroll wrapper */}
+                  <div className="w-full overflow-x-auto">
+                    <DataTableNew
+                      data={tableData}
+                      availableColumns={Object.keys(availableColumns)}
+                      loading={loading}
+                      error={error}
+                      resource={resource}
+                      handleDataChange={(data) => setTableData(data)}
+                      handleTotalRecordsChange={() =>
+                        setTotalRecords((prev) => prev - 1)
+                      }
+                      filteredColumns={filteredColumns} // Passing filtered columns
+                      sortedColumns={sortedColumns}     // Passing sorted columns
+                    />
+                  </div>
 
                   {/* Watermark overlay */}
                   <img
@@ -564,10 +563,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
             </div>
           </SidebarInset>
         </div>
-
-
-      </SidebarProvider >
-    </div >
+      </SidebarProvider>
+    </div>
   );
 };
 

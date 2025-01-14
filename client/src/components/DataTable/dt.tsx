@@ -84,6 +84,120 @@ const invoices: Invoice[] = [
         totalAmount: "$350.00",
         paymentMethod: "Bank Transfer",
     },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
+    {
+        invoice: "INV0asdf03",
+        paymentStatus: "Unfasdfasdf asdfasdfasdfasdf asdfasdfsdfasdfasdf asdfasdfasdfpaid",
+        totalAmount: "$350.00",
+        paymentMethod: "Bank Transfer",
+    },
     // ... other invoice entries
 ]
 
@@ -100,7 +214,6 @@ export function TableDemo() {
 
     return (
         <Table>
-            <TableCaption>A list of your recent invoices.</TableCaption>
             <TableHeader>
                 <MotionTableRow layout transition={spring}>
                     <MotionTableHead layout transition={spring} className="w-[100px]">
