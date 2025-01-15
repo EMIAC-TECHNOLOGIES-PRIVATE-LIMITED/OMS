@@ -338,7 +338,7 @@ export interface HealthCheckResponse {
     success: boolean;
 }
 
-export enum LogicalOperator {   
+export enum LogicalOperator {
     AND = 'AND',
     OR = 'OR'
 }
@@ -421,6 +421,51 @@ export interface UpdateDataResponse {
     message: string;
     success: boolean;
     data: Record<string, any>;
+}
+export interface WebsiteCheckerResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data: {
+        duplicates: string[];
+        newDomains: string[];
+    };
+}
+
+export interface PriceCheckerResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data: Array<{
+        website: string;
+        vendor: {
+            id?: number;
+            name?: string;
+            phone?: string;
+            email?: string;
+            country?: string | null;
+        };
+        price: number;
+        sailingPrice: number | null;
+        discount: number | null;
+    }>;
+}
+
+export interface VendorCheckerResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data: {
+        vendors: {
+            [key: string]: Array<{
+                vendorId: number;
+                vendorName: string;
+                vendorPhone: string;
+                vendorEmail: string;
+                vendorCountry: string | null;
+            }>;
+        };
+    };
 }
 
 

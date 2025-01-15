@@ -90,30 +90,6 @@ enum WebsiteQuality {
   Multi
 }
 
-model User {
-  id                  Int                  @id @default(autoincrement())
-  name                String
-  email               String               @unique
-  suspended           Boolean              @default(false)
-  password            String
-  roleId              Int
-  role                Role                 @relation(fields: [roleId], references: [id])
-  lastLogin           String               @default("")
-  lastLogout          String               @default("")
-  loginId             Int                  @default(0)
-  statusLogin         StatusLogin          @default(ACTIVE)
-  superAppID          Int                  @default(0)
-  secureKey           String               @default("")
-  permissionOverrides PermissionOverride[]
-  resourceOverrides   ResourceOverride[]
-  clients             Client[]             @relation("UserClients")
-  sites               Site[]               @relation("UserSites")
-  views               View[]
-  refreshToken        String[]             @default([""])
-
-  @@index([roleId])
-}
-
 model Role {
   id          Int          @id @default(autoincrement())
   name        String       @unique
@@ -255,6 +231,7 @@ model Order {
   orderOperatedBy            Int
   orderOperatedUpdateBy      Int
   userId                     Int
+  user                       User                @relation("UserOrders", fields: [userId], references: [id])
   paypalId                   String
   status                     OrderStatus         @default(PENDING)
   contentDoc                 String
@@ -271,6 +248,33 @@ model Order {
   statusUpdateDatetime       DateTime
 
   @@index([clientId])
+  @@index([userId])
+}
+
+model User {
+  id                  Int                  @id @default(autoincrement())
+  name                String
+  email               String               @unique
+  suspended           Boolean              @default(false)
+  password            String
+  roleId              Int
+  role                Role                 @relation(fields: [roleId], references: [id])
+  lastLogin           String               @default("")
+  lastLogout          String               @default("")
+  loginId             Int                  @default(0)
+  statusLogin         StatusLogin          @default(ACTIVE)
+  superAppID          Int                  @default(0)
+  secureKey           String               @default("")
+  permissionOverrides PermissionOverride[]
+  resourceOverrides   ResourceOverride[]
+  clients             Client[]             @relation("UserClients")
+  orders              Order[]              @relation("UserOrders")
+  sites               Site[]               @relation("UserSites")
+  views               View[]
+  refreshToken        String[]             @default([""])
+  Vendor              Vendor[]             @relation("UserVendors")
+
+  @@index([roleId])
 }
 
 model Vendor {
@@ -284,10 +288,11 @@ model Vendor {
   ifscCode      String
   paypalId      String
   userId        Int
+  user          User   @relation("UserVendors", fields: [userId], references: [id])
   timestamp     String
   skypeId       String
   upiId         String
-  Site          Site[]
+  sites         Site[] @relation("VendorSites")
 }
 
 model Site {
@@ -297,10 +302,10 @@ model Site {
   site_category                    String?
   da                               Int
   pa                               Int
-  vendor_id                        Int       
-  vendor                           Vendor    @relation(fields: [vendor_id], references: [id])
-  person                           String
-  person_id                        Int
+  vendor_id                        Int?
+  vendor                           Vendor?   @relation("VendorSites", fields: [vendor_id], references: [id])
+  person                           String?
+  person_id                        Int?
   price                            Int
   sailing_price                    Int?
   discount                         Int?

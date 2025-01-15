@@ -1,208 +1,122 @@
-import * as React from "react"
-import { GalleryVerticalEnd } from "lucide-react"
+import * as React from "react";
+import { ChevronsLeftRightEllipsis } from "lucide-react";
+import { useRecoilValue } from "recoil";
+import { authAtom } from "@/store/atoms/atoms";
+
+import { IndianRupee, Copy, Computer } from 'lucide-react';
 
 import {
   Sidebar,
+  SidebarHeader,
   SidebarContent,
   SidebarGroup,
-  SidebarHeader,
+  SidebarGroupLabel,
+  SidebarGroupContent,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
+  SidebarMenuButton,
   SidebarRail,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-// This is sample data.
-const data = {
-  navMain: [
-    {
-      title: "Getting Started",
-      url: "#",
-      items: [
-        {
-          title: "Installation",
-          url: "#",
-        },
-        {
-          title: "Project Structure",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Building Your Application",
-      url: "#",
-      items: [
-        {
-          title: "Routing",
-          url: "#",
-        },
-        {
-          title: "Data Fetching",
-          url: "#",
-          isActive: true,
-        },
-        {
-          title: "Rendering",
-          url: "#",
-        },
-        {
-          title: "Caching",
-          url: "#",
-        },
-        {
-          title: "Styling",
-          url: "#",
-        },
-        {
-          title: "Optimizing",
-          url: "#",
-        },
-        {
-          title: "Configuring",
-          url: "#",
-        },
-        {
-          title: "Testing",
-          url: "#",
-        },
-        {
-          title: "Authentication",
-          url: "#",
-        },
-        {
-          title: "Deploying",
-          url: "#",
-        },
-        {
-          title: "Upgrading",
-          url: "#",
-        },
-        {
-          title: "Examples",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "API Reference",
-      url: "#",
-      items: [
-        {
-          title: "Components",
-          url: "#",
-        },
-        {
-          title: "File Conventions",
-          url: "#",
-        },
-        {
-          title: "Functions",
-          url: "#",
-        },
-        {
-          title: "next.config.js Options",
-          url: "#",
-        },
-        {
-          title: "CLI",
-          url: "#",
-        },
-        {
-          title: "Edge Runtime",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Architecture",
-      url: "#",
-      items: [
-        {
-          title: "Accessibility",
-          url: "#",
-        },
-        {
-          title: "Fast Refresh",
-          url: "#",
-        },
-        {
-          title: "Next.js Compiler",
-          url: "#",
-        },
-        {
-          title: "Supported Browsers",
-          url: "#",
-        },
-        {
-          title: "Turbopack",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Community",
-      url: "#",
-      items: [
-        {
-          title: "Contribution Guide",
-          url: "#",
-        },
-      ],
-    },
-  ],
+// Utility from your project to merge class names
+import { cn } from "@/lib/utils";
+
+import { toolsMapping } from "@/utils/toolsMapping/toolsMapping";
+
+interface SideBarProps extends React.ComponentProps<typeof Sidebar> {
+  // If you're using local state or query params, add what you need here
+  activeToolKey: string | null;
+  setActiveToolKey?: (key: string) => void;
 }
 
-export function SideBar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function SideBar({ activeToolKey, setActiveToolKey, ...props }: SideBarProps) {
+  const authData = useRecoilValue(authAtom);
+  const permissions = authData?.userInfo?.permissions?.map((p) => p.name) || [];
+
+  // Filter user permissions for those starting with "_tools_"
+  const allowedTools = permissions.filter((perm) => perm.startsWith("_tools_"));
+
+  // Build the list of tools from your mapping
+  const tools = toolsMapping.filter((toolObj) => {
+    const key = Object.keys(toolObj)[0];
+    return allowedTools.includes(key);
+  });
+
+  // Handling item click (if using local state)
+  function handleToolClick(key: string) {
+    if (setActiveToolKey) {
+      setActiveToolKey(key);
+    }
+    // If you’re using something else like routing with href, you’d do that here
+  }
+
   return (
-    <Sidebar {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="#">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <GalleryVerticalEnd className="size-4" />
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Documentation</span>
-                  <span className="">v1.0.0</span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+    <Sidebar {...props} className="p-0">
+      {/* Header with the same “ChevronsLeftRightEllipsis” approach */}
+      <SidebarHeader className="p-0">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger
+              className="font-medium text-base mt-2 text-gray-800 flex items-center
+                         bg-gray-100 border border-gray-200 rounded-xl px-3 py-2
+                         hover:bg-gray-100 transition-colors duration-200 w-full"
+            >
+              <ChevronsLeftRightEllipsis className="w-5 h-5 text-gray-600 mr-2" />
+              <span>Tools</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="italic text-sm">
+                Press <kbd>Ctrl</kbd> + <kbd>b</kbd> to toggle.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
-          <SidebarMenu>
-            {data.navMain.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild>
-                  <a href={item.url} className="font-medium">
-                    {item.title}
-                  </a>
-                </SidebarMenuButton>
-                {item.items?.length ? (
-                  <SidebarMenuSub>
-                    {item.items.map((item) => (
-                      <SidebarMenuSubItem key={item.title}>
-                        <SidebarMenuSubButton asChild isActive={item.isActive}>
-                          <a href={item.url}>{item.title}</a>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                ) : null}
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
+          <SidebarGroupLabel>Available Tools</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {tools.map((toolObj) => {
+                const key = Object.keys(toolObj)[0];
+                const title = toolObj[key];
+                const isActive = key === activeToolKey;
+
+                return (
+                  <SidebarMenuItem
+                    key={key}
+                    className={cn(
+                      // Base style from “Views” approach
+                      "flex items-center gap-2 w-full px-2 py-1 rounded-lg transition-colors duration-200 ease-in-out",
+                      // Active vs. hover states
+                      isActive
+                        ? "bg-slate-100 text-gray-950 font-medium"
+                        : "hover:bg-slate-100"
+                    )}
+                  >
+                    <SidebarMenuButton asChild>
+                      <button
+                        className="flex items-center gap-2 w-full text-left"
+                        onClick={() => handleToolClick(key)}
+                      >
+                        {/* Replace with whichever icon logic you want */}
+                        {(title === "Price Lookup" && <IndianRupee className="w-5 h-5" />) || title === "Vendor Lookup" && <Computer className="w-5 h-5" /> || title === "Duplicate Domain Lookup" && <Copy className="w-5 h-5" />}
+
+                        <span>{title}</span>
+                      </button>
+                    </SidebarMenuButton>
+
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

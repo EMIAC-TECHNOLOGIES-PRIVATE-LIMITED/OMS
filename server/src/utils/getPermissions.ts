@@ -84,7 +84,6 @@ export const getPermissionCached = async function (
         } else {
             let user;
             try {
-                // Fetch user with role and permission overrides, selecting necessary fields
                 user = await prismaClient.user.findUnique({
                     where: {
                         id: userId,

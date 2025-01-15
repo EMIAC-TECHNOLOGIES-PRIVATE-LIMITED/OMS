@@ -11,8 +11,6 @@ const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || 'refresh@123';
 export async function generateAccessToken(req: any, res: Response): Promise<boolean> {
     const refreshToken = req.cookies.refreshToken;
 
-    // console.log("Attempting to generate new access token. Refresh token: ", refreshToken);
-
     if (!refreshToken) {
         console.error("Refresh token is missing.");
         res

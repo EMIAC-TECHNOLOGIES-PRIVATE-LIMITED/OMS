@@ -42,7 +42,7 @@ async function main() {
             ifscCode: vendor.bank_ifsc || '',
             paypalId: vendor.paypal_id || '',
             userId: parseSafeInt(vendor.user_id),
-            timestamp: vendor.timestamp || '',
+            timestamp: new Date("2022-09-27T18:00:00.000Z").toISOString(),
             skypeId: vendor.skype_id || '',
             upiId: vendor.upi_id || '',
           },

@@ -47,8 +47,6 @@ import {
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
-// Progress Component
-import { Progress } from "@/components/ui/progress";
 import { FilterCondition } from '../../../../shared/src/types';
 
 // Create motion-enhanced versions of Shadcn components

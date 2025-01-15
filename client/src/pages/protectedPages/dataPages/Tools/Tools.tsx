@@ -1,52 +1,80 @@
+import { useState } from "react";
+
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import {
     Breadcrumb,
     BreadcrumbItem,
-    BreadcrumbLink,
     BreadcrumbList,
     BreadcrumbPage,
     BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import {
-    SidebarInset,
-    SidebarProvider,
-    SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { SideBar } from "./SideBar"
+} from "@/components/ui/breadcrumb";
 
-export default function Tools() {
+// Our custom components
+import { SideBar } from "./SideBar";
+
+// Tools
+import DuplicateWebsiteChecker from "./components/DuplicateWebsiteChecker";
+import PriceChecker from "./components/PriceChecker";
+import VendorChecker from "./components/VendorChecker";
+
+// Helpers
+import { getTitleFromKey } from "../../../../utils/toolsMapping/toolsMapping";
+
+export default function ToolsPage() {
+    // Recoil value for user/auth data
+
+
+    // activeToolKey will be something like "_tools_1" or null if nothing is selected
+    const [activeToolKey, setActiveToolKey] = useState<string | null>(null);
+
+    // If a tool is selected, we derive its display name for the breadcrumb
+    const activeToolTitle = activeToolKey ? getTitleFromKey(activeToolKey) : null;
+
     return (
         <SidebarProvider>
-            <SideBar />
+            {/* The sidebar takes a callback so it can set activeToolKey */}
+            <SideBar activeToolKey={activeToolKey} setActiveToolKey={setActiveToolKey} />
+
             <SidebarInset>
                 <header className="flex h-16 shrink-0 items-center gap-2 border-b">
                     <div className="flex items-center gap-2 px-3">
                         <SidebarTrigger />
                         <Separator orientation="vertical" className="mr-2 h-4" />
+
                         <Breadcrumb>
                             <BreadcrumbList>
-                                <BreadcrumbItem className="hidden md:block">
-                                    <BreadcrumbLink href="#">
-                                        Building Your Application
-                                    </BreadcrumbLink>
-                                </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block" />
                                 <BreadcrumbItem>
-                                    <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+                                    <BreadcrumbPage>Tools</BreadcrumbPage>
                                 </BreadcrumbItem>
+                                {activeToolTitle && (
+                                    <>
+                                        <BreadcrumbSeparator />
+                                        <BreadcrumbItem>
+                                            <BreadcrumbPage>{activeToolTitle}</BreadcrumbPage>
+                                        </BreadcrumbItem>
+                                    </>
+                                )}
                             </BreadcrumbList>
                         </Breadcrumb>
                     </div>
                 </header>
+
                 <div className="flex flex-1 flex-col gap-4 p-4">
-                    <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                        <div className="aspect-video rounded-xl bg-muted/50" />
-                        <div className="aspect-video rounded-xl bg-muted/50" />
-                        <div className="aspect-video rounded-xl bg-muted/50" />
-                    </div>
-                    <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
+                    {/* If no tool selected, show a default placeholder */}
+                    {!activeToolKey && (
+                        <div>
+                            <h1 className="text-lg font-semibold">Select a Tool from the Sidebar</h1>
+                            <p>Choose an available tool to begin working.</p>
+                        </div>
+                    )}
+
+                    {/* Render the correct component based on activeToolKey */}
+                    {activeToolKey === "_tools_1" && <DuplicateWebsiteChecker />}
+                    {activeToolKey === "_tools_2" && <PriceChecker />}
+                    {activeToolKey === "_tools_3" && <VendorChecker />}
                 </div>
             </SidebarInset>
         </SidebarProvider>
-    )
+    );
 }

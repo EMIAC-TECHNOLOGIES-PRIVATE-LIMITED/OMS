@@ -47,6 +47,7 @@ async function main() {
             follow: site.follow || 'Do-follow',
             price_category: site.price_category,
             traffic: parseSafeBigInt(site.traffic),
+            vendor_id: Math.random()*60 + 1,
             spam_score: parseSafeInt(site.spam_score),
             cbd_price: parseSafeInt(site.cbd_price),
             remark: site.remark,

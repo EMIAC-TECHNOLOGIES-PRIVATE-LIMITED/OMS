@@ -1,9 +1,10 @@
 import express from "express";
-import STATUS_CODES from "src/constants/statusCodes";
-import { APIError } from "src/utils/apiHandler";
+import STATUS_CODES from "../constants/statusCodes";
+import { APIError } from "../utils/apiHandler";
 import jwt from 'jsonwebtoken';
-import { getPermissionCached } from "src/utils/getPermissions";
-import { generateAccessToken } from "src/utils/generateAccessToken";
+import { getPermissionCached } from "../utils/getPermissions";
+import { generateAccessToken } from "../utils/generateAccessToken";
+import { toolsController } from "../controllers/toolsController";
 
 const router = express.Router();
 const jwtSecret = process.env.JWT_SECRET || 'random@123';
@@ -23,7 +24,7 @@ router.use(async (req, res, next) => {
         if (!isAllowed) {
             return res.status(403).json(new APIError(STATUS_CODES.FORBIDDEN, "You are not authorized to access this route", [], false));
         }
-        next();
+        return next();
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
             const refreshed = await generateAccessToken(req, res);
@@ -34,13 +35,18 @@ router.use(async (req, res, next) => {
                 if (!isAllowed) {
                     return res.status(403).json(new APIError(STATUS_CODES.FORBIDDEN, "You are not authorized to access this route", [], false));
                 }
-                next();
+                return next();
             }
         }
+        console.log("<--------------- CODE REACHED HERE --------------->");
         return res.status(403).json(new APIError(STATUS_CODES.FORBIDDEN, "Invalid access token", [], false));
     }
 })
 
+// Tools Routes
+router.post('/website-checker', toolsController.websiteChecker)
+router.post('/price-checker', toolsController.priceChecker)
+router.post('/vendor-checker', toolsController.vendorChecker)
 
 
 export default router;
