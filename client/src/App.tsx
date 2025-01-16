@@ -21,7 +21,7 @@ import ManageUsers from './components/DashBoard/ManageUsers';
 import EditUser from './components/DashBoard/EditUser';
 import Sites from './pages/protectedPages/dataPages/Sites';
 import Vendors from './pages/protectedPages/dataPages/Vendors';
-import LoginPage from './pages/publicPages/LoginPage';
+import LoginPage from './pages/publicPages/Login/LoginPage';
 import Clients from './pages/protectedPages/dataPages/Clients';
 import Orders from './pages/protectedPages/dataPages/Orders';
 import Unauthorized from './pages/publicPages/Unauthorized'; 

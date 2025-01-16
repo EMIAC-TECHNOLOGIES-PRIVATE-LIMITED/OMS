@@ -16,9 +16,9 @@ function Layout() {
 
     return (
         <>
-            {isAuthenticated ? <LoggedInHeader /> : <LoggedOutHeader />}
+            {isAuthenticated ? <LoggedInHeader /> : <> </>}
             <Outlet />
-            <Footer />
+            {isAuthenticated ? <Footer /> : <> </>}
             <Toaster />
         </>
     );

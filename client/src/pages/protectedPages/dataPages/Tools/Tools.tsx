@@ -20,6 +20,8 @@ import VendorChecker from "./components/VendorChecker";
 
 // Helpers
 import { getTitleFromKey } from "../../../../utils/toolsMapping/toolsMapping";
+import URLSanitizer from "./components/URLSanitizer";
+import { Landing } from "./components/Landing/Landing";
 
 export default function ToolsPage() {
     // Recoil value for user/auth data
@@ -60,19 +62,21 @@ export default function ToolsPage() {
                     </div>
                 </header>
 
-                <div className="flex flex-1 flex-col gap-4 p-4">
+                <div className="flex flex-1 flex-col gap-4 ">
                     {/* If no tool selected, show a default placeholder */}
                     {!activeToolKey && (
-                        <div>
-                            <h1 className="text-lg font-semibold">Select a Tool from the Sidebar</h1>
-                            <p>Choose an available tool to begin working.</p>
-                        </div>
+
+                        <Landing
+                            setActiveToolKey={(activeToolKey: string) => setActiveToolKey(activeToolKey)}
+                        />
+
                     )}
 
                     {/* Render the correct component based on activeToolKey */}
                     {activeToolKey === "_tools_1" && <DuplicateWebsiteChecker />}
                     {activeToolKey === "_tools_2" && <PriceChecker />}
                     {activeToolKey === "_tools_3" && <VendorChecker />}
+                    {activeToolKey === "_tools_4" && <URLSanitizer />}
                 </div>
             </SidebarInset>
         </SidebarProvider>

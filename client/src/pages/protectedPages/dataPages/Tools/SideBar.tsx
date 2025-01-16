@@ -3,7 +3,7 @@ import { ChevronsLeftRightEllipsis } from "lucide-react";
 import { useRecoilValue } from "recoil";
 import { authAtom } from "@/store/atoms/atoms";
 
-import { IndianRupee, Copy, Computer } from 'lucide-react';
+import { IndianRupee, Copy, Computer, Link } from 'lucide-react';
 
 import {
   Sidebar,
@@ -61,6 +61,7 @@ export function SideBar({ activeToolKey, setActiveToolKey, ...props }: SideBarPr
               className="font-medium text-base mt-2 text-gray-800 flex items-center
                          bg-gray-100 border border-gray-200 rounded-xl px-3 py-2
                          hover:bg-gray-100 transition-colors duration-200 w-full"
+              onClick={() => setActiveToolKey?.("")}
             >
               <ChevronsLeftRightEllipsis className="w-5 h-5 text-gray-600 mr-2" />
               <span>Tools</span>
@@ -81,7 +82,7 @@ export function SideBar({ activeToolKey, setActiveToolKey, ...props }: SideBarPr
             <SidebarMenu>
               {tools.map((toolObj) => {
                 const key = Object.keys(toolObj)[0];
-                const title = toolObj[key];
+                const title = (toolObj as unknown as Record<string, string>)[key];
                 const isActive = key === activeToolKey;
 
                 return (
@@ -102,7 +103,7 @@ export function SideBar({ activeToolKey, setActiveToolKey, ...props }: SideBarPr
                         onClick={() => handleToolClick(key)}
                       >
                         {/* Replace with whichever icon logic you want */}
-                        {(title === "Price Lookup" && <IndianRupee className="w-5 h-5" />) || title === "Vendor Lookup" && <Computer className="w-5 h-5" /> || title === "Duplicate Domain Lookup" && <Copy className="w-5 h-5" />}
+                        {(title === "Price Lookup" && <IndianRupee className="w-5 h-5" />) || title === "Vendor Lookup" && <Computer className="w-5 h-5" /> || title === "Duplicate Domain Lookup" && <Copy className="w-5 h-5" /> || title === "URL Sanitizer" && <Link className="w-5 h-5" />}
 
                         <span>{title}</span>
                       </button>

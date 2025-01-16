@@ -127,6 +127,8 @@ module.exports = {
   					transform: 'scale(1)'
   				}
   			},
+			
+			  
   			fadeOut: {
   				'0%': {
   					opacity: 1

@@ -436,19 +436,22 @@ export interface PriceCheckerResponse {
     status: number;
     message: string;
     success: boolean;
-    data: Array<{
-        website: string;
-        vendor: {
-            id?: number;
-            name?: string;
-            phone?: string;
-            email?: string;
-            country?: string | null;
-        };
-        price: number;
-        sailingPrice: number | null;
-        discount: number | null;
-    }>;
+    data: {
+        domainsFound: Array<{
+            website: string;
+            vendor: {
+                id?: number;
+                name?: string;
+                phone?: string;
+                email?: string;
+                country?: string | null;
+            };
+            price: number;
+            sailingPrice: number | null;
+            discount: number | null;
+        }>;
+        domainsNotFound: string[];
+    }
 }
 
 export interface VendorCheckerResponse {
@@ -456,15 +459,18 @@ export interface VendorCheckerResponse {
     message: string;
     success: boolean;
     data: {
-        vendors: {
-            [key: string]: Array<{
-                vendorId: number;
-                vendorName: string;
-                vendorPhone: string;
-                vendorEmail: string;
-                vendorCountry: string | null;
-            }>;
-        };
+        domainsFound: {
+            vendors: {
+                [key: string]: Array<{
+                    vendorId: number;
+                    vendorName: string;
+                    vendorPhone: string;
+                    vendorEmail: string;
+                    vendorCountry: string | null;
+                }>;
+            };
+        },
+        domainsNotFound: string[];
     };
 }
 

@@ -88,7 +88,20 @@ export const toolsController = {
                 );
             }
 
-            const pricesMap: { [key: string]: PriceCheckerResponse['data'] } = {};
+            const domainsFound: Array<{
+                website: string;
+                vendor: {
+                    id?: number;
+                    name?: string;
+                    phone?: string;
+                    email?: string;
+                    country?: string | null;
+                };
+                price: number;
+                sailingPrice: number | null;
+                discount: number | null;
+            }> = [];
+            const domainsNotFound: string[] = [];
 
             try {
                 for (const domain of data.domains) {
@@ -108,29 +121,38 @@ export const toolsController = {
                         },
                     });
 
-                    const result: PriceCheckerResponse['data'] = sites.map((site) => ({
-                        website: site.website,
-                        vendor: {
-                            id: site.vendor?.id,
-                            name: site.vendor?.name,
-                            phone: site.vendor?.phone,
-                            email: site.vendor?.email,
-                            country: site.vendor_country || null,
-                        },
-                        price: site.price,
-                        sailingPrice: site.sailing_price || null,
-                        discount: site.discount || null,
-                    }));
-
-                    pricesMap[domain] = result;
+                    if (sites.length === 0) {
+                        domainsNotFound.push(domain);
+                    } else {
+                        sites.forEach(site => {
+                            domainsFound.push({
+                                website: site.website,
+                                vendor: {
+                                    id: site.vendor?.id,
+                                    name: site.vendor?.name,
+                                    phone: site.vendor?.phone,
+                                    email: site.vendor?.email,
+                                    country: site.vendor_country || null,
+                                },
+                                price: site.price,
+                                sailingPrice: site.sailing_price || null,
+                                discount: site.discount || null,
+                            });
+                        });
+                    }
                 }
             } catch (dbError) {
                 console.error("Database query failed:", dbError);
                 throw new Error('Failed to fetch price data');
             }
 
+            const responseData: PriceCheckerResponse['data'] = {
+                domainsFound,
+                domainsNotFound
+            };
+
             return res.status(STATUS_CODES.OK).json(
-                new APIResponse(STATUS_CODES.OK, "Price check completed", { prices: pricesMap }, true)
+                new APIResponse(STATUS_CODES.OK, "Price check completed", responseData, true)
             );
         } catch (error: any) {
             console.error("Error in priceChecker:", error);
@@ -160,7 +182,16 @@ export const toolsController = {
                 );
             }
 
-            const vendorsMap: { [key: string]: any[] } = {};
+            const vendors: {
+                [key: string]: Array<{
+                    vendorId: number;
+                    vendorName: string;
+                    vendorPhone: string;
+                    vendorEmail: string;
+                    vendorCountry: string | null;
+                }>
+            } = {};
+            const domainsNotFound: string[] = [];
 
             try {
                 for (const domain of data.domains) {
@@ -180,25 +211,32 @@ export const toolsController = {
                         },
                     });
 
-                    vendorsMap[domain] = sites.map((site) => ({
-                        vendorId: site.vendor?.id,
-                        vendorName: site.vendor?.name,
-                        vendorPhone: site.vendor?.phone,
-                        vendorEmail: site.vendor?.email,
-                        vendorCountry: site.vendor_country || null,
-                    }));
+                    if (sites.length === 0) {
+                        domainsNotFound.push(domain);
+                    } else {
+                        vendors[domain] = sites.map((site) => ({
+                            vendorId: site.vendor?.id || 0,
+                            vendorName: site.vendor?.name || '',
+                            vendorPhone: site.vendor?.phone || '',
+                            vendorEmail: site.vendor?.email || '',
+                            vendorCountry: site.vendor_country || null,
+                        }));
+                    }
                 }
             } catch (dbError) {
                 console.error("Database operation failed:", dbError);
                 throw new Error('Failed to fetch vendor data');
             }
 
-            const response: VendorCheckerResponse["data"] = {
-                vendors: vendorsMap,
+            const responseData: VendorCheckerResponse['data'] = {
+                domainsFound: {
+                    vendors
+                },
+                domainsNotFound
             };
 
             return res.status(STATUS_CODES.OK).json(
-                new APIResponse(STATUS_CODES.OK, "Vendor check completed", response, true)
+                new APIResponse(STATUS_CODES.OK, "Vendor check completed", responseData, true)
             );
         } catch (error: any) {
             console.error("Error in vendorChecker:", error);
