@@ -89,7 +89,7 @@ const DropdownMenuItem = React.forwardRef<
       className
     )}
     onSelect={(event) => {
-      event.preventDefault()
+      // event.preventDefault()
     }}
     {...props}
   />
@@ -108,7 +108,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     )}
     checked={checked}
     onSelect={(event) => {
-      event.preventDefault()
+      // event.preventDefault()
     }}
     {...props}
   >
@@ -134,7 +134,7 @@ const DropdownMenuRadioItem = React.forwardRef<
       className
     )}
     onSelect={(event) => {
-      event.preventDefault()
+      // event.preventDefault()
     }}
     {...props}
   >

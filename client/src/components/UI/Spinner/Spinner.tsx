@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 
 interface SpinnerProps {
   imagePath: string;
-  size?: number;
+  size?: number; // Represents size in pixels
   rotationDuration?: number;
   pauseDuration?: number;
 }
 
 const Spinner: React.FC<SpinnerProps> = ({
   imagePath,
-  size = 10,
+  size = 10, // Default size in pixels
   rotationDuration = 700,
   pauseDuration = 300
 }) => {
@@ -18,32 +18,27 @@ const Spinner: React.FC<SpinnerProps> = ({
   useEffect(() => {
     const rotationInterval = setInterval(() => {
       setIsRotating(false);
-     
+
       setTimeout(() => {
         setIsRotating(true);
       }, pauseDuration);
-      
+
     }, rotationDuration + pauseDuration);
 
     return () => clearInterval(rotationInterval);
   }, [rotationDuration, pauseDuration]);
 
   return (
-    <div className="flex items-center justify-center w-full h-full">
+    <div className="flex items-center justify-center">
       <img
         src={imagePath}
         alt="Loading..."
-        className={`
-          w-20
-          h-20
-          object-contain
-          ${isRotating ? 'animate-spin' : ''}
-          transition-all
-          duration-700
-        `}
+        className={`${isRotating ? 'animate-spin' : ''} transition-all`}
         style={{
+          width: `${size}px`,
+          height: `${size}px`,
           animationDuration: `${rotationDuration}ms`,
-          animationTimingFunction: 'linear'
+          animationTimingFunction: 'linear',
         }}
       />
     </div>

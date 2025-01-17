@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { useRecoilState } from 'recoil';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+
 import { authAtom } from '../../../store/atoms/atoms';
 import { signIn } from '../../../utils/apiService/authAPI';
 
-
-import { lazy, Suspense } from "react";
-import { motion } from "framer-motion";
 import { Button } from '@/components/ui/button';
+// Replace this with the correct relative path to your FlipWords component
+import { FlipWords } from './FlipWords';
 
 const World = lazy(() =>
   import("./globe").then((m) => ({
@@ -53,31 +54,6 @@ const LoginPage: React.FC = () => {
     autoRotateSpeed: 0.5,
   };
 
-  // const globeConfig = {
-  //   pointSize: 4,
-  //   globeColor: "#063926", // deep green as the primary globe color
-  //   showAtmosphere: true,
-  //   atmosphereColor: "#FFFFFF", // keep white for a clean atmospheric highlight
-  //   atmosphereAltitude: 0.1,
-  //   emissive: "#063926", // matching the globe color for emissive glow
-  //   emissiveIntensity: 0.1,
-  //   shininess: 0.9,
-  //   polygonColor: "rgba(255,255,255,0.7)",
-  //   ambientLight: "#3dffa0", // vibrant green for the ambient glow
-  //   directionalLeftLight: "#ffffff",
-  //   directionalTopLight: "#ffffff",
-  //   pointLight: "#ffffff",
-  //   arcTime: 1000,
-  //   arcLength: 0.9,
-  //   rings: 1,
-  //   maxRings: 3,
-  //   initialPosition: { lat: 22.3193, lng: 114.1694 },
-  //   autoRotate: true,
-  //   autoRotateSpeed: 0.5,
-  // };
-
-
-  // const colors = ["#06b6d4", "#3b82f6", "#6366f1"];
   const colors = ["#26c281", "#007b3c", "#004020"];
 
   const sampleArcs = [
@@ -450,7 +426,6 @@ const LoginPage: React.FC = () => {
     setError(null);
     try {
       const response = await signIn(email, password);
-
       const { data } = response;
 
       setAuth({
@@ -473,11 +448,12 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="flex  items-stretch h-screen  ">
+    <div className="flex items-stretch h-screen">
+      {/* LEFT SIDE: Login Card */}
       <div className="relative w-1/2 h-svh space-y-4 bg-slate-100 overflow-hidden">
         {/* Glowing Circles */}
-        <div className="absolute w-1/4 h-[45%] bg-brand-dark rounded-full -left-[15%] -top-[25%] blur-[100px] opacity-30"></div>
-        <div className="absolute w-1/4 h-[45%] bg-brand-dark rounded-full -right-[15%] -bottom-[25%] blur-[100px] opacity-30"></div>
+        <div className="absolute w-1/4 h-[45%] bg-brand-dark rounded-full -left-[15%] -top-[25%] blur-[100px] opacity-30" />
+        <div className="absolute w-1/4 h-[45%] bg-brand-dark rounded-full -right-[15%] -bottom-[25%] blur-[100px] opacity-30" />
 
         {/* Logo */}
         <div className="m-6">
@@ -489,20 +465,10 @@ const LoginPage: React.FC = () => {
         </div>
 
         <div className="w-full h-full flex items-center justify-center">
-
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 20,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 1,
-            }}
-            className=""
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1 }}
           >
             {/* Login Card */}
             <div className="bg-white shadow-lg w-96 rounded-2xl p-8">
@@ -512,7 +478,9 @@ const LoginPage: React.FC = () => {
 
               {/* Email Input */}
               <div className="mb-4">
-                <label className="block text-gray-600 font-medium mb-1">Email</label>
+                <label className="block text-gray-600 font-medium mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
                   value={email}
@@ -524,7 +492,9 @@ const LoginPage: React.FC = () => {
 
               {/* Password Input */}
               <div className="mb-4">
-                <label className="block text-gray-600 font-medium mb-1">Password</label>
+                <label className="block text-gray-600 font-medium mb-1">
+                  Password
+                </label>
                 <input
                   type="password"
                   value={password}
@@ -536,7 +506,9 @@ const LoginPage: React.FC = () => {
 
               {/* Error Message */}
               {error && (
-                <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
+                <p className="text-red-500 text-sm mb-4 text-center">
+                  {error}
+                </p>
               )}
 
               {/* Login Button */}
@@ -559,36 +531,32 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
 
-
-      <div className='w-1/2 space-y-4 bg-black'>
-        <div className="flex flex-row items-center justify-center py-20 h-screen md:h-auto dark:bg-blac relative w-full">
+      {/* RIGHT SIDE: Globe + Animated Headline */}
+      <div className="w-1/2 space-y-4 bg-black">
+        <div className="flex flex-row items-center justify-center py-20 h-screen md:h-auto relative w-full">
           <div className="max-w-7xl mx-auto w-full relative overflow-hidden h-full md:h-[40rem] px-4">
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 20,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 1,
-              }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1 }}
               className="div"
             >
+              {/* HEADLINE WITH FlipWords INTEGRATION */}
               <h2 className="text-center text-xl md:text-4xl font-bold text-white dark:text-white">
-                Connecting Businesses
+                Connecting{" "}
+                <FlipWords
+                  words={["Domains", "Businesses", "You"]}
+                  duration={3000}
+                  className="inline-block"
+                />
                 Worldwide
               </h2>
 
               <p className="text-center text-sm md:text-lg text-white dark:text-white">
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam
               </p>
-            
-              
-
             </motion.div>
+
             <div className="absolute w-full -bottom-20 h-72 md:h-full z-10">
               <Suspense fallback={<div>Loading the 3D Globe...</div>}>
                 <World data={sampleArcs} globeConfig={globeConfig} />
@@ -602,4 +570,3 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
-

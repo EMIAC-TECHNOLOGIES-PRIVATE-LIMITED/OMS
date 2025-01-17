@@ -399,7 +399,7 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
 
     return (
       <div className="flex flex-col gap-2 mb-2 p-2 bg-white rounded-md shadow-sm">
-        <Popover>
+        <Popover >
           <PopoverTrigger asChild>
             <Button
               variant="secondaryFlat"

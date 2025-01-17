@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FilterConfig } from '../../../../../shared/src/types';
-import { ArrowUpDownIcon, PlusIcon, Check, ChevronsUpDown, X } from 'lucide-react';
+import {
+  ArrowUpDownIcon,
+  PlusIcon,
+  Check,
+  ChevronsUpDown,
+  X
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -32,23 +38,157 @@ interface SortingEntry {
 const formatHeader = (header: string) =>
   header.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 
+// Sub-component: ColumnSelectionPopover
+function ColumnSelectionPopover({
+  index,
+  column,
+  orderedColumns,
+  handleSortingChange,
+}: {
+  index: number;
+  column: string;
+  orderedColumns: { value: string; label: string }[];
+  handleSortingChange: (index: number, field: 'column' | 'direction', value: string) => void;
+}) {
+  // Local popover state for column selection
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="secondaryFlat"
+          size="sm"
+          className="w-[200px] justify-between"
+          onClick={() => setOpen(true)}
+          role="combobox"
+        >
+          {column ? formatHeader(column) : "Select Column"}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0">
+        <Command>
+          <CommandInput placeholder="Search column..." />
+          <CommandList>
+            <CommandEmpty>No column found.</CommandEmpty>
+            <CommandGroup>
+              {orderedColumns.map((col) => (
+                <CommandItem
+                  key={col.value}
+                  value={col.value}
+                  onSelect={(currentValue) => {
+                    // Update sorting state
+                    handleSortingChange(index, 'column', currentValue);
+                    // Close the popover immediately
+                    setOpen(false);
+                  }}
+                >
+                  {col.label}
+                  <Check
+                    className={cn(
+                      "ml-auto h-4 w-4",
+                      column === col.value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Sub-component: DirectionSelectionPopover
+function DirectionSelectionPopover({
+  index,
+  entry,
+  direction,
+  directionOptions,
+  handleSortingChange,
+  disabled,
+}: {
+  index: number;
+  entry: SortingEntry;
+  direction: 'asc' | 'desc';
+  directionOptions: { value: string; label: string }[];
+  handleSortingChange: (index: number, field: 'column' | 'direction', value: string) => void;
+  disabled: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="secondaryFlat"
+          size="sm"
+          role="combobox"
+          className="w-[140px] justify-between"
+          disabled={disabled}
+          onClick={() => setOpen(true)}
+        >
+          {entry.column && entry.hasDirection
+            ? directionOptions.find(opt => opt.value === direction)?.label
+            : "Select Order"}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[140px] p-0">
+        <Command>
+          <CommandList>
+            <CommandGroup>
+              {directionOptions.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.value}
+                  onSelect={(currentValue) => {
+                    handleSortingChange(index, 'direction', currentValue);
+                    // Close popover immediately
+                    setOpen(false);
+                  }}
+                >
+                  {option.label}
+                  <Check
+                    className={cn(
+                      "ml-auto h-4 w-4",
+                      direction === option.value && entry.hasDirection ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
   filterConfig,
   availableColumnsTypes,
   onFilterChange,
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
+
+  // Local sorting array: each element is a { [columnName]: 'asc'|'desc' }
   const [localSorting, setLocalSorting] = useState<{ [key: string]: 'asc' | 'desc' }[]>(
     filterConfig.appliedSorting
   );
+
+  // Each entry tracks user selection: { column: string, hasDirection: boolean }
   const [pendingEntries, setPendingEntries] = useState<SortingEntry[]>([
     { column: '', hasDirection: false }
   ]);
 
-  // Synchronize local state with global filterConfig when it changes
+  // Re-sync local state when global filterConfig changes
   useEffect(() => {
     const validSorting = filterConfig.appliedSorting;
     setLocalSorting(validSorting);
+
     setPendingEntries(
       validSorting.length > 0
         ? validSorting.map(sort => {
@@ -79,7 +219,7 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
         newSorting[index] = { [column]: value as 'asc' | 'desc' };
         setLocalSorting(newSorting);
 
-        // **Only** update filter if the current sorting entry is complete
+        // Only update filter if the current sorting entry is complete
         if (newPendingEntries[index].hasDirection) {
           const validSorting = newSorting.filter((sort, i) => {
             const sortKey = Object.keys(sort)[0];
@@ -175,7 +315,7 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
                 ? "bg-green-100 hover:bg-green-200 dark:bg-red-900/30 dark:hover:bg-red-900/50"
                 : ""}
             `}
-            aria-label={`Toggle column visibility. ${filterConfig.appliedSorting.length} columns shown`}
+            aria-label={`Toggle sorting panel. ${filterConfig.appliedSorting.length} sorting rules`}
             onClick={() => setIsOpen(true)}
           >
             <ArrowUpDownIcon className="w-4 h-4" />
@@ -185,10 +325,10 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
         <PopoverContent className="w-80">
           <div className="space-y-4">
             <div className="space-y-2">
-              <h4 className="font-medium leading-none">Sort Data</h4>
-              <p className="text-sm text-muted-foreground">
+              <h4 className="font-bold ">Sort Data</h4>
+              {/* <p className="text-sm text-muted-foreground">
                 Select columns and sort direction to organize your data.
-              </p>
+              </p> */}
             </div>
 
             <div className="space-y-2">
@@ -202,96 +342,33 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
                   <div key={index} className="flex items-center gap-2 w-full max-w-[100%]">
                     <div className="flex items-center gap-2 flex-nowrap overflow-hidden pr-2">
                       {/* Column Selection */}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="secondaryFlat"
-                            role="combobox"
-                            size="sm"
-                            className="w-[200px] justify-between"
-                          >
-                            {column ? formatHeader(column) : "Select Column"}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[200px] p-0">
-                          <Command>
-                            <CommandInput placeholder="Search column..." />
-                            <CommandList>
-                              <CommandEmpty>No column found.</CommandEmpty>
-                              <CommandGroup>
-                                {orderedColumns.map((col) => (
-                                  <CommandItem
-                                    key={col.value}
-                                    value={col.value}
-                                    onSelect={(currentValue) => {
-                                      handleSortingChange(index, 'column', currentValue);
-                                    }}
-                                  >
-                                    {col.label}
-                                    <Check
-                                      className={cn(
-                                        "ml-auto h-4 w-4",
-                                        column === col.value ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <ColumnSelectionPopover
+                        index={index}
+                        column={column}
+                        orderedColumns={orderedColumns}
+                        handleSortingChange={handleSortingChange}
+                      />
 
                       {/* Direction Selection */}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="secondaryFlat"
-                            size="sm"
-                            role="combobox"
-                            className="w-[140px] justify-between"
-                            disabled={!column}
-                          >
-                            {column && entry.hasDirection ?
-                              directionOptions.find(opt => opt.value === direction)?.label
-                              : "Select Order"
-                            }
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[140px] p-0">
-                          <Command>
-                            <CommandList>
-                              <CommandGroup>
-                                {directionOptions.map((option) => (
-                                  <CommandItem
-                                    key={option.value}
-                                    value={option.value}
-                                    onSelect={(currentValue) => {
-                                      handleSortingChange(index, 'direction', currentValue);
-                                    }}
-                                  >
-                                    {option.label}
-                                    <Check
-                                      className={cn(
-                                        "ml-auto h-4 w-4",
-                                        direction === option.value && entry.hasDirection ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <DirectionSelectionPopover
+                        index={index}
+                        entry={entry}
+                        direction={direction}
+                        directionOptions={directionOptions}
+                        handleSortingChange={handleSortingChange}
+                        disabled={!column}
+                      />
 
-                      {column && <Button variant="ghost" size="sm"
-                        onClick={() => removeSorting(index)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>}
+                      {/* Remove Sorting */}
+                      {column && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeSorting(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
@@ -304,12 +381,10 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
                 size="sm"
                 disabled={!isLastSortComplete()}
               >
-                <PlusIcon className="w-4 h-4 " />
+                <PlusIcon className="w-4 h-4" />
                 Add Sorting
               </Button>
             </div>
-
-            {/* No Apply Button as per your request */}
           </div>
         </PopoverContent>
       </Popover>

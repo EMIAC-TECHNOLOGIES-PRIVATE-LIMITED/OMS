@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
-
+import React, { useCallback, useEffect, useRef, useState, useMemo, } from "react";
+import { Spinner } from '../UI/index';
 import { AppSidebar } from "@/components/app-sidebar";
 import DataTableNew from "../DataTable/DataTableNew";
 import {
@@ -34,11 +34,10 @@ import {
 import { Input } from "../ui/input";
 
 import ColumnPanelNew from "../UI/ColumnPanel/ColumnPanelNew";
-import { SortingPanelNew } from "../UI";
-import FilterPanelNew from "../UI/FilterPanel/FilterPanel2";
+import { PaginationControlsNew, SortingPanelNew } from "../UI";
+import FilterPanelNew from "../UI/FilterPanel/FilterPanel3";
+import { Button } from "../ui/button";
 
-// Import Progress component from Shad CN
-import { Progress } from "@/components/ui/progress";
 
 interface DataPageProps {
   apiEndpoint: string;
@@ -84,8 +83,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     [key: string]: string;
   }>({});
 
-  // Progress State
-  const [progress, setProgress] = useState<number>(0);
+
+
 
   // For tracking if we have fetched data
   const hasFetchedInitialData = useRef<boolean>(false);
@@ -97,9 +96,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   // For searching among views (in the sidebar)
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // ------------------------------------------------
-  // 2) Modal Outside-Click
-  // ------------------------------------------------
+
+  //  Modal Outside-Click 
   const handleClickOutside = useCallback(
     (e: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
@@ -110,6 +108,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     []
   );
 
+  // add event listener for outside click
   useEffect(() => {
     if (isModalOpen) {
       document.addEventListener("mousedown", handleClickOutside);
@@ -216,7 +215,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
           setError(handleApiError(err, "An error occurred while fetching view data."));
         }
       } finally {
-        // setLoading(false);
+        setLoading(false);
         setInitialLoading(false);
         hasFetchedInitialData.current = true;
       }
@@ -372,39 +371,9 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     await handleDeleteView(viewId);
   };
 
-  // ------------------------------------------------
-  // Progress Bar Effect
-  // ------------------------------------------------
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
 
-    if (loading) {
-      setProgress(0); // Reset progress when loading starts
 
-      // Increment progress every 500ms up to 90%
-      timer = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 90) return prev; // Cap at 90% to leave room for completion
-          return prev + Math.random() * 10; // Increment by a random value to simulate progress
-        });
-      }, 500);
-    } else {
-      // When loading finishes, set progress to 100% and then reset after a short delay
-      setProgress(100);
-
-      // Hide the progress bar after it reaches 100%
-      timer = setTimeout(() => {
-        setProgress(0);
-      }, 500); // Adjust the delay as needed
-    }
-
-    // Cleanup the timer on component unmount or when loading state changes
-    return () => clearInterval(timer);
-  }, [loading]);
-
-  // ------------------------------------------------
-  // Compute Filtered and Sorted Columns
-  // ------------------------------------------------
+  // filtered and sorted columns 
   const filteredColumns = useMemo(() => {
     const columns = new Set<string>();
     Object.values(currentFilterConfig.appliedFilters || {}).forEach(filterGroup => {
@@ -427,36 +396,31 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     return columns;
   }, [currentFilterConfig.appliedSorting]);
 
-  // ------------------------------------------------
-  // 7) RENDER: Mirroring Your Home.tsx Structure
-  // ------------------------------------------------
+
   return (
-    <div className="overflow-hidden"> {/* Prevent entire page from scrolling */}
+    <div className="overflow-hidden">
       <SidebarProvider>
-        <div className="flex min-h-[calc(100vh-5rem)] border-t overflow-hidden"> {/* Added overflow-hidden */}
-          {/* SIDEBAR */}
+        <div className="flex min-h-[calc(100vh-5rem)] border-t overflow-hidden">
           <AppSidebar
             className="shrink-0 border-r"
             views={views}
             currentViewId={currentViewId}
             onSelectView={(id) => fetchViewData(id)}
-            handleConfirmDelete={(v: View) => confirmDeleteView(v)}
+            handleConfirmDelete={(v: View) => handleDeleteView(v)}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
           />
 
           {/* MAIN CONTENT */}
-          <SidebarInset className="flex flex-1 flex-col overflow-hidden"> {/* Added overflow-hidden */}
-            {/* Progress Bar */}
-          
-            <Progress value={progress} className="w-full h-0.5" />
+          <SidebarInset className="flex flex-1 flex-col overflow-hidden">
+
 
             {/* Header with trigger + breadcrumb */}
             <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 relative">
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mr-2 h-4" />
               <Breadcrumb>
-                <BreadcrumbList className="flex flex-wrap"> {/* Added flex-wrap */}
+                <BreadcrumbList className="flex flex-wrap">
                   <BreadcrumbItem className="hidden md:block">
                     {pageTitle}
                   </BreadcrumbItem>
@@ -465,7 +429,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                     <BreadcrumbPage>
                       <Input
                         type="text"
-                        className="rounded-md"
+                        className="rounded-xl"
                         value={currentViewName}
                         onChange={(e) => setCurrentViewName(e.target.value)}
                         placeholder="View Name"
@@ -484,12 +448,12 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                   </BreadcrumbItem>
                   <BreadcrumbItem>
                     <FilterPanelNew
-                      availableColumnsTypes={availableColumns}
+                      availableColumnTypes={availableColumns}
                       filterConfig={currentFilterConfig}
                       onFilterChange={(newConfig) => {
                         setCurrentFilterConfig(newConfig);
                       }}
-                      resource={resource}
+
                     />
                   </BreadcrumbItem>
                   <BreadcrumbItem>
@@ -502,6 +466,25 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       availableColumnsTypes={availableColumns}
                     />
                   </BreadcrumbItem>
+                  <BreadcrumbItem>
+                    <Button
+                      onClick={handleSaveView}
+                      size={"sm"}
+                      disabled={!isModified}
+                      className="w-24"
+                      variant={isModified ? "brandOutline" : "secondary"}
+                    >
+                      Save View
+                    </Button>
+                  </BreadcrumbItem>
+                  <BreadcrumbItem>
+                    {/* sowing total fetched records */}
+                    {loading && <Spinner imagePath="./image.png" size={35} />}
+                    {!loading && <p>
+                      Fetched {totalRecords} records
+                    </p>}
+                  </BreadcrumbItem>
+
                 </BreadcrumbList>
               </Breadcrumb>
             </header>
@@ -535,15 +518,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-5"
                   />
 
-                  {/* Save View button if view is modified */}
-                  {isModified && (
-                    <button
-                      onClick={handleSaveView}
-                      className="absolute bottom-4 right-4 rounded-md bg-brand px-4 py-2 font-semibold text-white shadow hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-brand-dark"
-                    >
-                      Save View
-                    </button>
-                  )}
+
 
                   {/* Error alert */}
                   {error && (

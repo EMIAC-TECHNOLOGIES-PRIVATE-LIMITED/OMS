@@ -1,15 +1,23 @@
 import React, { useMemo } from 'react';
 import { FilterConfig } from '../../../../../shared/src/types';
-import { EyeOff } from 'lucide-react';
+import { EyeOff, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Command,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandEmpty,
+} from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 interface ColumnPanelProps {
   resource: string;
@@ -24,17 +32,12 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
   availableColumnsTypes,
   onFilterChange,
 }) => {
-
-  // Ensure selectedColumns is initialized from filterConfig
   const selectedColumns = filterConfig.columns || [];
-
-  // Get available columns directly from availableColumnsTypes
-  const availableColumns = useMemo(() =>
-    Object.keys(availableColumnsTypes),
+  const availableColumns = useMemo(
+    () => Object.keys(availableColumnsTypes),
     [availableColumnsTypes]
   );
 
-  // Sanitize filters and sorting when columns change
   const sanitizeFilterConfig = (columns: string[]) => {
     const updatedFilterConfig = { ...filterConfig };
 
@@ -71,7 +74,6 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
     return updatedFilterConfig;
   };
 
-  // Handle column selection changes
   const handleColumnsChange = (updatedColumns: string[]) => {
     const newFilterConfig = sanitizeFilterConfig(updatedColumns);
     onFilterChange({
@@ -80,14 +82,14 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
     });
   };
 
-  // Format column name for display
   const formatColumnName = (name: string): string => {
-    return name.charAt(0).toUpperCase() + name.slice(1);
+    return name.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
   };
+
 
   return (
     <div className="relative">
-      <DropdownMenu>
+      <DropdownMenu >
         <DropdownMenuTrigger asChild>
           <Button
             variant="secondaryFlat"
@@ -99,34 +101,42 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
                 ? "bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50"
                 : ""}
             `}
-
             aria-label={`Toggle column visibility. ${selectedColumns.length} columns shown`}
           >
             <EyeOff className="w-4 h-4" />
             <span>Hide Columns ({Object.keys(availableColumnsTypes).length - selectedColumns.length})</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          className="w-56"
-          align="end"
-          sideOffset={4}
-        >
-          <DropdownMenuLabel>Select Columns</DropdownMenuLabel>
+        <DropdownMenuContent className="w-auto overflow-y-visible " align="end" sideOffset={4}>
+          <DropdownMenuLabel className='font-bold'>Select Columns</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {availableColumns.map((column) => (
-            <DropdownMenuCheckboxItem
-              key={column}
-              checked={selectedColumns.includes(column)}
-              onCheckedChange={(checked) => {
-                const updatedColumns = checked
-                  ? [...selectedColumns, column]
-                  : selectedColumns.filter((c) => c !== column);
-                handleColumnsChange(updatedColumns);
-              }}
-            >
-              {formatColumnName(column)}
-            </DropdownMenuCheckboxItem>
-          ))}
+          <Command>
+            <CommandInput placeholder="Search columns..." />
+            <CommandList>
+              <CommandEmpty>No columns found.</CommandEmpty>
+              <CommandGroup>
+                {availableColumns.map((column) => (
+                  <CommandItem
+                    key={column}
+                    onSelect={() => {
+                      const updatedColumns = selectedColumns.includes(column)
+                        ? selectedColumns.filter((c) => c !== column)
+                        : [...selectedColumns, column];
+                      handleColumnsChange(updatedColumns);
+                    }}
+                  >
+                    {formatColumnName(column)}
+                    <Check
+                      className={cn(
+                        "ml-auto h-4 w-4",
+                        selectedColumns.includes(column) ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
