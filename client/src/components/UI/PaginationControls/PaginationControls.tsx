@@ -1,4 +1,13 @@
-import React from 'react';
+import React, { useCallback } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PaginationControlsProps {
   page: number;
@@ -7,65 +16,69 @@ interface PaginationControlsProps {
   handlePageChange: (page: number, pageSize: number) => void;
 }
 
-const PaginationControlsNew: React.FC<PaginationControlsProps> = ({
+export const PaginationControls: React.FC<PaginationControlsProps> = ({
   page,
   pageSize,
   totalPages,
   handlePageChange,
 }) => {
+  const handlePageSizeChange = useCallback((newSize: string) => {
+    handlePageChange(1, parseInt(newSize));
+  }, [handlePageChange]);
+
+  const goToNextPage = useCallback(() => {
+    handlePageChange(page + 1, pageSize);
+  }, [page, pageSize, handlePageChange]);
+
+  const goToPrevPage = useCallback(() => {
+    handlePageChange(page - 1, pageSize);
+  }, [page, pageSize, handlePageChange]);
 
   return (
-    <div className="pagination-controls mt-4 flex items-center space-x-4">
-      {/* Page Size Selection */}
-      <label className="flex items-center space-x-2">
-        <span>Page Size:</span>
-        <select
-          value={pageSize}
-          onChange={(e) => handlePageChange(1, parseInt(e.target.value, 10))}
-          className="border rounded p-1"
+    <div className="flex items-center justify-between py-2 px-1 ">
+      <div className="flex items-center gap-4">
+
+        <Select
+          value={pageSize.toString()}
+          onValueChange={handlePageSizeChange}
+
         >
-          <option value="25">25</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-        </select>
-      </label>
+          <SelectTrigger className="w-[120px] rounded-lg">
+          <SelectValue>{`${pageSize} Rows`}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="50">50 Rows</SelectItem>
+            <SelectItem value="100">100 Rows</SelectItem>
+            <SelectItem value="500">500 Rows</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* Current Page Input */}
-      <label className="flex items-center space-x-2">
-        <span>Page:</span>
-        <input
-          type="number"
-          value={page}
-          min={1}
-          max={totalPages}
-          onChange={(e) => {
-            const newPage = Math.min(Math.max(parseInt(e.target.value, 10), 1), totalPages);
-            handlePageChange(newPage, pageSize);
-          }}
-          className="w-16 border rounded p-1 text-center"
-        />
-        <span>/ {totalPages}</span>
-      </label>
-
-      {/* Previous Page Button */}
-      <button
-        onClick={() => handlePageChange(page - 1, pageSize)}
-        disabled={page <= 1}
-        className="border rounded px-2 py-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        &lt;
-      </button>
-
-      {/* Next Page Button */}
-      <button
-        onClick={() => handlePageChange(page + 1, pageSize)}
-        disabled={page >= totalPages}
-        className="border rounded px-2 py-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        &gt;
-      </button>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={goToPrevPage}
+          disabled={page <= 1}
+          className="h-8 w-8 hover:bg-gray-100"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Page {page} of {totalPages}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={goToNextPage}
+          disabled={page >= totalPages}
+          className="h-8 w-8 hover:bg-gray-100"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };
 
-export default PaginationControlsNew;
+export default PaginationControls;

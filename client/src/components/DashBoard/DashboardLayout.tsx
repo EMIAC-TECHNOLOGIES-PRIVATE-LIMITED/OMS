@@ -30,7 +30,7 @@ const DashboardLayout: React.FC = () => {
             <img
               src="/image.png" // Ensure the path is correct
               alt="Watermark"
-              className="w-full h-full object-cover opacity-5"
+              className="w-full h-full object-cover opacity-5 "
             />
           </div>
 

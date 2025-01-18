@@ -5,7 +5,7 @@ import {
   PlusIcon,
   Check,
   ChevronsUpDown,
-  X
+  TrashIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,7 +67,7 @@ function ColumnSelectionPopover({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
+      <PopoverContent className="w-auto p-4">
         <Command>
           <CommandInput placeholder="Search column..." />
           <CommandList>
@@ -126,7 +126,7 @@ function DirectionSelectionPopover({
           variant="secondaryFlat"
           size="sm"
           role="combobox"
-          className="w-[140px] justify-between"
+          className="w-[100px] justify-between"
           disabled={disabled}
           onClick={() => setOpen(true)}
         >
@@ -366,7 +366,7 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
                           size="sm"
                           onClick={() => removeSorting(index)}
                         >
-                          <X className="w-4 h-4" />
+                          <TrashIcon className="w-4 h-4" />
                         </Button>
                       )}
                     </div>

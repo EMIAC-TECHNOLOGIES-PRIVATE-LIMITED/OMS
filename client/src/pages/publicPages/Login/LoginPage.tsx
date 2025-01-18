@@ -9,6 +9,8 @@ import { signIn } from '../../../utils/apiService/authAPI';
 import { Button } from '@/components/ui/button';
 // Replace this with the correct relative path to your FlipWords component
 import { FlipWords } from './FlipWords';
+import { StarsBackground } from './stars-background';
+import { ShootingStars } from './shooting-stars';
 
 const World = lazy(() =>
   import("./globe").then((m) => ({
@@ -532,8 +534,31 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* RIGHT SIDE: Globe + Animated Headline */}
-      <div className="w-1/2 space-y-4 bg-black">
-        <div className="flex flex-row items-center justify-center py-20 h-screen md:h-auto relative w-full">
+      <div className="w-1/2 space-y-4 bg-black relative overflow-hidden">
+        {/* Starry Background */}
+        <StarsBackground
+          starDensity={0.003}
+          allStarsTwinkle={true}
+          twinkleProbability={0.8}
+          minTwinkleSpeed={0.5}
+          maxTwinkleSpeed={1}
+          className="absolute inset-0 z-0"
+        />
+
+        {/* Shooting Stars */}
+        <ShootingStars
+          minSpeed={5}
+          maxSpeed={12}
+          minDelay={600}
+          maxDelay={1100}
+          starColor="#FFFFFF"
+          trailColor="#FFD700"
+          starWidth={8}
+          starHeight={2}
+          className="absolute inset-0 z-10"
+        />
+
+        <div className="flex flex-row items-center justify-center py-20 h-screen md:h-auto relative w-full z-20">
           <div className="max-w-7xl mx-auto w-full relative overflow-hidden h-full md:h-[40rem] px-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -551,7 +576,6 @@ const LoginPage: React.FC = () => {
                 />
                 Worldwide
               </h2>
-
               <p className="text-center text-sm md:text-lg text-white dark:text-white">
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam
               </p>
@@ -565,6 +589,7 @@ const LoginPage: React.FC = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };

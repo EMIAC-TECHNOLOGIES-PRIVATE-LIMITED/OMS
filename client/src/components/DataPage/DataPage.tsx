@@ -34,7 +34,8 @@ import {
 import { Input } from "../ui/input";
 
 import ColumnPanelNew from "../UI/ColumnPanel/ColumnPanelNew";
-import { PaginationControlsNew, SortingPanelNew } from "../UI";
+import { SortingPanelNew } from "../UI";
+import PaginationControlsNew from "../UI/PaginationControls/PaginationControls";
 import FilterPanelNew from "../UI/FilterPanel/FilterPanel3";
 import { Button } from "../ui/button";
 
@@ -215,7 +216,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
           setError(handleApiError(err, "An error occurred while fetching view data."));
         }
       } finally {
-        setLoading(false);
+        // setLoading(false);
         setInitialLoading(false);
         hasFetchedInitialData.current = true;
       }
@@ -333,7 +334,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     } catch (err: any) {
       setError(handleApiError(err, "An error occurred while saving the view."));
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   }, [resource, currentViewId, initialViewName, currentViewName, currentFilterConfig]);
 
@@ -420,70 +421,86 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mr-2 h-4" />
               <Breadcrumb>
-                <BreadcrumbList className="flex flex-wrap">
-                  <BreadcrumbItem className="hidden md:block">
-                    {pageTitle}
-                  </BreadcrumbItem>
-                  <BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
-                    <BreadcrumbPage>
-                      <Input
-                        type="text"
-                        className="rounded-xl"
-                        value={currentViewName}
-                        onChange={(e) => setCurrentViewName(e.target.value)}
-                        placeholder="View Name"
+                <BreadcrumbList className="flex w-full items-center ">
+                  <div className="flex items-center gap-2">
+                    <BreadcrumbItem className="hidden md:block">
+                      {pageTitle}
+                    </BreadcrumbItem>
+                    <BreadcrumbItem>
+                      <BreadcrumbSeparator className="hidden md:block" />
+                      <BreadcrumbPage>
+                        <Input
+                          type="text"
+                          className="rounded-xl"
+                          value={currentViewName}
+                          onChange={(e) => setCurrentViewName(e.target.value)}
+                          placeholder="View Name"
+                        />
+                      </BreadcrumbPage>
+                    </BreadcrumbItem>
+                    <BreadcrumbItem>
+                      <ColumnPanelNew
+                        resource={resource}
+                        filterConfig={currentFilterConfig}
+                        availableColumnsTypes={availableColumns}
+                        onFilterChange={(newConfig) => {
+                          setCurrentFilterConfig(newConfig);
+                        }}
                       />
-                    </BreadcrumbPage>
-                  </BreadcrumbItem>
-                  <BreadcrumbItem>
-                    <ColumnPanelNew
-                      resource={resource}
-                      filterConfig={currentFilterConfig}
-                      availableColumnsTypes={availableColumns}
-                      onFilterChange={(newConfig) => {
-                        setCurrentFilterConfig(newConfig);
-                      }}
-                    />
-                  </BreadcrumbItem>
-                  <BreadcrumbItem>
-                    <FilterPanelNew
-                      availableColumnTypes={availableColumns}
-                      filterConfig={currentFilterConfig}
-                      onFilterChange={(newConfig) => {
-                        setCurrentFilterConfig(newConfig);
-                      }}
+                    </BreadcrumbItem>
+                    <BreadcrumbItem>
+                      <FilterPanelNew
+                        availableColumnTypes={availableColumns}
+                        filterConfig={currentFilterConfig}
+                        onFilterChange={(newConfig) => {
+                          setCurrentFilterConfig(newConfig);
+                        }}
 
-                    />
-                  </BreadcrumbItem>
-                  <BreadcrumbItem>
-                    <SortingPanelNew
-                      resource={resource}
-                      filterConfig={currentFilterConfig}
-                      onFilterChange={(newConfig) => {
-                        setCurrentFilterConfig(newConfig);
+                      />
+                    </BreadcrumbItem>
+                    <BreadcrumbItem>
+                      <SortingPanelNew
+                        resource={resource}
+                        filterConfig={currentFilterConfig}
+                        onFilterChange={(newConfig) => {
+                          setCurrentFilterConfig(newConfig);
+                        }}
+                        availableColumnsTypes={availableColumns}
+                      />
+                    </BreadcrumbItem>
+                    <BreadcrumbItem>
+                      <Button
+                        onClick={handleSaveView}
+                        size={"sm"}
+                        disabled={!isModified}
+                        className="w-24"
+                        variant={isModified ? "brandOutline" : "secondary"}
+                      >
+                        Save View
+                      </Button>
+                    </BreadcrumbItem>
+                    <BreadcrumbItem>
+                      {/* sowing total fetched records */}
+                      {loading && <Spinner imagePath="./image.png" size={35} />}
+                      {!loading && <p>
+                        Fetched {totalRecords} records
+                      </p>}
+                    </BreadcrumbItem>
+                  </div>
+                  <div className="absolute right-0 flex items-center gap-2">
+                  <BreadcrumbItem className="ml-auto flex justify-end">
+                    <PaginationControlsNew
+                      page={page}
+                      pageSize={pageSize}
+                      totalPages={Math.ceil(totalRecords / pageSize)}
+                      handlePageChange={(newPage, newPageSize) => {
+                        setPage(newPage);
+                        setPageSize(newPageSize);
                       }}
-                      availableColumnsTypes={availableColumns}
                     />
                   </BreadcrumbItem>
-                  <BreadcrumbItem>
-                    <Button
-                      onClick={handleSaveView}
-                      size={"sm"}
-                      disabled={!isModified}
-                      className="w-24"
-                      variant={isModified ? "brandOutline" : "secondary"}
-                    >
-                      Save View
-                    </Button>
-                  </BreadcrumbItem>
-                  <BreadcrumbItem>
-                    {/* sowing total fetched records */}
-                    {loading && <Spinner imagePath="./image.png" size={35} />}
-                    {!loading && <p>
-                      Fetched {totalRecords} records
-                    </p>}
-                  </BreadcrumbItem>
+                  </div>
+
 
                 </BreadcrumbList>
               </Breadcrumb>

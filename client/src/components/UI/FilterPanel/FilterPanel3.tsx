@@ -1,5 +1,3 @@
-// enhanced
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { FilterCondition, FilterConfig, LogicalOperator } from '../../../../../shared/src/types';
 import { availableColumnsTypes } from '../../../types';
