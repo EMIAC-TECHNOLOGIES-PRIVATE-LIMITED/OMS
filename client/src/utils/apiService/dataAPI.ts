@@ -8,6 +8,7 @@ import {
     UpdateViewRequest,
     DeleteViewResponse,
     UpdateViewResponse,
+    UpdateDataResponse,
 } from '../../../../shared/src/types';
 
 // dataAPI.ts
@@ -90,5 +91,5 @@ export async function updateData(
     route: string,
     data: Record<string, any>
 ): Promise<any> {
-    return apiRequest<any>(`/data/${route}/update`, 'PUT', undefined, data);
+    return apiRequest<UpdateDataResponse>(`/data/${route}/update`, 'PUT', undefined, data);
 }

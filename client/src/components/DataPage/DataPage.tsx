@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo, } from "react";
 import { Spinner } from '../UI/index';
 import { AppSidebar } from "@/components/app-sidebar";
-import DataTableNew from "../DataTable/DataTableNew";
+import DataTableNew from "../DataTable/DataTableFinal";
 import {
   deleteView,
   getFilteredData,
@@ -488,17 +488,17 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                     </BreadcrumbItem>
                   </div>
                   <div className="absolute right-0 flex items-center gap-2">
-                  <BreadcrumbItem className="ml-auto flex justify-end">
-                    <PaginationControlsNew
-                      page={page}
-                      pageSize={pageSize}
-                      totalPages={Math.ceil(totalRecords / pageSize)}
-                      handlePageChange={(newPage, newPageSize) => {
-                        setPage(newPage);
-                        setPageSize(newPageSize);
-                      }}
-                    />
-                  </BreadcrumbItem>
+                    <BreadcrumbItem className="ml-auto flex justify-end">
+                      <PaginationControlsNew
+                        page={page}
+                        pageSize={pageSize}
+                        totalPages={Math.ceil(totalRecords / pageSize)}
+                        handlePageChange={(newPage, newPageSize) => {
+                          setPage(newPage);
+                          setPageSize(newPageSize);
+                        }}
+                      />
+                    </BreadcrumbItem>
                   </div>
 
 
@@ -515,7 +515,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                   <div className="w-full overflow-x-auto">
                     <DataTableNew
                       data={tableData}
-                      availableColumns={Object.keys(availableColumns)}
+                      availableColumnTypes={availableColumns}
                       loading={loading}
                       error={error}
                       resource={resource}
@@ -544,10 +544,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                     </div>
                   )}
 
-                  {/* Record count display */}
-                  <div className="absolute top-4 right-4 rounded bg-neutral-200 px-4 py-1 text-neutral-800 shadow-md">
-                    {totalRecords} records
-                  </div>
+
                 </div>
               </div>
             </div>
