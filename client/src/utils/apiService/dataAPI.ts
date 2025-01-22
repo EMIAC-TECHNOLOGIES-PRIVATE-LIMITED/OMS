@@ -93,3 +93,10 @@ export async function updateData(
 ): Promise<any> {
     return apiRequest<UpdateDataResponse>(`/data/${route}/update`, 'PUT', undefined, data);
 }
+
+export async function createData(
+    route: string,
+    data: Record<string, any>
+): Promise<any> {
+    return apiRequest<any>(`/data/${route}/create`, 'PUT', undefined, data);
+}

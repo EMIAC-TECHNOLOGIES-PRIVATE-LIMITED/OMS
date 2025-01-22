@@ -422,6 +422,16 @@ export interface UpdateDataResponse {
     success: boolean;
     data: Record<string, any>;
 }
+
+export interface createDataResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data: Record<string, any>;
+}
+
+
+
 export interface WebsiteCheckerResponse {
     status: number;
     message: string;

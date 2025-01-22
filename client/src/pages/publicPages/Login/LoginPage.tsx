@@ -537,7 +537,7 @@ const LoginPage: React.FC = () => {
       <div className="w-1/2 space-y-4 bg-black relative overflow-hidden">
         {/* Starry Background */}
         <StarsBackground
-          starDensity={0.003}
+          starDensity={0.005}
           allStarsTwinkle={true}
           twinkleProbability={0.8}
           minTwinkleSpeed={0.5}

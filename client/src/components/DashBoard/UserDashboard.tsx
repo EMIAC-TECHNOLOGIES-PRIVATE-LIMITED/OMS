@@ -103,7 +103,7 @@ function UserDashboard() {
 
         {/* Right Section: Announcements */}
         <div className="p-6 bg-slate-200 rounded-xl shadow-md h-full">
-          <h2 className="text-2xl font-semibold text-brand-dark">Announcements 🚀</h2>
+          <h2 className="text-3xl font-bold text-brand-dark">Announcements 🚀</h2>
           <div className="mt-4 space-y-4">
             <InfiniteMovingCards
               items={announcements}

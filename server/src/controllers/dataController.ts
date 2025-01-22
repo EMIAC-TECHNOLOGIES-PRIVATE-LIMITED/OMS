@@ -4,6 +4,7 @@ import { AuthRequest } from "../types/sitesDataTypes"
 import { APIError, APIResponse } from "../utils/apiHandler";
 import { getPermissionCached } from "../utils/getPermissions"
 import { prismaClient } from "../utils/prismaClient";
+import { createDataResponse } from "@shared/types";
 
 
 export const dataController = {
@@ -18,10 +19,9 @@ export const dataController = {
 
 
             const hasPermission = permissions.some((permission) => {
-                console.log(permission.name);
+                console.log(permission.name === `_update_${resource}`)
                 return permission.name === `_update_${resource}`
             });
-
 
 
             if (!hasPermission) {
@@ -38,6 +38,7 @@ export const dataController = {
 
             return res.status(STATUS_CODES.OK).json(new APIResponse(STATUS_CODES.OK, "Data updated successfully", updateData, true));
         } catch (error: any) {
+            console.log(error)
             return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(new APIError(STATUS_CODES.INTERNAL_SERVER_ERROR, error.message, [], false))
         }
 
@@ -69,6 +70,42 @@ export const dataController = {
             return res.status(STATUS_CODES.OK).json(new APIResponse(STATUS_CODES.OK, "Data deleted successfully", deleteData, true));
 
         } catch (error: any) {
+            return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(new APIError(STATUS_CODES.INTERNAL_SERVER_ERROR, error.message, [], false))
+
+        }
+    },
+
+    createData: async (req: AuthRequest, res: Response): Promise<Response> => {
+        try {
+            const userId = req.user?.userId;
+            const permissions = await getPermissionCached(userId!);
+            const resource = req.params.resource;
+            const modelName = resource.charAt(0).toUpperCase() + resource.slice(1);
+            const data = req.body;
+
+            const hasPermission = permissions.some((permission) => {
+                return permission.name === `_create_${resource}`
+            })
+
+            if (!hasPermission) {
+                return res.status(STATUS_CODES.UNAUTHORIZED).
+                    json(new APIError(STATUS_CODES.UNAUTHORIZED, "You do not have permission to add this data", [], false))
+            }
+
+            
+
+            const addData = Array.isArray(data) 
+                ? await (prismaClient as any)[modelName].createMany({
+                    data: data
+                  })
+                : await (prismaClient as any)[modelName].create({
+                    data: data
+                  });
+
+            return res.status(STATUS_CODES.OK).json(new APIResponse(STATUS_CODES.OK, "Data added successfully", addData, true));
+
+        } catch (error: any) {
+            console.log(error)
             return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(new APIError(STATUS_CODES.INTERNAL_SERVER_ERROR, error.message, [], false))
 
         }

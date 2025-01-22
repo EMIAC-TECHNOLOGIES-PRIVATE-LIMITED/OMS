@@ -7,6 +7,7 @@ import { dataMiddleware } from "../middlewares/dataMiddleware";
 
 router.put('/:resource/update', dataMiddleware, dataController.updateData);
 router.delete('/:resource/delete', dataMiddleware, dataController.deleteData);
+router.put('/:resource/create', dataMiddleware, dataController.createData);
 
 router.get('/:resource/:viewId?', viewsMiddleware, viewsController.getView);
 router.get('/:resource/typeahead', viewsController.getTypeAhead);
