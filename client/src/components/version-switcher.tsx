@@ -4,8 +4,7 @@ import { Check, ChevronsUpDown, GalleryVerticalEnd } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuItem
 } from "@/components/ui/dropdown-menu"
 import {
   SidebarMenu,

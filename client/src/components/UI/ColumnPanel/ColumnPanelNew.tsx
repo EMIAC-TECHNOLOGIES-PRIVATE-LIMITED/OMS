@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { FilterConfig } from '../../../../../shared/src/types';
-import { EyeOff, Check, ChevronsUpDown } from 'lucide-react';
+import { EyeOff, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -27,7 +27,6 @@ interface ColumnPanelProps {
 }
 
 const ColumnPanel: React.FC<ColumnPanelProps> = ({
-  resource,
   filterConfig,
   availableColumnsTypes,
   onFilterChange,
@@ -104,7 +103,7 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
             aria-label={`Toggle column visibility. ${selectedColumns.length} columns shown`}
           >
             <EyeOff className="w-4 h-4" />
-            <span>Hide Columns ({Object.keys(availableColumnsTypes).length - selectedColumns.length})</span>
+            <span>Hide Columns ({Object.keys(availableColumnsTypes).length - selectedColumns.length + 1})</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-auto overflow-y-visible " align="end" sideOffset={4}>

@@ -4,7 +4,7 @@ import { authAtom } from '../../store/atoms/atoms';
 import { deleteData, updateData } from '../../utils/apiService/dataAPI';
 import { toast } from '../../hooks/use-toast';
 import { Copy, CopyCheck, Pencil, Trash2 } from 'lucide-react';
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent,  SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "@/components/ui/table";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -109,7 +109,7 @@ const EditForm: React.FC<EditFormProps> = memo(({ editData, setEditData, formatH
 EditForm.displayName = 'EditForm';
 
 // Optimized TableCell component
-const CustomTableCell: React.FC<TableCellProps> = memo(({ content, onCopy, isExpanded }) => {
+const CustomTableCell: React.FC<TableCellProps> = memo(({ content,  isExpanded }) => {
     const renderedContent = typeof content === 'object' && content !== null
         ? JSON.stringify(content)
         : content?.toString() ?? '--';

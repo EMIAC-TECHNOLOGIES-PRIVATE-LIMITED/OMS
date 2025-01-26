@@ -10,7 +10,6 @@ router.delete('/:resource/delete', dataMiddleware, dataController.deleteData);
 router.put('/:resource/create', dataMiddleware, dataController.createData);
 
 router.get('/:resource/:viewId?', viewsMiddleware, viewsController.getView);
-router.get('/:resource/typeahead', viewsController.getTypeAhead);
 
 router.post('/:resource', viewsMiddleware, viewsController.createView);
 router.post('/:resource/data', viewsMiddleware, viewsController.getData);

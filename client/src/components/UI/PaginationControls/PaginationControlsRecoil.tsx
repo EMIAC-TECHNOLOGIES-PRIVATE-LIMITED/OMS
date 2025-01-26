@@ -92,8 +92,6 @@
 // export default PaginationControlsRecoil
 
 
-import React from 'react'
-
 function PaginationControlsRecoil() {
   return (
     <div>PaginationControlsRecoil</div>

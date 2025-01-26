@@ -108,7 +108,7 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
   onFilterChange,
 }) => {
   const [localInputValues, setLocalInputValues] = useState<{ [key: string]: string }>({});
-  const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
+ 
   const [localFilters, setLocalFilters] = useState<LocalFilter[]>([]);
   const [pendingFilter, setPendingFilter] = useState<LocalFilter | null>(null);
   const [localConnector, setLocalConnector] = useState<LogicalOperator>(LogicalOperator.AND);
@@ -149,7 +149,7 @@ const FilterPanelNew: React.FC<FilterPanelNewProps> = ({
   }, [filterConfig, onFilterChange]);
 
   const handlePanelOpenChange = (open: boolean) => {
-    setIsPanelOpen(open);
+    
     if (!open) {
       setPendingFilter(null);
       setLocalInputValues({});

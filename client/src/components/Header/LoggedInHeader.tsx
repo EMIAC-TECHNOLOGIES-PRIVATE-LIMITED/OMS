@@ -99,13 +99,46 @@ function LoggedInHeader() {
   };
 
   const handleSubmitIssue = async () => {
-    // Here you can implement the actual submission logic
-    toast({
-      title: "Issue Reported Successfully",
-      description: "We'll look into this and get back to you soon.",
-    });
-    setIsIssueDialogOpen(false);
-    setFormData({ name: '', heading: '', description: '', screenshots: [] });
+
+    console.log("Form data before submission : ", formData);
+
+    const formDataToSend = new FormData();
+    formDataToSend.append('name', auth.userInfo?.name || '');
+    formDataToSend.append('heading', formData.heading);
+    formDataToSend.append('description', formData.description);
+    formData.screenshots.forEach((file, index) =>
+      formDataToSend.append(`screenshots[${index}]`, file)
+    );
+
+    try {
+      const response = await fetch(import.meta.env.VITE_FEEDBACK_FLOW_URL, {
+        method: 'POST',
+        body: formDataToSend,
+        // Remove credentials since they are not needed
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Issue reported successfully:', result);
+      toast({
+        title: 'Issue Reported Successfully',
+        description: "We'll look into this and get back to you soon.",
+      });
+
+      // Reset the form state
+      setIsIssueDialogOpen(false);
+      setFormData({ name: '', heading: '', description: '', screenshots: [] });
+    } catch (error) {
+      console.error('Error reporting issue:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error Reporting Issue',
+        description: 'Something went wrong. Please try again.',
+      });
+    }
   };
 
   if (auth.loading) {
@@ -265,7 +298,7 @@ function LoggedInHeader() {
               <Input
                 id="name"
                 value={auth.userInfo?.name}
-                disabled
+                readOnly
                 className="bg-neutral-50"
               />
             </div>

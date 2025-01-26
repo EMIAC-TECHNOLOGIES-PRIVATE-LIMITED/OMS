@@ -24,9 +24,10 @@ import Vendors from './pages/protectedPages/dataPages/Vendors';
 import LoginPage from './pages/publicPages/Login/LoginPage';
 import Clients from './pages/protectedPages/dataPages/Clients';
 import Orders from './pages/protectedPages/dataPages/Orders';
-import Unauthorized from './pages/publicPages/Unauthorized'; 
-import NotFound from './pages/publicPages/NotFound'; 
+import Unauthorized from './pages/publicPages/Unauthorized';
+import NotFound from './pages/publicPages/NotFound';
 import Tools from './pages/protectedPages/dataPages/Tools/Tools';
+import Test from './pages/publicPages/Test';
 
 const ProtectedRoute = ({ allowedRoles = [] }: { allowedRoles?: string[] }) => {
   const { isAuthenticated, loading, userInfo } = useRecoilValue(authAtom);
@@ -74,6 +75,7 @@ const router = createBrowserRouter(
 
         {/* Public Routes */}
         <Route path="login" element={<LoginPage />} />
+        <Route path="test" element={<Test />} />
 
         {/* Unauthorized Route */}
         <Route path="unauthorized" element={<Unauthorized />} />

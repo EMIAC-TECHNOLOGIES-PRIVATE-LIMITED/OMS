@@ -1,3 +1,5 @@
+import { transformDates } from "./dateTransformer";
+
 class APIResponse<T = any> {
     constructor(
         public status: number,
@@ -9,12 +11,12 @@ class APIResponse<T = any> {
     }
 
     toJSON() {
-        return {
+        return transformDates({
             status: this.status,
             message: this.message,
             data: this.sanitizeBigInt(this.data),
             success: this.success,
-        };
+        });
     }
 
     private sanitizeBigInt(data: any): any {

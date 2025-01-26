@@ -144,7 +144,7 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
           {localSorting.map((sort, index) => {
             const column = Object.keys(sort)[0] || '';
             const direction = sort[column] || 'asc';
-            const columnType = availableColumnsTypes[column];
+            
 
             const directionOptions = getDirectionOptions(column);
 

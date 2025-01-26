@@ -9,7 +9,7 @@ import Papa from 'papaparse';
 interface BulkEditDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (newData: Record<string, any>[]) => Promise<{ success: boolean; message: string }>;
+    onAdd: (newData: Record<string, any>[]) => Promise<{success : boolean}>;
     columns: string[];
     availableColumnTypes: {
         [key: string]: string;
@@ -33,7 +33,7 @@ export const BulkEditDialog: React.FC<BulkEditDialogProps> = ({
     const [errors, setErrors] = useState<ValidationError[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'error' | 'success'>('idle');
-    const [serverError, setServerError] = useState<string | null>(null);
+   
 
     const downloadBlankCSV = useCallback(() => {
         const headers = columns.filter(col => col !== 'id');
@@ -130,7 +130,7 @@ export const BulkEditDialog: React.FC<BulkEditDialogProps> = ({
         setIsProcessing(true);
         setUploadStatus('processing');
         setErrors([]);
-        setServerError(null);
+        
 
         Papa.parse(file, {
             header: true,
@@ -179,26 +179,26 @@ export const BulkEditDialog: React.FC<BulkEditDialogProps> = ({
                             variant: 'default',
                             duration: 3000,
                             title: 'Success',
-                            description: response.message || 'Records added successfully',
+                            description: 'Records added successfully',
                         });
                         setTimeout(() => {
                             onClose();
                             setUploadStatus('idle');
                             setErrors([]);
-                            setServerError(null);
+                           
                         }, 1500);
                     } else {
-                        setServerError(response.message || 'Failed to add records');
+                     
                         setUploadStatus('error');
                     }
                 } catch (error) {
-                    setServerError('An unexpected error occurred. Please try again.');
+                 
                     setUploadStatus('error');
                 }
                 setIsProcessing(false);
             },
-            error: (error) => {
-                setServerError(`Failed to parse CSV: ${error.message}`);
+            error: () => {
+               
                 setIsProcessing(false);
                 setUploadStatus('error');
             }

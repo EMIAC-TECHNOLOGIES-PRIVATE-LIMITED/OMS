@@ -1,5 +1,5 @@
 import { atom, atomFamily, selectorFamily } from 'recoil';
-import { FrontendAvailableColumns, FilterConfig, View } from '../../../../shared/src/types/';
+import { FilterConfig, View } from '../../../../shared/src/types/';
 
 type ResourceKey = string;
 
@@ -50,10 +50,7 @@ export const totalRecordsState = atomFamily<number, ResourceKey>({
   default: 0,
 });
 
-export const availableColumnsState = atomFamily<FrontendAvailableColumns, ResourceKey>({
-  key: 'availableColumnsState',
-  default: {},
-});
+
 
 export const loadingState = atomFamily<boolean, ResourceKey>({
   key: 'loadingState',

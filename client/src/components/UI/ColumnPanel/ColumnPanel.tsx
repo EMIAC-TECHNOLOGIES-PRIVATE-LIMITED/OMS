@@ -15,7 +15,7 @@ interface ColumnPanelNewProps {
 }
 
 const ColumnPanelNew: React.FC<ColumnPanelNewProps> = ({
-  resource,
+  
   filterConfig,
   availableColumnsTypes,
   onFilterChange,

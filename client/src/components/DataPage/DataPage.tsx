@@ -38,6 +38,7 @@ import { SortingPanelNew } from "../UI";
 import PaginationControlsNew from "../UI/PaginationControls/PaginationControls";
 import FilterPanelNew from "../UI/FilterPanel/FilterPanel3";
 import { Button } from "../ui/button";
+import debounce from "lodash.debounce";
 
 
 interface DataPageProps {
@@ -91,11 +92,12 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   const hasFetchedInitialData = useRef<boolean>(false);
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [viewToDelete, setViewToDelete] = useState<View | null>(null);
+ 
   const modalRef = useRef<HTMLDivElement>(null);
 
   // For searching among views (in the sidebar)
   const [searchQuery, setSearchQuery] = useState<string>("");
+
 
 
   //  Modal Outside-Click 
@@ -103,7 +105,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     (e: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
         setIsModalOpen(false);
-        setViewToDelete(null);
+        
       }
     },
     []
@@ -152,7 +154,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
           setInitialPageSize(data.pageSize);
 
           // Columns
-          setAvailableColumns(data.availableColumnsType);
+          setAvailableColumns(Object.fromEntries(Object.entries(data.availableColumnsType).filter(([key]) => key !== "id")));
 
           // Filter config
           setInitialFilterConfig({
@@ -192,7 +194,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
               setInitialPage(data.page);
               setInitialPageSize(data.pageSize);
 
-              setAvailableColumns(data.availableColumnsType);
+              setAvailableColumns(Object.fromEntries(Object.entries(data.availableColumnsType).filter(([key]) => key !== "id")));
 
               setInitialFilterConfig({
                 columns: Object.keys(data.column),
@@ -235,7 +237,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   useEffect(() => {
     if (initialLoading) return;
 
-    const fetchFilteredData = async () => {
+
+    const debouncedFetch = debounce(async () => {
       setLoading(true);
       setError(null);
       try {
@@ -267,19 +270,70 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
       } finally {
         setLoading(false);
       }
-    };
+    }, 500);
 
-    fetchFilteredData();
+    debouncedFetch();
+
+
+    return () => {
+      debouncedFetch.cancel();
+    };
   }, [
     currentFilterConfig,
-    page,
-    pageSize,
     resource,
     initialLoading,
     initialFilterConfig,
     initialPage,
     initialPageSize,
   ]);
+
+  const fetchFilteredData = useCallback(async () => {
+    if (initialLoading) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const req: GetFilteredDataRequest = {
+        columns: currentFilterConfig.columns,
+        filters: currentFilterConfig.appliedFilters,
+        sorting: currentFilterConfig.appliedSorting,
+        page,
+        pageSize,
+      };
+
+      const resp: GetFilteredDataResponse = await getFilteredData(
+        resource,
+        req.columns,
+        req.filters,
+        req.sorting,
+        page,
+        pageSize
+      );
+
+      if (resp.success) {
+        setTableData(resp.data.data);
+        setTotalRecords(resp.data.totalRecords);
+      } else {
+        setError("Failed to fetch filtered data.");
+      }
+    } catch (err: any) {
+      setError(handleApiError(err, "An error occurred while fetching filtered data."));
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    initialLoading,
+    currentFilterConfig,
+    page,
+    pageSize,
+    resource,
+  ]); 
+
+
+  useEffect(() => {
+    fetchFilteredData();
+  }, [fetchFilteredData]);
 
   // set-reset IsModified
   useEffect(() => {
@@ -362,15 +416,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     [currentViewId, resource, fetchViewData]
   );
 
-  // For AppSidebar “confirm delete”
-  const confirmDeleteView = (view: View) => {
-    setViewToDelete(view);
-    setIsModalOpen(true);
-  };
-
-  const handleConfirmDelete = async (viewId: View) => {
-    await handleDeleteView(viewId);
-  };
+ 
 
 
 
@@ -507,12 +553,12 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
             </header>
 
             {/* Body area: filters + table */}
-            <div className="flex flex-1 flex-col gap-4 overflow-hidden"> {/* Added overflow-hidden */}
+            <div className="flex flex-1 flex-col gap-4"> {/* Added overflow-hidden */}
               {/* Main content container (table) */}
-              <div className="relative flex-1 rounded-xl bg-muted/50"> {/* Added flex-1 */}
-                <div className="relative h-full w-full overflow-y-auto rounded-lg bg-white shadow-md">
+              <div className="relative flex-1 rounded-xl bg-muted/50"> {/* MARKER*/}
+                <div className="relative h-screen w-full  rounded-lg bg-white shadow-md ">
                   {/* Horizontal scroll wrapper */}
-                  <div className="w-full overflow-x-auto">
+                  <div className="w-full h-screen overflow-y-auto ">
                     <DataTableNew
                       data={tableData}
                       availableColumnTypes={availableColumns}
@@ -523,8 +569,9 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       handleTotalRecordsChange={() =>
                         setTotalRecords((prev) => prev - 1)
                       }
-                      filteredColumns={filteredColumns} // Passing filtered columns
-                      sortedColumns={sortedColumns}     // Passing sorted columns
+                      filteredColumns={filteredColumns} 
+                      sortedColumns={sortedColumns}    
+                      fetchFilteredData={fetchFilteredData}
                     />
                   </div>
 

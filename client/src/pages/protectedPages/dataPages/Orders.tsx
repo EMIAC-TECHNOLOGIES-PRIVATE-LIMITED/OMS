@@ -1,4 +1,4 @@
-import DataPageNew from "../../../components/DataPage/DataPageNew";
+import DataPageNew from "../../../components/DataPage/DataPage";
 
 
 

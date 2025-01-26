@@ -19,7 +19,9 @@ export async function getViewData(route: string, viewId?: number): Promise<GetVi
         endpoint += `/${viewId}`;
     }
 
-    return apiRequest<GetViewDataResponse>(endpoint, 'GET');
+    const reponse = apiRequest<GetViewDataResponse>(endpoint, 'GET');
+    console.log("response from the api handler:  ", reponse);
+    return reponse;
 }
 
 

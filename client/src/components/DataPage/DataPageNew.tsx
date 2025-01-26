@@ -7,7 +7,6 @@ import {
   deleteView,
 } from "../../utils/apiService/dataAPI";
 import {
-  GetViewDataResponse,
   GetFilteredDataRequest,
   GetFilteredDataResponse,
   DeleteViewResponse,

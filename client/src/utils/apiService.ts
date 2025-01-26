@@ -1,5 +1,5 @@
 import axios, { Method } from 'axios';
-import { GetViewDataResponse } from '../types';
+import { GetViewDataResponse } from '../../../shared/src/types/index';
 
 const token: string = import.meta.env.VITE_API_TOKEN ;
 const api : string = import.meta.env.VITE_API_URL;

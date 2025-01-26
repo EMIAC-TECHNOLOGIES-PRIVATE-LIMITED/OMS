@@ -7,7 +7,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://postgres:randompassword@localhost:5432/mydb?schema=public"
+
+  url = env("DATABASE_URL")
+  // url      = "postgresql://postgres:randompassword@localhost:5432/mydb?schema=public"
 }
 
 enum StatusLogin {
@@ -174,81 +176,80 @@ model View {
 model Client {
   id                  Int      @id @default(autoincrement())
   name                String
-  linkSell            Int
-  contentSell         Int
-  totalAmountReceived Int
-  totalOrders         Int
-  salesPersonId       Int
-  phone               String
-  email               String
-  fbId                String
-  contactedId         String
-  siteName            String
-  source              String
-  userId              Int
-  clientClientName    String
-  clientProjects      String
-  clientCreatedAt     DateTime @default(now())
-  clientUpdatedAt     DateTime @updatedAt
+  linkSell            Int?
+  contentSell         Int?
+  totalAmountReceived Int?
+  totalOrders         Int?
+  phone               String?
+  email               String?
+  fbId                String?
+  contactedId         String?
+  siteName            String?
+  source              String?
+  user_id             Int     @default(1)
+  user         User     @relation("UserClients", fields: [user_id], references: [id])
+  clientClientName    String?
+  clientProjects      String?
+  clientCreatedAt     DateTime? @default(now())
+  clientUpdatedAt     DateTime? @updatedAt
   orders              Order[]  @relation("ClientOrders")
-  salesPerson         User     @relation("UserClients", fields: [salesPersonId], references: [id])
 
-  @@index([salesPersonId])
+  @@index([user_id])
 }
 
 model Order {
   id                         Int                 @id @default(autoincrement())
-  clientId                   Int
-  client                     Client              @relation("ClientOrders", fields: [clientId], references: [id])
-  orderDate                  DateTime
-  publishStatus              Boolean
-  publishDate                DateTime
-  publishLink                String
-  transactionAmount          Int
-  receivedAmount             Int
-  accountType                String
-  accountId                  Int
-  proposedAmount             Int
-  contentAmount              Int
-  website                    String
-  websiteRemark              String
-  vendorEmail                String
-  vendorName                 String
-  siteCost                   Int
-  vendorContactedFrom        String
-  remark                     String
-  vendorWebsiteRemark        String
-  clientAmountReceived       Int
-  clientAmountReceivedDate   String
-  clientAmountReceivedStatus OrderPaymentStatus  @default(NOT_RECEIVED)
-  vendorPaymentAmount        Int
-  vendorAccountType          String
-  vendorPaymentStatus        VendorPaymentStatus
-  vendorPaymentDate          String
-  vendorTransactionId        String
-  orderedBy                  Int
-  orderedUpdatedBy           Int
-  orderOperatedBy            Int
-  orderOperatedUpdateBy      Int
-  userId                     Int
-  user                       User                @relation("UserOrders", fields: [userId], references: [id])
-  paypalId                   String
-  status                     OrderStatus         @default(PENDING)
-  contentDoc                 String
-  vendorInvoiceStatus        VendorInvoiceStatus @default(PENDING)
-  paymentRemark              String
-  actualReceivedAmount       Int
-  actualPaidAmount           Int
-  siteType                   SiteType            @default(NORMAL)
-  websiteType                String
-  invoiceNo                  String              @default("0")
-  invoiceStatus              String
-  priceWithGST               Int
-  indexedUrl                 String
-  statusUpdateDatetime       DateTime
+  client_id                  Int?
+  client                     Client?             @relation("ClientOrders", fields: [client_id], references: [id])
+  orderDate                  DateTime?
+  publishStatus              Boolean?
+  publishDate                DateTime?
+  publishLink                String?
+  transactionAmount          Int?
+  receivedAmount             Int?
+  accountType                String?
+  accountId                  Int?
+  proposedAmount             Int?
+  contentAmount              Int?
+  website                    String?
+  websiteRemark              String?
+  vendorEmail                String?
+  vendorName                 String?
+  siteCost                   Int?
+  vendorContactedFrom        String?
+  remark                     String?
+  vendorWebsiteRemark        String?
+  clientAmountReceived       Int?
+  clientAmountReceivedDate   String?
+  clientAmountReceivedStatus OrderPaymentStatus?  @default(NOT_RECEIVED)
+  vendorPaymentAmount        Int?
+  vendorAccountType          String?
+  vendorPaymentStatus        VendorPaymentStatus?
+  vendorPaymentDate          String?
+  vendorTransactionId        String?
+  orderedBy                  Int?
+  orderedUpdatedBy           Int?
+  orderOperatedBy            Int?
+  orderOperatedUpdateBy      Int?
+  user_id                     Int?
+  user                       User?                @relation("UserOrders", fields: [user_id], references: [id])
+  paypalId                   String?
+  status                     OrderStatus?         @default(PENDING)
+  contentDoc                 String?
+  vendorInvoiceStatus        VendorInvoiceStatus? @default(PENDING)
+  paymentRemark              String?
+  actualReceivedAmount       Int?
+  actualPaidAmount           Int?
+  siteType                   SiteType?            @default(NORMAL)
+  websiteType                String?
+  invoiceNo                  String?             @default("0")
+  invoiceStatus              String?
+  priceWithGST               Int?
+  indexedUrl                 String?
+  statusUpdateDatetime       DateTime?
 
-  @@index([clientId])
-  @@index([userId])
+  @@index([client_id])
+  @@index([user_id])
 }
 
 model User {
@@ -259,12 +260,12 @@ model User {
   password            String
   roleId              Int
   role                Role                 @relation(fields: [roleId], references: [id])
-  lastLogin           String               @default("")
-  lastLogout          String               @default("")
-  loginId             Int                  @default(0)
-  statusLogin         StatusLogin          @default(ACTIVE)
-  superAppID          Int                  @default(0)
-  secureKey           String               @default("")
+  lastLogin           String?               @default("")
+  lastLogout          String?               @default("")
+  loginId             Int?                  @default(0)
+  statusLogin         StatusLogin?          @default(ACTIVE)
+  superAppID          Int?                  @default(0)
+  secureKey           String?               @default("")
   permissionOverrides PermissionOverride[]
   resourceOverrides   ResourceOverride[]
   clients             Client[]             @relation("UserClients")
@@ -278,21 +279,21 @@ model User {
 }
 
 model Vendor {
-  id            Int    @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   name          String
-  phone         String
-  email         String
-  contactedFrom String
-  bankName      String
-  accountNumber String
-  ifscCode      String
-  paypalId      String
-  userId        Int
-  user          User   @relation("UserVendors", fields: [userId], references: [id])
-  timestamp     String
-  skypeId       String
-  upiId         String
-  sites         Site[] @relation("VendorSites")
+  phone         String?
+  email         String?
+  contactedFrom String?
+  bankName      String?
+  accountNumber String?
+  ifscCode      String?
+  paypalId      String?
+  user_id       Int?
+  user          User?    @relation("UserVendors", fields: [user_id], references: [id])
+  timestamp     DateTime @default(now())
+  skypeId       String?
+  upiId         String?
+  sites         Site[]   @relation("VendorSites")
 }
 
 model Site {
@@ -302,10 +303,8 @@ model Site {
   site_category                    String?
   da                               Int
   pa                               Int
-  vendor_id                        Int?
+  vendor_id                        Int?      @default(1)
   vendor                           Vendor?   @relation("VendorSites", fields: [vendor_id], references: [id])
-  person                           String?
-  person_id                        Int?
   price                            Int
   sailing_price                    Int?
   discount                         Int?
@@ -314,40 +313,40 @@ model Site {
   contact                          String?
   contact_from                     String?
   web_category                     String?
-  follow                           String    @default("Do-follow")
+  follow                           String    @default("Do_follow")
   price_category                   String    @default("Paid")
-  traffic                          BigInt    @default(0)
+  traffic                          Int       @default(0)
   spam_score                       Int?
   cbd_price                        Int?
   remark                           String?
   contact_from_id                  String?
   vendor_country                   String?
-  phone_number                     BigInt?
+  phone_number                     String?
   sample_url                       String?
   bank_details                     String?
   dr                               Int?
   user_id                          Int
-  timestamp                        DateTime  @default(now()) @updatedAt
+  timestamp                        DateTime  @default(now())
   web_ip                           String?
   web_country                      String?
   link_insertion_cost              String?
   tat                              String?
   social_media_posting             String    @default("No")
-  semrush_traffic                  BigInt?
+  semrush_traffic                  Int?
   semrush_first_country_name       String?
-  semrush_first_country_traffic    BigInt?
   semrush_second_country_name      String?
-  semrush_second_country_traffic   BigInt?
+  semrush_first_country_traffic    Int?
+  semrush_second_country_traffic   Int?
   semrush_third_country_name       String?
-  semrush_third_country_traffic    BigInt?
+  semrush_third_country_traffic    Int?
   semrush_fourth_country_name      String?
-  semrush_fourth_country_traffic   BigInt?
+  semrush_fourth_country_traffic   Int?
   semrush_fifth_country_name       String?
-  semrush_fifth_country_traffic    BigInt?
-  similarweb_traffic               BigInt?
+  semrush_fifth_country_traffic    Int?
+  similarweb_traffic               Int?
   vendor_invoice_status            String    @default("Pending")
   main_category                    String?
-  site_update_date                 String?
+  site_update_date                 DateTime?
   website_type                     String    @default("Default")
   language                         String?
   gst                              String?
@@ -362,7 +361,7 @@ model Site {
   website_quality                  String?
   num_of_links                     Int?
   semrush_updation_date            DateTime?
-  organic_traffic                  BigInt    @default(0)
+  organic_traffic                  Int       @default(0)
   organic_traffic_last_update_date DateTime  @default(now())
   created_at                       DateTime  @default(now())
 

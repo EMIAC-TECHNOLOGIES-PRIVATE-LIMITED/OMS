@@ -5,6 +5,8 @@ import { tableDataTypes } from '../constants/tableDataTypes';
 import STATUS_CODES from '../constants/statusCodes';
 import { APIError, APIResponse } from '../utils/apiHandler';
 import { CreateViewResponse, DeleteViewResponse, GetFilteredDataResponse, GetViewDataResponse, UpdateViewResponse } from '@shared/types';
+import { transformDates } from '../utils/dateTransformer';
+import { permission } from 'process';
 
 export const viewsController = {
     getView: async (req: AuthRequest, res: Response): Promise<Response> => {
@@ -53,13 +55,17 @@ export const viewsController = {
             {}
         );
 
+
+
         const queryOptions = {
             where: sanitizedFilters,
-            select: selectClause,
+            select: { ...selectClause, ...getRelatedModelIncludes(modelName, permittedColumns || []) },
             orderBy: sanitizedSorting,
             skip,
             take,
         };
+
+        // console.dir(queryOptions, { depth: null });
 
         try {
             const totalRecords = await (prismaClient as any)[modelName].count({
@@ -85,9 +91,12 @@ export const viewsController = {
                 views: userViews,
             } as GetViewDataResponse['data'];
 
+            const transformedResponse = transformDates(response);
+            const flatData = flattenNestedRelationships(transformedResponse.data);
+
             return res
                 .status(STATUS_CODES.OK)
-                .json(new APIResponse(STATUS_CODES.OK, "Data fetched successfully", response, true));
+                .json(new APIResponse(STATUS_CODES.OK, "Data fetched successfully", transformedResponse, true));
         } catch (error) {
             console.error(error);
             return res
@@ -100,51 +109,6 @@ export const viewsController = {
                         false
                     ).toJSON()
                 );
-        }
-    },
-
-
-    getTypeAhead: async (req: AuthRequest, res: Response): Promise<Response> => {
-        const { column, value } = req.query;
-        const { resource } = req.params;
-
-
-        if (!resource) {
-            return res
-                .status(STATUS_CODES.BAD_REQUEST)
-                .json(new APIError(STATUS_CODES.BAD_REQUEST, "Bad request: Resource is missing", [], false).toJSON());
-        }
-
-        const modelName = resource.charAt(0).toUpperCase() + resource.slice(1).toLowerCase();
-
-        if (!column || !value) {
-            return res
-                .status(STATUS_CODES.BAD_REQUEST)
-                .json(new APIError(STATUS_CODES.BAD_REQUEST, "Missing column or value for typeahead", [], false).toJSON());
-        }
-
-        try {
-            const typeAheadFilter = {
-                [column as string]: {
-                    contains: value,
-                    mode: 'insensitive',
-                },
-            };
-
-            const results = await (prismaClient as any)[modelName].findMany({
-                where: typeAheadFilter,
-                select: { [column as string]: true },
-                take: 10,
-            });
-
-            return res
-                .status(STATUS_CODES.OK)
-                .json(new APIResponse(STATUS_CODES.OK, "Typeahead data fetched", results, true));
-        } catch (error) {
-            console.error(error);
-            return res
-                .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
-                .json(new APIError(STATUS_CODES.INTERNAL_SERVER_ERROR, "Error fetching typeahead data", [error], false).toJSON());
         }
     },
 
@@ -207,7 +171,7 @@ export const viewsController = {
 
         const queryOptions = {
             where: sanitizedFilters,
-            select: selectClause,
+            select: { ...selectClause, ...getRelatedModelIncludes(modelName, permittedColumns) },
             orderBy: sanitizedSorting,
             skip,
             take,
@@ -233,9 +197,12 @@ export const viewsController = {
                 views: userViews,
             } as GetFilteredDataResponse['data'];
 
+            const transformedResponse = transformDates(response);
+            const flatData = flattenNestedRelationships(transformedResponse.data);
+
             return res
                 .status(STATUS_CODES.OK)
-                .json(new APIResponse(STATUS_CODES.OK, "Data fetched successfully", response, true));
+                .json(new APIResponse(STATUS_CODES.OK, "Data fetched successfully", transformedResponse, true));
         } catch (error) {
             console.error(error);
             return res
@@ -250,7 +217,6 @@ export const viewsController = {
                 );
         }
     },
-
 
 
     createView: async (req: AuthRequest, res: Response): Promise<Response> => {
@@ -488,5 +454,57 @@ function sanitizeSorting(sorting: any, permittedColumns: string[]): any[] {
         const field = Object.keys(sortItem)[0];
         const direction = sortItem[field];
         return permittedColumns.includes(field) && (direction === 'asc' || direction === 'desc');
+    });
+}
+
+const getRelatedModelIncludes = (modelName: string, permittedColumns: string[]) => {
+    switch (modelName) {
+        case 'Site':
+            return permittedColumns.includes('vendor') ? {
+                vendor: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            } : {}
+        case 'Order':
+            return permittedColumns.includes('client') ? {
+                client: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            } : {}
+        default:
+            return {};
+    }
+};
+
+function flattenNestedRelationships<T extends Record<string, any>>(
+    records: T[]
+): T[] {
+    return records.map((record) => {
+        // Cast newRecord to a more flexible type
+        const newRecord = { ...record } as Record<string, any>;
+
+        for (const key of Object.keys(newRecord)) {
+            const value = newRecord[key];
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+                // Flatten out the nested object's 'id' or 'name'
+                if (value.id !== undefined) {
+                    newRecord[`${key}Id`] = value.id;
+                }
+                if (value.name !== undefined) {
+                    newRecord[`${key}Name`] = value.name;
+                }
+                // Remove the original nested object
+                delete newRecord[key];
+            }
+        }
+
+        // Return the mutated record, which is still typed as T[] overall
+        return newRecord as T;
     });
 }

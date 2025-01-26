@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback,  useState } from "react";
 import { ClipboardCopy, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { duplicateWebsiteChecker } from "@/utils/apiService/toolsAPI";

@@ -47,9 +47,10 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
           <SelectValue>{`${pageSize} Rows`}</SelectValue>
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="25">25 Rows</SelectItem>
             <SelectItem value="50">50 Rows</SelectItem>
             <SelectItem value="100">100 Rows</SelectItem>
-            <SelectItem value="500">500 Rows</SelectItem>
+            {/* <SelectItem value="500">500 Rows</SelectItem> */}
           </SelectContent>
         </Select>
       </div>

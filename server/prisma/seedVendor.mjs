@@ -16,6 +16,22 @@ async function main() {
       (obj) => obj.type === 'table' && obj.name === 'tbl_vendors'
     );
 
+    const parseSafeUnixTimestamp = (timestampStr) => {
+      if (!timestampStr || timestampStr.includes('0000-00-00')) {
+        return null;
+      }
+    
+      const timestamp = parseInt(timestampStr, 10); // Convert to integer
+      if (isNaN(timestamp)) {
+        return null; // If not a valid number, return null
+      }
+    
+      // Convert seconds to milliseconds for JavaScript Date
+      const parsed = new Date(timestamp * 1000);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    };
+    
+
     if (!tableObj) {
       throw new Error("Table 'tbl_vendors' not found in JSON data.");
     }
@@ -31,22 +47,30 @@ async function main() {
     // Process and insert each vendor
     for (const vendor of vendorsData) {
       try {
-        await prisma.vendor.create({
-          data: {
-            name: vendor.name || '',
-            phone: vendor.phone || '',
-            email: vendor.email || '',
-            contactedFrom: vendor.contacted_from || '',
-            bankName: vendor.bank_name || vendor.vendor_bank_name || '',
-            accountNumber: vendor.account_number || '',
-            ifscCode: vendor.bank_ifsc || '',
-            paypalId: vendor.paypal_id || '',
-            userId: parseSafeInt(vendor.user_id),
-            timestamp: new Date("2022-09-27T18:00:00.000Z").toISOString(),
-            skypeId: vendor.skype_id || '',
-            upiId: vendor.upi_id || '',
-          },
-        });
+        // await prisma.vendor.create({
+        //   data: {
+        //     name: vendor.name || '',
+        //     phone: vendor.phone || '',
+        //     email: vendor.email || '',
+        //     contactedFrom: vendor.contacted_from || '',
+        //     bankName: vendor.bank_name || vendor.vendor_bank_name || '',
+        //     accountNumber: vendor.account_number || '',
+        //     ifscCode: vendor.bank_ifsc || '',
+        //     paypalId: vendor.paypal_id || '',
+        //     timestamp: parseSafeUnixTimestamp(vendor.timestamp),
+        //     skypeId: vendor.skype_id || '',
+        //     upiId: vendor.upi_id || '',
+        //   },
+        // });
+
+        await prisma.vendor.update({
+          where : {
+            id: vendor.id
+          }, 
+          data : {
+            user_id : vendor.user_id
+          }
+        })
         console.log(`Successfully inserted vendor: ${vendor.name}`);
       } catch (vendorError) {
         console.error(

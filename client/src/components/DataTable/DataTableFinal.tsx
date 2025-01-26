@@ -29,6 +29,7 @@ interface DataTableNewProps {
     resource: string;
     filteredColumns: Set<string>;
     sortedColumns: Set<string>;
+    fetchFilteredData: () => void;
 }
 
 const TableCheckbox = React.memo(({
@@ -41,6 +42,7 @@ const TableCheckbox = React.memo(({
     <Checkbox
         checked={checked}
         onCheckedChange={(checked) => onCheckedChange(checked as boolean)}
+        className=" rounded-s rounded-e rounded-t rounded-b border border-gray-500 "
     />
 ));
 
@@ -49,13 +51,20 @@ const MemoizedTableCell = React.memo(({
     className,
     columnType
 }: {
-    value: any;  // Changed from string to any
+    value: any;
     className: string;
     columnType: string;
 }) => {
     const formattedValue = useMemo(() => {
-        // Handle empty objects or null/undefined values
-        if (!value || typeof value === 'object' && Object.keys(value).length === 0) {
+
+        if (!value) {
+            return '-';
+        }
+
+        if (typeof value === 'object' && !Array.isArray(value)) {
+            if ('name' in value) {
+                return (value as { name: string }).name;
+            }
             return '-';
         }
 
@@ -82,12 +91,12 @@ const MemoizedTableCell = React.memo(({
 
 const RowContextMenu = React.memo(({
     row,
-    copiedCell,
+   
     onCopyCell,
     onCopyRow,
     onEdit,
     onDelete,
-    resource,
+  
     hasUpdatePermission,
     hasDeletePermission,
 }: {
@@ -103,11 +112,11 @@ const RowContextMenu = React.memo(({
 }) => (
     <ContextMenuContent>
         <ContextMenuItem onClick={() => onCopyCell(String(row.id))}>
-            {copiedCell === String(row.id) ? <CopyCheck className="mr-2" /> : <Copy className="mr-2" />}
+            <Copy className="mr-2" />
             Copy Cell
         </ContextMenuItem>
         <ContextMenuItem onClick={() => onCopyRow(row)}>
-            <Copy className="mr-2" />
+            <CopyCheck className="mr-2" />
             Copy Row
         </ContextMenuItem>
         <ContextMenuSeparator />
@@ -179,14 +188,15 @@ const MemoizedTableRow = React.memo(({
                     />
                 </TableCell>
                 {columns.map((column) => (
-                    <MemoizedTableCell
-                        key={`${row.id}-${column}`}
-                        value={String(row[column])}
-                        columnType={availableColumnTypes[column]}
-                        className={`w-40 min-w-40 max-w-40 px-4 py-2 ${expandedRows.has(row.id) ? 'whitespace-normal' : 'truncate'
-                            } ${getColumnColor(column)}`}
-                    />
-                ))}
+                    column === 'id' ? null : (
+                        <MemoizedTableCell
+                            key={`${row.id}-${column}`}
+                            value={row[column]}
+                            columnType={availableColumnTypes[column]}
+                            className={`w-40 min-w-40 max-w-40 px-4 py-2 ${expandedRows.has(row.id) ? 'whitespace-normal' : 'truncate'
+                                } ${getColumnColor(column)}`}
+                        />
+                    )))}
             </TableRow>
         </ContextMenuTrigger>
         <RowContextMenu
@@ -212,7 +222,8 @@ export const DataTableNew: React.FC<DataTableNewProps> = ({
     error,
     resource,
     filteredColumns,
-    sortedColumns
+    sortedColumns, 
+    fetchFilteredData
 }) => {
     const auth = useRecoilValue(authAtom);
     const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -224,7 +235,6 @@ export const DataTableNew: React.FC<DataTableNewProps> = ({
     const [selectedRow, setSelectedRow] = useState<Record<string, any> | null>(null);
     const [toastVisible, setToastVisible] = useState(false);
     const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
-
 
     const fabStyles = {
         mainButtonStyles: {
@@ -301,10 +311,11 @@ export const DataTableNew: React.FC<DataTableNewProps> = ({
         });
     }, []);
 
-    const handleCreate = useCallback(async (newData: Record<string, any>) => {
+    const handleCreate = useCallback(async (newData: Record<string, any>[]) => { // Changed to accept an array
         try {
-            const createdData = await createData(resource, newData);
-            handleDataChange([...data, createdData]);
+            const createdData = await createData(resource, newData); // Pass the array to createData
+            
+            handleDataChange([...data, ...createdData]); // Spread the createdData array into the existing data
             setIsCreateSheetOpen(false);
             setToastVisible(true);
             setTimeout(() => setToastVisible(false), 3500)
@@ -314,6 +325,7 @@ export const DataTableNew: React.FC<DataTableNewProps> = ({
                 title: 'Success',
                 description: 'Record added successfully',
             });
+            return Promise.resolve({ success: true });
         } catch (error) {
             setToastVisible(true);
             setTimeout(() => setToastVisible(false), 3500)
@@ -323,8 +335,10 @@ export const DataTableNew: React.FC<DataTableNewProps> = ({
                 title: 'Error',
                 description: 'Failed to add record',
             });
+            return Promise.resolve({success : false})
         }
-    }, [resource, data, handleDataChange]);
+    }, []);
+    
 
     const handleCopyCell = useCallback((value: string) => {
         navigator.clipboard.writeText(value);
@@ -370,16 +384,13 @@ export const DataTableNew: React.FC<DataTableNewProps> = ({
     const handleEdit = useCallback(async (editedData: Record<string, any>) => {
         try {
             await updateData(resource, editedData);
-            const updatedData = data.map((row) =>
-                row.id === editedData.id ? editedData : row
-            );
-            handleDataChange(updatedData);
+            fetchFilteredData();
             setIsEditSheetOpen(false);
             setSelectedRow(null);
             setToastVisible(true);
             setTimeout(() => setToastVisible(false), 3500)
             toast({
-                variant: 'default',
+                variant: 'default', 
                 duration: 3000,
                 title: 'Success',
                 description: 'Data updated successfully',
@@ -440,30 +451,32 @@ export const DataTableNew: React.FC<DataTableNewProps> = ({
         auth.userInfo.permissions.some((p) => p.name === `_delete_${resource}`)
         , [auth.userInfo.permissions, resource]);
 
-    // console.log(auth.userInfo.permissions);
+    console.log(availableColumnTypes);
 
     if (loading) return <TableSkeleton />;
     if (error) return <div className="text-red-500">{error}</div>;
     if (!data.length) return <div className="text-gray-500">No data available</div>;
 
     return (
-        <div className="w-full overflow-auto">
+        <div className="">
             <Table>
-                <TableHeader>
+                <TableHeader >
                     <TableRow>
-                        <TableHead className="w-12 text-center pl-4 pt-4">
+                        <TableHead className="w-12 text-center pl-4 pt-4 bg-slate-200">
                             <TableCheckbox
                                 checked={selectedRows.size === data.length}
                                 onCheckedChange={handleSelectAll}
                             />
                         </TableHead>
                         {columns.map((column) => (
-                            <TableHead
-                                key={column}
-                                className="w-40 min-w-40 max-w-40 px-4 py-2 font-semibold"
-                            >
-                                {formatHeader(column)}
-                            </TableHead>
+                            column === 'id' ? null : (
+                                <TableHead
+                                    key={column}
+                                    className="w-40 min-w-40 max-w-40 px-4 py-2 font-semibold bg-slate-200"
+                                >
+                                    {formatHeader(column)}
+                                </TableHead>
+                            )
                         ))}
                     </TableRow>
                 </TableHeader>

@@ -238,15 +238,8 @@ const EditUser: React.FC = () => {
    *   Check helpers using finalPermissions/finalResources
    * ----------------------------------------------------------
    */
-  const isPermissionGranted = (permissionId: number): boolean => {
-    const found = finalPermissions.find((fp) => fp.id === permissionId);
-    return found ? found.granted : false;
-  };
 
-  const isResourceGranted = (resourceId: number): boolean => {
-    const found = finalResources.find((fr) => fr.id === resourceId);
-    return found ? found.granted : false;
-  };
+  
 
   const getPermissionNameById = (permissionId: number): string => {
     const permission = allPermissions.find((perm) => perm.id === permissionId);

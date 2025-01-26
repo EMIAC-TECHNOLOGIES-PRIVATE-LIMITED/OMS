@@ -129,9 +129,9 @@ export const toolsController = {
                                 website: site.website,
                                 vendor: {
                                     id: site.vendor?.id,
-                                    name: site.vendor?.name,
-                                    phone: site.vendor?.phone,
-                                    email: site.vendor?.email,
+                                    name: site.vendor?.name ?? undefined,
+                                    phone: site.vendor?.phone ?? undefined,
+                                    email: site.vendor?.email ?? undefined,
                                     country: site.vendor_country || null,
                                 },
                                 price: site.price,

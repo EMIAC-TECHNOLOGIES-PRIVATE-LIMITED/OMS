@@ -4,7 +4,6 @@ import React from 'react';
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -23,7 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ArrowBigDown, ArrowDown } from 'lucide-react';
+import {  ArrowDown } from 'lucide-react';
 
 const pageSizeOptions = [
   { value: 25, label: "25" },
@@ -44,7 +43,7 @@ export default function PaginationControlsNew({
   totalPages,
   handlePageChange,
 }: PaginationControlsProps) {
-  const [open, setOpen] = React.useState(false);
+
   const [selectedPageSize, setSelectedPageSize] = React.useState<number>(pageSize);
 
   React.useEffect(() => {
@@ -119,7 +118,7 @@ export default function PaginationControlsNew({
                       onSelect={(value) => {
                         const newSize = parseInt(value, 10);
                         setSelectedPageSize(newSize);
-                        setOpen(false);
+                       
                         // Reset to first page when page size changes
                         handlePageChange(1, newSize);
                       }}

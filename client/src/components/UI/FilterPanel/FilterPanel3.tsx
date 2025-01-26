@@ -162,7 +162,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     const [isOpen, setIsOpen] = useState(false);
     const [numberOfCompleteFilters, setNumberOfCompleteFilters] = useState(0);
 
-    console.log("current filter config", filterConfig);
+    // console.log("current filter config", filterConfig);
 
     useEffect(() => {
         const activeConnector = Object.entries(filterConfig.appliedFilters)

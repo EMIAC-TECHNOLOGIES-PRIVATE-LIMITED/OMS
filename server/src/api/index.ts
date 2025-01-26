@@ -6,6 +6,7 @@ import userRouter from '../routers/userRouter'
 import dataRouter from '../routers/dataRouter'
 import adminRouter from "../routers/adminRouter";
 import toolsRouter from "../routers/toolsRouter";
+import searchRouter from "../routers/searchRouter";
 
 const app = express();
 app.use(express.json());
@@ -27,7 +28,7 @@ app.use('/api/v1/user', userRouter);
 app.use('/api/v1/data', dataRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/tools', toolsRouter); 
-
+app.use('/api/v1/search', searchRouter);
 
 app.listen(port, () => {
     console.log(`Server Started at port : ${port}`);
