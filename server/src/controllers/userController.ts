@@ -193,7 +193,7 @@ export async function signInController(req: Request, res: Response): Promise<Res
                 role: userFound.role,
             },
             jwtSecret,
-            { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '15m' }
+            { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || 15}
         );
         const newRefreshToken = jwt.sign(
             {

@@ -1,7 +1,13 @@
 import axios from 'axios';
 
+const baseURL = import.meta.env.VITE_API_URL;
+
+if (!baseURL) {
+    console.error("VITE_API_URL is not defined! Axios will fallback to localhost.");
+}
+
 const axiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1',
+    baseURL: baseURL || 'http://localhost:3000/api/v1',
     headers: {
         'Content-Type': 'application/json',
     },

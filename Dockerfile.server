@@ -1,0 +1,38 @@
+# Use Node.js LTS as base
+FROM node:18-bullseye
+
+# Set working directory
+WORKDIR /app
+
+# Install PM2 globally
+RUN npm install -g pm2
+
+# Copy and build the shared directory
+COPY ./shared /app/shared
+WORKDIR /app/shared
+RUN npm install --include=dev --legacy-peer-deps
+RUN npm run build
+
+# Return to the server directory
+WORKDIR /app/server
+
+# Copy package.json, tsconfig.json, and prisma schema
+COPY ./server/package*.json ./server/tsconfig.json ./server/prisma ./
+
+# Install server dependencies
+RUN npm install --legacy-peer-deps
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy the rest of the server source code
+COPY ./server ./
+
+# Build TypeScript into JavaScript
+RUN npm run build
+
+# Expose the port the server runs on
+EXPOSE 3000
+
+# Start the server with PM2
+CMD ["pm2-runtime", "dist/api/index.js"]
