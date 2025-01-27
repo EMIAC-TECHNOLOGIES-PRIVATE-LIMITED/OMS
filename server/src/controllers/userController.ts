@@ -9,6 +9,7 @@ import { getUserPermission } from "../utils/getPermissions";
 import STATUS_CODES from '../constants/statusCodes';
 import { APIError, APIResponse } from '../utils/apiHandler';
 import { SignUpResponse, SignInResponse, SignOutResponse, UserInfoResponse } from '../../../shared/src/types';
+import { truncate } from "fs";
 
 const saltRounds = 10;
 const jwtSecret = process.env.JWT_SECRET || 'random@123';
@@ -211,20 +212,20 @@ export async function signInController(req: Request, res: Response): Promise<Res
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: true,
-            sameSite: 'strict',
+            sameSite: 'none',
             maxAge: 15 * 60 * 1000, // 15 minutes
         });
 
         res.cookie('isAuthenticated', 'true', { 
             httpOnly: false,
             secure: true,
-            sameSite: 'strict'
+            sameSite: 'none'
         })
 
         res.cookie('refreshToken', newRefreshToken, {
             httpOnly: true,
             secure: true,
-            sameSite: 'strict',
+            sameSite: 'none',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
         });
 
@@ -287,19 +288,19 @@ export async function signOutController(req: Request, res: Response): Promise<Re
         res.clearCookie('accessToken', {
             httpOnly: true,
             secure: true,
-            sameSite: 'strict',
+            sameSite: 'none',
         });
 
         res.clearCookie('refreshToken', {
             httpOnly: true,
             secure: true,
-            sameSite: 'strict',
+            sameSite: 'none',
         });
 
         res.clearCookie('isAuthenticated', {
             httpOnly: false,
             secure: true,
-            sameSite: 'strict',
+            sameSite: 'none',
         })
 
         return res

@@ -12,11 +12,28 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// TODO: remove cors and configure proxy from frontend
+
+const allowedOrigins = [
+    'http://localhost:3000',    // Local development
+    'http://103.172.92.187',   // VM IP for deployment
+    'https://oms.emiactech.com',
+    'https://emiactech.com',
+    'https://www.emiactech.com',
+    'http://oms.emiactech.com',
+    'http://emiactech.com',
+];
+
 app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, origin);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true, // Required for cookies
 }));
+
 
 const port = process.env.PORT || 3000;
 
@@ -27,9 +44,9 @@ app.get('/api/v1/health', (req, res) => {
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/data', dataRouter);
 app.use('/api/v1/admin', adminRouter);
-app.use('/api/v1/tools', toolsRouter); 
+app.use('/api/v1/tools', toolsRouter);
 app.use('/api/v1/search', searchRouter);
 
-app.listen(port, () => {
+app.listen(3000, '0.0.0.0', () => {
     console.log(`Server Started at port : ${port}`);
 })

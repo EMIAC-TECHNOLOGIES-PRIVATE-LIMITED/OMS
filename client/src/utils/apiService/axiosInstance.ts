@@ -7,7 +7,7 @@ if (!baseURL) {
 }
 
 const axiosInstance = axios.create({
-    baseURL: baseURL || 'http://localhost:3000/api/v1',
+    baseURL: baseURL || 'http://103.172.92.187:3001/api/v1',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -16,11 +16,7 @@ const axiosInstance = axios.create({
 });
 
 axiosInstance.interceptors.request.use(config => {
-    console.log(`[Request] ${config.method?.toUpperCase()} ${config.url}`);
-    const token = localStorage.getItem('authToken'); // Example for token handling
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
+    
     return config;
 });
 

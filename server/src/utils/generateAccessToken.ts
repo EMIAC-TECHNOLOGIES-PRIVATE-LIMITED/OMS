@@ -67,7 +67,7 @@ export async function generateAccessToken(req: any, res: Response): Promise<bool
         res.cookie('accessToken', newAccessToken, {
             httpOnly: true,
             secure: true,
-            sameSite: 'strict',
+            sameSite: 'none',
             maxAge: 15 * 60 * 1000,
         });
 
