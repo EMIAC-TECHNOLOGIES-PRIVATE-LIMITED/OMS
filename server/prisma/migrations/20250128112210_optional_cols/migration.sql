@@ -1,0 +1,22 @@
+-- DropForeignKey
+ALTER TABLE "Site" DROP CONSTRAINT "Site_user_id_fkey";
+
+-- AlterTable
+ALTER TABLE "Site" ALTER COLUMN "website" DROP NOT NULL,
+ALTER COLUMN "da" DROP NOT NULL,
+ALTER COLUMN "pa" DROP NOT NULL,
+ALTER COLUMN "price" DROP NOT NULL,
+ALTER COLUMN "traffic" DROP NOT NULL,
+ALTER COLUMN "timestamp" DROP NOT NULL,
+ALTER COLUMN "created_at" DROP NOT NULL,
+ALTER COLUMN "organic_traffic" DROP NOT NULL,
+ALTER COLUMN "organic_traffic_last_update_date" DROP NOT NULL,
+ALTER COLUMN "price_category" DROP NOT NULL,
+ALTER COLUMN "social_media_posting" DROP NOT NULL,
+ALTER COLUMN "user_id" DROP NOT NULL,
+ALTER COLUMN "vendor_invoice_status" DROP NOT NULL,
+ALTER COLUMN "website_type" DROP NOT NULL,
+ALTER COLUMN "follow" DROP NOT NULL;
+
+-- AddForeignKey
+ALTER TABLE "Site" ADD CONSTRAINT "Site_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -47,7 +47,9 @@ const viewsMiddleware = async (
         await populateRequestData(decoded, req, resource, viewId);
         next();
     } catch (error) {
+        console.log("the error is", error);
         if (error instanceof jwt.TokenExpiredError) {
+            console.log("Token expired, generating new access token");
             const refreshed = await generateAccessToken(req, res);
             if (refreshed) {
                 try {
@@ -55,6 +57,7 @@ const viewsMiddleware = async (
                         req.cookies.accessToken
                     ) as JwtPayload;
                     await populateRequestData(newDecoded, req, resource, viewId);
+                    console.log("New access token generated successfully");
                     return next();
                 } catch (newError) {
                     return res

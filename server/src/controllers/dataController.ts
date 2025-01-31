@@ -4,8 +4,7 @@ import { AuthRequest } from "../types/sitesDataTypes"
 import { APIError, APIResponse } from "../utils/apiHandler";
 import { getPermissionCached } from "../utils/getPermissions"
 import { prismaClient } from "../utils/prismaClient";
-import { createDataResponse } from "@shared/types";
-import { connect } from "http2";
+
 
 
 export const dataController = {
@@ -33,6 +32,8 @@ export const dataController = {
 
             const id = data.id
             delete data.id;
+
+            console.log("Recievd id is " , id);
 
             const updateData = await (prismaClient as any)[modelName].update({
                 where: {
@@ -116,7 +117,7 @@ export const dataController = {
     
             
             const addData = await (prismaClient as any)[modelName].createMany({
-                data: data.map((item) => ({
+                data: data.map(( {id, ...item}) => ({
                     ...item,
                     user_id: userId, 
                 })),

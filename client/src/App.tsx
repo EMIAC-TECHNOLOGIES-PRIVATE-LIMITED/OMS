@@ -13,7 +13,6 @@ import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { authAtom } from "./store/atoms/atoms";
 import { getUserInfo } from './utils/apiService/userAPI';
 import Layout from './Layout';
-import Home from './components/Home/Home';
 import DashboardLayout from './components/DashBoard/DashboardLayout';
 import ManageRoles from './components/DashBoard/ManageRoles';
 import EditRole from './components/DashBoard/EditRole';
@@ -63,7 +62,7 @@ const ProtectedRoute = ({ allowedRoles = [] }: { allowedRoles?: string[] }) => {
 // Conditional Home Route
 const HomeRoute = () => {
   const { isAuthenticated } = useRecoilValue(authAtom);
-  return isAuthenticated ? <Navigate to="/dashboard" /> : <Home />;
+  return isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />;
 };
 
 // Router Configuration

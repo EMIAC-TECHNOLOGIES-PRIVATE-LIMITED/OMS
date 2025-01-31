@@ -1,16 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import debounce from 'lodash.debounce';
 import { Check, ChevronDown } from 'lucide-react';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList
-} from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { typeAheadAPI } from '@/utils/apiService/typeAheadAPI';
 
@@ -40,187 +31,176 @@ export function Autocomplete({
   disabled = false,
   minInputLength = 2
 }: AutocompleteProps) {
-  const [searchValue, setSearchValue] = useState(initialValue?.name || '');
+  // State
+  const [inputValue, setInputValue] = useState(initialValue?.name || '');
   const [options, setOptions] = useState<Option[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(initialValue?.id || null);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
 
-  // AbortController to cancel ongoing requests
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Refs
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  
-  const debouncedFetchOptions = useMemo(() =>
-    debounce(async (value: string) => {
-      // Cancel previous request if exists
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
       }
+    }
 
-      // Create new AbortController
-      abortControllerRef.current = new AbortController();
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-      // Only fetch if input meets minimum length and not disabled
+  // Fetch options with debounce
+  const fetchOptions = useCallback(
+    debounce(async (value: string) => {
       if (!value || value.length < minInputLength || disabled) {
         setOptions([]);
+        setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
       try {
-        const signal = abortControllerRef.current.signal;
-        const response = await typeAheadAPI(route, column, value, {
-          timeout: 5000,
-     
-        });
-
-        // Only update if request wasn't aborted
-        if (!signal.aborted) {
-          setOptions(response);
-        }
-      } catch (error : unknown) {
-        // Handle aborted requests and other errors
-        if (error instanceof Error && error.name !== 'AbortError') {
-          console.error('Error fetching options:', error);
-          setOptions([]);
-        }
+        const response = await typeAheadAPI(route, column, value, { timeout: 5000 });
+        setOptions(response);
+      } catch (error) {
+        console.error('Error fetching options:', error);
+        setOptions([]);
       } finally {
         setIsLoading(false);
       }
-    }, 500),  // Increased delay for better performance
+    }, 300),
     [route, column, disabled, minInputLength]
   );
 
-  // Stable callback for fetching options
-  const handleFetchOptions = useCallback((value: string) => {
-    debouncedFetchOptions(value);
-  }, [debouncedFetchOptions]);
-
-  // Cleanup effect
+  // Cleanup
   useEffect(() => {
     return () => {
-      debouncedFetchOptions.cancel();
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      fetchOptions.cancel();
     };
-  }, [debouncedFetchOptions]);
+  }, [fetchOptions]);
 
-  // Trigger fetch on search value change
-  useEffect(() => {
-    if (searchValue && searchValue.length >= minInputLength) {
-      handleFetchOptions(searchValue);
-    } else {
-      setOptions([]);
-    }
-  }, [searchValue, handleFetchOptions, minInputLength]);
+  // Input change handler
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
+    setSelectedId(null);
+    onSelect(null);
+    setHighlightedIndex(-1);
+    setIsOpen(true);
+    fetchOptions(value);
+  };
 
-  // Select handler with improved state management
-  const handleSelect = useCallback((option: Option) => {
-    if (disabled) return;
-
-    setSearchValue(option.name);
+  // Option selection handler
+  const handleSelectOption = (option: Option) => {
+    setInputValue(option.name);
     setSelectedId(option.id);
     onSelect(option.id);
-    setOpen(false);
-  }, [disabled, onSelect]);
+    setIsOpen(false);
+    setHighlightedIndex(-1);
+  };
 
-  // Input change handler with more robust state update
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchValue(value);
-
-    // Reset selection when input changes
-    if (selectedId !== null) {
-      setSelectedId(null);
-      onSelect(null);
+  // Keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setIsOpen(true);
+      }
+      return;
     }
 
-    setOpen(true);
-  }, [onSelect, selectedId]);
-
-  // Input focus handler
-  const handleInputFocus = useCallback(() => {
-    if (searchValue && options.length === 0 && searchValue.length >= minInputLength) {
-      handleFetchOptions(searchValue);
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev < options.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev > 0 ? prev - 1 : prev
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && options[highlightedIndex]) {
+          handleSelectOption(options[highlightedIndex]);
+        }
+        break;
+      case 'Escape':
+        setIsOpen(false);
+        break;
     }
-    setOpen(true);
-  }, [searchValue, options.length, handleFetchOptions, minInputLength]);
-
-  // Memoized options rendering
-  const renderOptions = useMemo(() => {
-    if (isLoading) {
-      return Array(3).fill(0).map((_, index) => (
-        <div key={index} className="p-1">
-          <Skeleton className="h-6 w-full" />
-        </div>
-      ));
-    }
-
-    if (options.length === 0) {
-      return <CommandEmpty>{emptyMessage}</CommandEmpty>;
-    }
-
-    return (
-      <CommandGroup>
-        {options.map((option) => (
-          <CommandItem
-            key={option.id}
-            value={option.name}
-            onSelect={() => handleSelect(option)}
-            disabled={disabled}
-          >
-            <Check
-              className={cn(
-                "mr-2 h-4 w-4",
-                selectedId === option.id
-                  ? "opacity-100"
-                  : "opacity-0"
-              )}
-            />
-            {option.name}
-          </CommandItem>
-        ))}
-      </CommandGroup>
-    );
-  }, [
-    isLoading,
-    options,
-    emptyMessage,
-    handleSelect,
-    disabled,
-    selectedId
-  ]);
+  };
 
   return (
-    <Popover open={open} onOpenChange={disabled ? undefined : setOpen}>
-      <PopoverTrigger asChild>
-        <div className="relative w-full">
-          <Input
-            value={searchValue}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            placeholder={placeholder}
-            className="pr-8"
-            disabled={disabled}
-          />
-          {!disabled && (
-            <ChevronDown
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-              size={18}
-            />
+    <div ref={wrapperRef} className="relative w-full">
+      <div className="relative">
+        <Input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={() => {
+            if (inputValue.length >= minInputLength) {
+              setIsOpen(true);
+              fetchOptions(inputValue);
+            }
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="w-full pr-8"
+          autoComplete="off"
+        />
+        <ChevronDown
+          className={cn(
+            "absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 transition",
+            "text-muted-foreground",
+            isOpen && "transform rotate-180"
+          )}
+        />
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground rounded-md border shadow-md">
+          {isLoading ? (
+            <div className="p-2 text-sm text-muted-foreground">Loading...</div>
+          ) : options.length === 0 ? (
+            <div className="p-2 text-sm text-muted-foreground">{emptyMessage}</div>
+          ) : (
+            <div className="max-h-60 overflow-auto">
+              {options.map((option, index) => (
+                <div
+                  key={option.id}
+                  onClick={() => handleSelectOption(option)}
+                  className={cn(
+                    "flex items-center px-2 py-1.5 text-sm cursor-pointer",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    highlightedIndex === index && "bg-accent text-accent-foreground",
+                    selectedId === option.id && "bg-primary/10"
+                  )}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selectedId === option.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {option.name}
+                </div>
+              ))}
+            </div>
           )}
         </div>
-      </PopoverTrigger>
-
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command shouldFilter={false}>
-          <CommandList>
-            {renderOptions}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }
 

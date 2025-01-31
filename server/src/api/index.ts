@@ -21,6 +21,7 @@ const allowedOrigins = [
     'https://www.emiactech.com',
     'http://oms.emiactech.com',
     'http://emiactech.com',
+    'http://localhost:5173'
 ];
 
 app.use(cors({

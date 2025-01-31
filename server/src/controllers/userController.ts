@@ -9,7 +9,6 @@ import { getUserPermission } from "../utils/getPermissions";
 import STATUS_CODES from '../constants/statusCodes';
 import { APIError, APIResponse } from '../utils/apiHandler';
 import { SignUpResponse, SignInResponse, SignOutResponse, UserInfoResponse } from '../../../shared/src/types';
-import { truncate } from "fs";
 
 const saltRounds = 10;
 const jwtSecret = process.env.JWT_SECRET || 'random@123';
@@ -194,7 +193,7 @@ export async function signInController(req: Request, res: Response): Promise<Res
                 role: userFound.role,
             },
             jwtSecret,
-            { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || 15}
+            { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '7d'}
         );
         const newRefreshToken = jwt.sign(
             {
@@ -213,7 +212,7 @@ export async function signInController(req: Request, res: Response): Promise<Res
             httpOnly: true,
             secure: true,
             sameSite: 'none',
-            maxAge: 15 * 60 * 1000, // 15 minutes
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
 
         res.cookie('isAuthenticated', 'true', { 

@@ -79,6 +79,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   const [currentViewName, setCurrentViewName] = useState<string>("");
   const [initialViewName, setInitialViewName] = useState<string>("");
   const [isModified, setIsModified] = useState<boolean>(false);
+  const [initalLoadingCount, setInitialLoadingCount] = useState<number>(0);
 
   // Columns
   const [availableColumns, setAvailableColumns] = useState<{
@@ -126,6 +127,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   const fetchViewData = useCallback(
     async (viewId: number | null) => {
       if (viewId === currentViewId && hasFetchedInitialData.current) return;
+      setInitialLoadingCount(0);
       setLoading(true);
       setError(null);
       let retryAttempted = false;
@@ -236,6 +238,11 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
 
   useEffect(() => {
     if (initialLoading) return;
+
+    if(initalLoadingCount < 4){
+      setInitialLoadingCount(initalLoadingCount + 1);
+      return;
+    }
 
 
     const debouncedFetch = debounce(async () => {

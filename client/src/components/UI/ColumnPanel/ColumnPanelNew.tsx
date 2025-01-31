@@ -96,7 +96,7 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
             className={`
               flex items-center gap-2
               transition-colors duration-300 ease-in-out
-              ${selectedColumns.length < availableColumns.length
+              ${selectedColumns.length - 1 < availableColumns.length
                 ? "bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50"
                 : ""}
             `}

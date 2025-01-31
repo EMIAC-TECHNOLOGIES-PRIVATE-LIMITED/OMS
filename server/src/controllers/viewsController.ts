@@ -6,7 +6,8 @@ import STATUS_CODES from '../constants/statusCodes';
 import { APIError, APIResponse } from '../utils/apiHandler';
 import { CreateViewResponse, DeleteViewResponse, GetFilteredDataResponse, GetViewDataResponse, UpdateViewResponse } from '@shared/types';
 import { transformDates } from '../utils/dateTransformer';
-import { permission } from 'process';
+
+
 
 export const viewsController = {
     getView: async (req: AuthRequest, res: Response): Promise<Response> => {
@@ -92,7 +93,6 @@ export const viewsController = {
             } as GetViewDataResponse['data'];
 
             const transformedResponse = transformDates(response);
-            const flatData = flattenNestedRelationships(transformedResponse.data);
 
             return res
                 .status(STATUS_CODES.OK)
@@ -184,11 +184,22 @@ export const viewsController = {
 
             const data = await (prismaClient as any)[modelName].findMany(queryOptions);
 
+            // Reorder the columns in the data to match `permittedColumns`
+            const orderedData = data.map((row: Record<string, any>) => {
+                const orderedRow: Record<string, any> = {};
+                permittedColumns.forEach((col) => {
+                    if (col in row) {
+                        orderedRow[col] = row[col];
+                    }
+                });
+                return orderedRow;
+            });
+
             const response = {
                 totalRecords,
                 page,
                 pageSize,
-                data,
+                data: orderedData, // Use orderedData here
                 availableColumns: Object.keys(columnTypes),
                 availableColumnsType: columnTypes,
                 appliedFilters: sanitizedFilters,
@@ -198,7 +209,6 @@ export const viewsController = {
             } as GetFilteredDataResponse['data'];
 
             const transformedResponse = transformDates(response);
-            const flatData = flattenNestedRelationships(transformedResponse.data);
 
             return res
                 .status(STATUS_CODES.OK)
@@ -217,6 +227,7 @@ export const viewsController = {
                 );
         }
     },
+
 
 
     createView: async (req: AuthRequest, res: Response): Promise<Response> => {
@@ -482,29 +493,3 @@ const getRelatedModelIncludes = (modelName: string, permittedColumns: string[]) 
     }
 };
 
-function flattenNestedRelationships<T extends Record<string, any>>(
-    records: T[]
-): T[] {
-    return records.map((record) => {
-        // Cast newRecord to a more flexible type
-        const newRecord = { ...record } as Record<string, any>;
-
-        for (const key of Object.keys(newRecord)) {
-            const value = newRecord[key];
-            if (value && typeof value === 'object' && !Array.isArray(value)) {
-                // Flatten out the nested object's 'id' or 'name'
-                if (value.id !== undefined) {
-                    newRecord[`${key}Id`] = value.id;
-                }
-                if (value.name !== undefined) {
-                    newRecord[`${key}Name`] = value.name;
-                }
-                // Remove the original nested object
-                delete newRecord[key];
-            }
-        }
-
-        // Return the mutated record, which is still typed as T[] overall
-        return newRecord as T;
-    });
-}
