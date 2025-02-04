@@ -98,7 +98,7 @@ export const toolsController = {
                     country?: string | null;
                 };
                 price: number;
-                sailingPrice: number | null;
+                sellingPrice: number | null;
                 discount: number | null;
             }> = [];
             const domainsNotFound: string[] = [];
@@ -132,10 +132,10 @@ export const toolsController = {
                                     name: site.vendor?.name ?? undefined,
                                     phone: site.vendor?.phone ?? undefined,
                                     email: site.vendor?.email ?? undefined,
-                                    country: site.vendor_country || null,
+
                                 },
-                                price: site.price,
-                                sailingPrice: site.sailing_price || null,
+                                price: site.costPrice,
+                                sellingPrice: site.sellingPrice || null,
                                 discount: site.discount || null,
                             });
                         });
@@ -188,7 +188,7 @@ export const toolsController = {
                     vendorName: string;
                     vendorPhone: string;
                     vendorEmail: string;
-                    vendorCountry: string | null;
+                    
                 }>
             } = {};
             const domainsNotFound: string[] = [];
@@ -219,7 +219,7 @@ export const toolsController = {
                             vendorName: site.vendor?.name || '',
                             vendorPhone: site.vendor?.phone || '',
                             vendorEmail: site.vendor?.email || '',
-                            vendorCountry: site.vendor_country || null,
+                    
                         }));
                     }
                 }

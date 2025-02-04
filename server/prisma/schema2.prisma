@@ -98,13 +98,10 @@ model Permission {
 
 model Resource {
   id                Int                @id @default(autoincrement())
-  table             String
-  column            String
+  key               String             @unique
   description       String
   roles             Role[]             @relation("RoleResources")
   resourceOverrides ResourceOverride[]
-
-  @@unique([table, column])
 }
 
 model PermissionOverride {
@@ -137,10 +134,8 @@ model View {
   user     User   @relation(fields: [userId], references: [id])
   viewName String
 
-  columns String[]
-  filters Json
-  sort    Json
-  groupBy String[]
+  tableId      String 
+  filterConfig Json
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -189,7 +184,7 @@ model Vendor {
   skypeId       String?
   upiId         String?
   sites         Site[]
-  category      VendorCategory
+  category      VendorCategory?
 
   createdAt DateTime? @default(now())
   updatedAt DateTime? @updatedAt
@@ -199,34 +194,33 @@ model Vendor {
 }
 
 model Site {
-  id                Int    @id @default(autoincrement())
-  website           String
-  niche             String
-  contentCategories String
+  id                 Int                @id @default(autoincrement())
+  website            String
+  niche              String
+  contentCategories  String
   siteClassification SiteClassification @default(Normal)
-  priceCategory      PriceCategory? @default(Paid)
+  priceCategory      PriceCategory?     @default(Paid)
 
-
-  domainAuthority   Int
-  pageAuthority     Int
+  domainAuthority    Int
+  pageAuthority      Int
   linkAttribute      linkAttribute? @default(DoFollow)
   ahrefTraffic       Int?
   spamScore          Int
   domainRating       Int?
   socialMediaPosting Boolean?
 
-  costPrice        Int
-  sellingPrice     Int
-  discount         Int?
-  adultPrice       Int?
-  casinoAdultPrice Int?
-  cbdPrice           Int?
-  linkInsertionCost  Int?
+  costPrice         Int
+  sellingPrice      Int
+  discount          Int?
+  adultPrice        Int?
+  casinoAdultPrice  Int?
+  cbdPrice          Int?
+  linkInsertionCost Int?
 
-  websiteRemark      String?
-  webIP              String?
-  webCountry         String?
-  turnAroundTime     String?
+  websiteRemark  String?
+  webIP          String?
+  webCountry     String?
+  turnAroundTime String?
 
   semrushTraffic              Int
   semrushFirstCountryName     String?
@@ -288,8 +282,8 @@ model Client {
 
   orders Order[]
 
-  pocId Int  @default(1)
-  poc   User @relation(fields: [pocId], references: [id])
+  pocId Int?  @default(1)
+  poc   User? @relation(fields: [pocId], references: [id])
 
   @@index([pocId])
 }

@@ -7,9 +7,9 @@ import { cacheTTL } from "../constants/index";
 const permissionCache = new NodeCache();
 const resourceCache = new NodeCache();
 
-export const getResourceCached = async function (userId: number, table: string): Promise<string[]> {
+export const getResourceCached = async function (userId: number): Promise<string[]> {
     try {
-        const value = resourceCache.get(`${userId}-${table}`) as string[];
+        const value = resourceCache.get(`${userId}`) as string[];
         if (value) {
             return value;
         } else {
@@ -22,17 +22,15 @@ export const getResourceCached = async function (userId: number, table: string):
                     include: {
                         role: {
                             include: {
-                                resources: {
-                                    where: { table: table },
-                                    select: { column: true }
-                                }
+                                resources: true
+
                             }
                         },
                         resourceOverrides: {
-                            where: {
-                                resource: { table: table }
-                            },
-                            include: { resource: { select: { column: true } } }
+                            select: {
+                                granted: true,
+                                resource: true
+                            }
                         }
                     }
                 });
@@ -42,11 +40,11 @@ export const getResourceCached = async function (userId: number, table: string):
             if (user) {
                 let resourceArray: string[] = [];
                 try {
-                    resourceArray = user.role.resources.map(r => r.column);
+                    resourceArray = user.role.resources.map(r => r.key);
                 } catch { }
                 try {
                     user.resourceOverrides.forEach(override => {
-                        const overriddenColumn = override.resource.column;
+                        const overriddenColumn = override.resource.key;
                         if (override.granted) {
                             if (!resourceArray.includes(overriddenColumn)) {
                                 resourceArray.push(overriddenColumn);
@@ -57,7 +55,7 @@ export const getResourceCached = async function (userId: number, table: string):
                     });
                 } catch { }
                 try {
-                    const success = resourceCache.set(`${userId}-${table}`, resourceArray, cacheTTL);
+                    const success = resourceCache.set(`${userId}`, resourceArray, cacheTTL);
                     if (!success) {
                         console.log("Error while writting to cache")
                     }
@@ -229,74 +227,84 @@ export const getUserPermission = async function (
 export const getUserPermissionsAndResources = async function (
     userId: number
 ): Promise<{
-    permissions: { id: number; name: string }[];
-    resources: { id: number; table: string; column: string }[];
+    permissions: { id: number; key: string }[];
+    resources: { id: number; key: string }[];
 }> {
     try {
-        // Fetch user with their role, permissions, and overrides
         const user = await prismaClient.user.findUnique({
-            where: { id: userId },
-            include: {
+            where: {
+                id: userId
+            },
+            select: {
                 role: {
-                    include: {
-                        permissions: { select: { id: true, key: true } },
-                        resources: { select: { id: true, table: true, column: true } },
-                    },
+                    select: {
+                        permissions: {
+                            select: {
+                                id: true,
+                                key: true
+                            }
+                        },
+                        resources: {
+                            select: {
+                                id: true,
+                                key: true
+                            }
+                        }
+                    }
                 },
                 permissionOverrides: {
-                    include: { permission: { select: { id: true, key: true } } },
+                    select: {
+                        granted: true,
+                        permission: {
+                            select: {
+                                id: true,
+                                key: true
+                            }
+                        }
+                    }
                 },
                 resourceOverrides: {
-                    include: { resource: { select: { id: true, table: true, column: true } } },
-                },
-            },
-        });
-
-        if (!user) {
-            console.error(`User with id ${userId} not found.`);
-            return { permissions: [], resources: [] };
-        }
-
-        // Combine role-based permissions with overrides
-        let permissions = user.role.permissions.map((p) => ({
-            id: p.id,
-            name: p.key,
-        }));
-
-        user.permissionOverrides.forEach((override) => {
-            const overriddenPermission = { id: override.permission.id, name: override.permission.key };
-            if (override.granted) {
-                if (!permissions.find((p) => p.id === overriddenPermission.id)) {
-                    permissions.push(overriddenPermission);
+                    select: {
+                        granted: true,
+                        resource: {
+                            select: {
+                                id: true,
+                                key: true
+                            }
+                        }
+                    }
                 }
-            } else {
-                permissions = permissions.filter((p) => p.id !== overriddenPermission.id);
             }
         });
 
-        // Combine role-based resources with overrides
-        let resources = user.role.resources.map((r) => ({
-            id: r.id,
-            table: r.table,
-            column: r.column,
-        }));
-
-        user.resourceOverrides.forEach((override) => {
-            const overriddenResource = {
-                id: override.resource.id,
-                table: override.resource.table,
-                column: override.resource.column,
-            };
+        let permissions = user?.role.permissions.map(p => ({ id: p.id, key: p.key }));
+        user?.permissionOverrides.forEach(override => {
             if (override.granted) {
-                if (!resources.find((r) => r.id === overriddenResource.id)) {
-                    resources.push(overriddenResource);
+                if (!permissions?.find(p => p.id === override.permission.id)) {
+                    permissions?.push({ id: override.permission.id, key: override.permission.key });
                 }
             } else {
-                resources = resources.filter((r) => r.id !== overriddenResource.id);
+                permissions = permissions?.filter(p => p.id !== override.permission.id);
             }
         });
 
-        return { permissions, resources };
+        let resources = user?.role.resources.map(r => ({ id: r.id, key: r.key }));
+        user?.resourceOverrides.forEach(override => {
+            if (override.granted) {
+                if (!resources?.find(r => r.id === override.resource.id)) {
+                    resources?.push({ id: override.resource.id, key: override.resource.key });
+                }
+            } else {
+                resources = resources?.filter(r => r.id !== override.resource.id);
+            }
+        });
+
+        return {
+            permissions: permissions || [],
+            resources: resources || []
+        };
+
+
     } catch (error) {
         console.error('Error while fetching permissions and resources for the user:', userId, 'Error:', error);
         return { permissions: [], resources: [] };
@@ -306,40 +314,36 @@ export const getUserPermissionsAndResources = async function (
 export const getRolePermissionsAndResources = async function (
     roleId: number
 ): Promise<{
-    permissions: { id: number; name: string }[];
-    resources: { id: number; table: string; column: string }[];
+    permissions: { id: number; key: string }[];
+    resources: { id: number; key: string }[];
 }> {
     try {
-        // Fetch the role with its permissions and resources
+
         const role = await prismaClient.role.findUnique({
-            where: { id: roleId },
-            include: {
-                permissions: { select: { id: true, key: true } }, // Select permission details
-                resources: { select: { id: true, table: true, column: true } }, // Select resource details
+            where: {
+                id: roleId
             },
+            select: {
+                permissions: {
+                    select: {
+                        id: true,
+                        key: true
+                    }
+                },
+                resources: {
+                    select: {
+                        id: true,
+                        key: true
+                    }
+                }
+            }
         });
 
-        if (!role) {
-            console.error(`Role with id ${roleId} not found.`);
-            return { permissions: [], resources: [] };
-        }
-
-        // Format permissions and resources
-        const formattedPermissions = role.permissions.map((permission) => ({
-            id: permission.id,
-            name: permission.key,
-        }));
-
-        const formattedResources = role.resources.map((resource) => ({
-            id: resource.id,
-            table: resource.table,
-            column: resource.column,
-        }));
-
         return {
-            permissions: formattedPermissions,
-            resources: formattedResources,
+            permissions: role?.permissions.map(p => ({ id: p.id, key: p.key })) || [],
+            resources: role?.resources.map(r => ({ id: r.id, key: r.key })) || []
         };
+
     } catch (error) {
         console.error('Error while fetching permissions and resources for the role:', roleId, 'Error:', error);
         return { permissions: [], resources: [] };
@@ -347,13 +351,13 @@ export const getRolePermissionsAndResources = async function (
 };
 
 export const getAllPermissionsAndResources = async function (): Promise<{
-    permissions: { id: number; name: string }[];
-    resources: { id: number; table: string; column: string }[];
-    }> {
+    permissions: { id: number; key: string }[];
+    resources: { id: number; key: string }[];
+}> {
     try {
         const cacheData = permissionCache.get("allPermissionsAndResources") as {
-            permissions: { id: number; name: string }[];
-            resources: { id: number; table: string; column: string }[];
+            permissions: { id: number; key: string }[];
+            resources: { id: number; key: string }[];
         };
         if (cacheData) {
             return cacheData;
@@ -375,26 +379,15 @@ export const getAllPermissionsAndResources = async function (): Promise<{
         const resources = await prismaClient.resource.findMany({
             select: {
                 id: true,
-                table: true,
-                column: true,
+                key: true
             },
         });
 
-        // Format permissions and resources
-        const formattedPermissions = permissions.map((permission) => ({
-            id: permission.id,
-            name: permission.key,
-        }));
 
-        const formattedResources = resources.map((resource) => ({
-            id: resource.id,
-            table: resource.table,
-            column: resource.column,
-        }));
 
         const result = {
-            permissions: formattedPermissions,
-            resources: formattedResources,
+            permissions: permissions,
+            resources: resources,
         };
 
         // Cache the result

@@ -8,26 +8,37 @@ import { APIError } from '../utils/apiHandler';
 import STATUS_CODES from '../constants/statusCodes';
 import { generateAccessToken } from '../utils/generateAccessToken';
 import 'dotenv/config';
+import { View } from '@shared/types';
 
 /**
  * req structure after next() is called =>
-
+ *
  * req.user (Decoded JWT payload with user information)
-* req.modelName (Capitalized resource name, example : "Sites")
-* req.permittedColumns (Array of Columns the user is authorized to access.)
-* req.view (Current view object (default or specified).)
-* req.userViews (User's available views for the resource.)
-* req.params.viewId (ID of the default or specified view.)
-*/
+ * req.modelName (Capitalized resource name, example : "Sites")
+ * req.permittedColumns (Array of Columns the user is authorized to access.)
+ * req.view (Current view object (default or specified).)
+ * req.userViews (User's available views for the resource.)
+ * req.params.viewId (ID of the default or specified view.)
+ */
 
 const viewsMiddleware = async (
     req: AuthRequest,
     res: Response,
     next: NextFunction
 ): Promise<Response | void> => {
-    // console.log("Views Middleware Invoked");
     const { resource, viewId } = req.params;
     const accessToken = req.cookies.accessToken;
+
+    const validRoute = Object.keys(routes.dataRoutes).includes(resource);
+
+    if (!validRoute) {
+        throw new APIError(
+            STATUS_CODES.NOT_FOUND,
+            "404 Route not found",
+            [],
+            false
+        );
+    }
 
     if (!accessToken) {
         return res
@@ -47,9 +58,8 @@ const viewsMiddleware = async (
         await populateRequestData(decoded, req, resource, viewId);
         next();
     } catch (error) {
-        console.log("the error is", error);
+        console.log(`[viewsMiddleware] Error during token verification: ${error instanceof Error ? error.message : error}`);
         if (error instanceof jwt.TokenExpiredError) {
-            console.log("Token expired, generating new access token");
             const refreshed = await generateAccessToken(req, res);
             if (refreshed) {
                 try {
@@ -57,9 +67,9 @@ const viewsMiddleware = async (
                         req.cookies.accessToken
                     ) as JwtPayload;
                     await populateRequestData(newDecoded, req, resource, viewId);
-                    console.log("New access token generated successfully");
                     return next();
                 } catch (newError) {
+                    console.log(`[viewsMiddleware] Error after token refresh: ${newError instanceof Error ? newError.message : newError}`);
                     return res
                         .status(STATUS_CODES.FORBIDDEN)
                         .json(
@@ -73,7 +83,6 @@ const viewsMiddleware = async (
                 }
             }
         }
-
         return res
             .status(STATUS_CODES.FORBIDDEN)
             .json(
@@ -93,23 +102,12 @@ const populateRequestData = async (
     resource: string,
     viewId: string | undefined
 ): Promise<Response | void> => {
-    const validRoute = Object.keys(routes.dataRoutes).includes(resource);
-
-    if (!validRoute) {
-        throw new APIError(
-            STATUS_CODES.NOT_FOUND,
-            "404 Route not found",
-            [],
-            false
-        );
-    }
-
     req.modelName = resource.charAt(0).toUpperCase() + resource.slice(1).toLowerCase();
 
     const userPermissions = await getPermissionCached(decoded.userId);
     const permittedRoutes = userPermissions.map(((p) => (p.name)));
     const isPermitted = permittedRoutes.includes(resource);
-    
+
     if (!isPermitted) {
         throw new APIError(
             STATUS_CODES.FORBIDDEN,
@@ -119,8 +117,7 @@ const populateRequestData = async (
         );
     }
 
-    const permittedColumns = await getResourceCached(decoded.userId, resource);
-    // console.log(`Permitted columns for ${resource}:`, permittedColumns);
+    const permittedColumns = await getResourceCached(decoded.userId);
 
     req.permittedColumns = permittedColumns;
     req.user = decoded;
@@ -132,7 +129,7 @@ const populateRequestData = async (
                 tableId: resource,
                 viewName: 'grid',
             },
-        });
+        }) as View;
 
         if (!defaultView) {
             defaultView = await prismaClient.view.create({
@@ -140,12 +137,9 @@ const populateRequestData = async (
                     userId: decoded.userId,
                     tableId: resource,
                     viewName: 'grid',
-                    columns: permittedColumns,
-                    filters: {},
-                    sort: [],
-                    groupBy: [],
+                    filterConfig: {},
                 },
-            });
+            }) as View;
         }
 
         req.params.viewId = defaultView.id.toString();
@@ -153,7 +147,7 @@ const populateRequestData = async (
     } else {
         const view = await prismaClient.view.findUnique({
             where: { id: parseInt(viewId, 10) },
-        });
+        }) as View;
 
         if (!view) {
             throw new APIError(

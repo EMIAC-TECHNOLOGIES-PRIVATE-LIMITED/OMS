@@ -213,7 +213,7 @@ export async function getUserAccess(req: Request, res: Response): Promise<Respon
             isSuspended: user.suspended,
             permissions: user.role?.permissions.map(permission => ({
                 id: permission.id,
-                name: permission.key,
+                key: permission.key,
             })) || [],
             permissionOverrides: user.permissionOverrides.map(permissionOverride => ({
                 permissionId: permissionOverride.permissionId,
@@ -221,8 +221,7 @@ export async function getUserAccess(req: Request, res: Response): Promise<Respon
             })) || [],
             resources: user.role?.resources.map(resource => ({
                 id: resource.id,
-                table: resource.table,
-                column: resource.column,
+                key: resource.key,
             })) || [],
             resourceOverrides: user.resourceOverrides.map(resourceOverride => ({
                 resourceId: resourceOverride.resourceId,

@@ -99,12 +99,11 @@ export interface GetAllPermissionsResponse {
     data: {
         permissions: Array<{
             id: number;
-            name: string;
+            key: string;
         }>;
         resources: Array<{
             id: number;
-            table: string;
-            column: string;
+            key: string
         }>;
     };
     success: boolean;
@@ -120,12 +119,11 @@ export interface GetRolePermissionsResponse {
     data: {
         permissions: Array<{
             id: number;
-            name: string;
+            key: string;
         }>;
         resources: Array<{
             id: number;
-            table: string;
-            column: string;
+            key: string;
         }>;
     };
     success: boolean;
@@ -144,7 +142,7 @@ export interface GetUserPermissionsResponse {
         isSuspended: boolean;
         permissions: Array<{
             id: number;
-            name: string;
+            key: string;
         }>;
         permissionOverrides: Array<{
             permissionId: number;
@@ -152,8 +150,7 @@ export interface GetUserPermissionsResponse {
         }>;
         resources: Array<{
             id: number;
-            table: string;
-            column: string;
+            key: string;
         }>;
         resourceOverrides: Array<{
             resourceId: number;
@@ -214,8 +211,6 @@ export interface ManageRoleAccessResponse {
     success: boolean;
 }
 
-
-
 export interface GetViewDataResponse {
     status: number;
     message: string;
@@ -223,18 +218,13 @@ export interface GetViewDataResponse {
         viewId: number;
         viewName: string;
         totalRecords: number;
-        page: number;
-        pageSize: number;
         data: Array<{
-            website: string;
+            [key: string]: string | number | boolean | Date | unknown;
         }>;
-        availableColumns: string[];
         availableColumnsType: {
             [key: string]: string;
         };
-        appliedFilters: FilterConfig['appliedFilters'];
-        appliedSorting: FilterConfig['appliedSorting'];
-        column: FilterConfig['columns'];
+        appliedFilters: FilterConfig;
         views: Array<{
             id: number;
             viewName: string;
@@ -244,9 +234,7 @@ export interface GetViewDataResponse {
 }
 
 export interface GetFilteredDataRequest {
-    columns: string[];
-    filters: FilterConfig['appliedFilters'];
-    sorting: FilterConfig['appliedSorting'];
+    appliedFilters: FilterConfig;
     page: number;
     pageSize: number;
 }
@@ -256,21 +244,8 @@ export interface GetFilteredDataResponse {
     message: string;
     data: {
         totalRecords: number;
-        page: number;
-        pageSize: number;
         data: Array<{
-            website: string;
-        }>;
-        availableColumns: string[];
-        availableColumnsType: {
-            [key: string]: string;
-        };
-        appliedFilters: FilterConfig['appliedFilters'];
-        appliedSorting: FilterConfig['appliedSorting'];
-        column: FilterConfig['columns'];
-        views: Array<{
-            id: number;
-            viewName: string;
+            [key: string]: string | number | boolean | Date | unknown;
         }>;
     };
     success: boolean;
@@ -278,16 +253,14 @@ export interface GetFilteredDataResponse {
 
 export interface CreateViewRequest {
     viewName: string;
-    columns: string[];
-    filters: FilterConfig['appliedFilters'];
-    sorting: FilterConfig['appliedSorting'];
+    appliedFilters: FilterConfig;
 }
 
 export interface CreateViewResponse {
     status: number;
     message: string;
     data: {
-        viewId: number;
+        newViewId: number;
         views: Array<{
             id: number;
             viewName: string;
@@ -299,21 +272,13 @@ export interface CreateViewResponse {
 export interface UpdateViewRequest {
     viewId: number;
     viewName: string;
-    columns: string[];
-    filters: FilterConfig['appliedFilters'];
-    sorting: FilterConfig['appliedSorting'];
+    appliedFilters: FilterConfig;
 }
 
 export interface UpdateViewResponse {
     status: number;
     message: string;
     success: boolean;
-    data: {
-        views: Array<{
-            id: number;
-            viewName: string;
-        }>;
-    };
 }
 
 export interface DeleteViewRequest {
@@ -324,12 +289,6 @@ export interface DeleteViewResponse {
     status: number;
     message: string;
     success: boolean;
-    data: {
-        views: Array<{
-            id: number;
-            viewName: string;
-        }>;
-    }
 }
 
 export interface HealthCheckResponse {
@@ -370,36 +329,29 @@ export interface SortingConfig {
 
 // Main FilterConfig Interface
 export interface FilterConfig {
-    columns: string[];
-    appliedFilters: {
-        [key in LogicalOperator]?: Array<{
-            [key: string]: FilterCondition;
-        }>;
+    columns?: string[];
+    filters?: Array<{
+        column: string;
+        operator: string;
+        value: any;
+    }>;
+    connector?: 'AND' | 'OR';
+    sort?: {
+        [key: string]: 'asc' | 'desc';
     };
-    appliedSorting: SortingConfig[];
 }
-
-
-// export interface FilterConfig {
-//     columns: string[];
-//     appliedFilters: {
-//         [key in LogicalOperator]?: Array<{
-//             [key: string]: {
-//                 contains?: string;
-//                 equals?: string | number;
-//                 startsWith?: string;
-//                 endsWith?: string;
-//             };
-//         }>;
-//     };
-//     appliedSorting: Array<{
-//         [key: string]: 'asc' | 'desc';
-//     }>;
-// }
 
 export interface View {
     id: number;
+    userId: number
     viewName: string;
+
+    tableId: string;
+    filterConfig: FilterConfig;
+
+    createdAt: Date;
+    updatedAt: Date;
+
 }
 
 export interface APIResponse<T = any> {
@@ -420,17 +372,13 @@ export interface UpdateDataResponse {
     status: number;
     message: string;
     success: boolean;
-    data: Record<string, any>;
 }
 
 export interface createDataResponse {
     status: number;
     message: string;
     success: boolean;
-    data: Record<string, any>;
 }
-
-
 
 export interface WebsiteCheckerResponse {
     status: number;
@@ -454,10 +402,10 @@ export interface PriceCheckerResponse {
                 name?: string;
                 phone?: string;
                 email?: string;
-                country?: string | null;
+
             };
             price: number;
-            sailingPrice: number | null;
+            sellingPrice: number | null;
             discount: number | null;
         }>;
         domainsNotFound: string[];
@@ -476,7 +424,7 @@ export interface VendorCheckerResponse {
                     vendorName: string;
                     vendorPhone: string;
                     vendorEmail: string;
-                    vendorCountry: string | null;
+
                 }>;
             };
         },

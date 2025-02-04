@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
@@ -7,6 +7,7 @@ import dataRouter from '../routers/dataRouter'
 import adminRouter from "../routers/adminRouter";
 import toolsRouter from "../routers/toolsRouter";
 import searchRouter from "../routers/searchRouter";
+import { APIError } from '../utils/apiHandler';
 
 const app = express();
 app.use(express.json());
@@ -34,6 +35,18 @@ app.use(cors({
     },
     credentials: true, // Required for cookies
 }));
+
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    if (err instanceof APIError) {
+        return res.status(err.status).json({
+            status: err.status,
+            message: err.message,
+            errors: err.errors,
+            success: err.success
+        });
+    }
+    next(err);
+});
 
 
 const port = process.env.PORT || 3000;

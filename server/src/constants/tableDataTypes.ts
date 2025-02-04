@@ -1,25 +1,11 @@
-// Centralized data types for Prisma models
+
+import { Client } from '@prisma/client'
+
+
+
 export const tableDataTypes: { [model: string]: { [column: string]: string } } = {
-    Client: {
-        clientId: 'Int',
-        name: 'String',
-        linkSell: 'Int',
-        contentSell: 'Int',
-        totalAmountReceived: 'Int',
-        totalOrders: 'Int',
-        salesPersonId: 'Int',
-        phone: 'String',
-        email: 'String',
-        fbId: 'String',
-        contactedId: 'String',
-        siteName: 'String',
-        source: 'String',
-        userId: 'Int',
-        clientClientName: 'String',
-        clientProjects: 'String',
-        clientCreatedAt: 'DateTime',
-        clientUpdatedAt: 'DateTime',
-    },
+
+  
     Order: {
         orderId: 'Int',
         clientId: 'Int',

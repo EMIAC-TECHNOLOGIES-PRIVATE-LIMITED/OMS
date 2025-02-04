@@ -8,70 +8,60 @@ generator client {
 datasource db {
   provider = "postgresql"
 
-  url = env("DATABASE_URL")
-  // url      = "postgresql://postgres:randompassword@localhost:5432/mydb?schema=public"
+  // url = env("DATABASE_URL")
+  url = "postgresql://postgres:randompassword@localhost:5432/mydb?schema=public"
 }
 
-enum StatusLogin {
-  ACTIVE
-  INACTIVE
-}
-
-enum OrderPaymentStatus {
-  RECEIVED
-  PARTIALLY_RECEIVED
-  PENDING
-  NOT_RECEIVED
+enum ClientPaymentStatus {
+  Received
+  PartiallyReceived
+  Pending
+  NotReceived
 }
 
 enum VendorPaymentStatus {
-  HOLD
-  UNPAID
-  PAID
-  PARTIALLY_PAID
-  CANCEL
+  Hold
+  Unpaid
+  Paid
+  PartiallyPaid
+  Cancel
 }
 
 enum OrderStatus {
-  PENDING
-  GIVEN
-  PUBLISH
-  NOT_PUBLISH
-  CANCEL
-  REPLACEMENT
-  NEED_UPDATE
+  Pending
+  Given
+  Publish
+  NotPublish
+  Cancel
+  Replacement
+  NeedUpdate
 }
 
 enum VendorInvoiceStatus {
-  PENDING
-  ASK
-  RECEIVED
-  GIVEN
-  PAID
+  Pending
+  Ask
+  Received
+  Given
+  Paid
 }
 
-enum SiteType {
-  NORMAL
-  CASINO
-  ADULT
-  CBD
+enum SiteClassification {
+  Normal
+  Casino
+  Cbd
+  Adult
 }
 
-enum Follow {
-  Do_follow
-  No_follow
+enum linkAttribute {
+  DoFollow
+  NoFollow
   Sponsored
 }
 
-enum PriceType {
+enum PriceCategory {
   Paid
   Free
   Exchange
-}
-
-enum Posting {
-  Yes
-  No
 }
 
 enum WebsiteType {
@@ -88,7 +78,7 @@ enum WebsiteStatus {
 
 enum WebsiteQuality {
   Pure
-  Almost_Pure
+  AlmostPure
   Multi
 }
 
@@ -110,13 +100,10 @@ model Permission {
 
 model Resource {
   id                Int                @id @default(autoincrement())
-  table             String
-  column            String
+  key               String             @unique
   description       String
   roles             Role[]             @relation("RoleResources")
   resourceOverrides ResourceOverride[]
-
-  @@unique([table, column])
 }
 
 model PermissionOverride {
@@ -143,229 +130,208 @@ model ResourceOverride {
   @@index([userId, resourceId])
 }
 
-model MasterData {
-  id              Int    @id @default(autoincrement())
-  orderNumber     Int
-  clientName      String
-  clientEmail     String
-  contentCategory String
-  contentLink     String
-  houseCost       Int
-  priceQuoted     Int
-}
-
 model View {
   id       Int    @id @default(autoincrement())
   userId   Int
   user     User   @relation(fields: [userId], references: [id])
-  tableId  String
   viewName String
 
-  columns String[]
-
-  filters Json
-  sort    Json
-  groupBy String[]
+  tableId      String
+  filterConfig Json
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([userId, tableId])
-}
-
-model Client {
-  id                  Int      @id @default(autoincrement())
-  name                String
-  linkSell            Int?
-  contentSell         Int?
-  totalAmountReceived Int?
-  totalOrders         Int?
-  phone               String?
-  email               String?
-  fbId                String?
-  contactedId         String?
-  siteName            String?
-  source              String?
-  user_id             Int     @default(1)
-  user         User     @relation("UserClients", fields: [user_id], references: [id])
-  clientClientName    String?
-  clientProjects      String?
-  clientCreatedAt     DateTime? @default(now())
-  clientUpdatedAt     DateTime? @updatedAt
-  orders              Order[]  @relation("ClientOrders")
-
-  @@index([user_id])
-}
-
-model Order {
-  id                         Int                 @id @default(autoincrement())
-  client_id                  Int?
-  client                     Client?             @relation("ClientOrders", fields: [client_id], references: [id])
-  orderDate                  DateTime?
-  publishStatus              Boolean?
-  publishDate                DateTime?
-  publishLink                String?
-  transactionAmount          Int?
-  receivedAmount             Int?
-  accountType                String?
-  accountId                  Int?
-  proposedAmount             Int?
-  contentAmount              Int?
-  website                    String?
-  websiteRemark              String?
-  vendorEmail                String?
-  vendorName                 String?
-  siteCost                   Int?
-  vendorContactedFrom        String?
-  remark                     String?
-  vendorWebsiteRemark        String?
-  clientAmountReceived       Int?
-  clientAmountReceivedDate   String?
-  clientAmountReceivedStatus OrderPaymentStatus?  @default(NOT_RECEIVED)
-  vendorPaymentAmount        Int?
-  vendorAccountType          String?
-  vendorPaymentStatus        VendorPaymentStatus?
-  vendorPaymentDate          String?
-  vendorTransactionId        String?
-  orderedBy                  Int?
-  orderedUpdatedBy           Int?
-  orderOperatedBy            Int?
-  orderOperatedUpdateBy      Int?
-  user_id                     Int?
-  user                       User?                @relation("UserOrders", fields: [user_id], references: [id])
-  paypalId                   String?
-  status                     OrderStatus?         @default(PENDING)
-  contentDoc                 String?
-  vendorInvoiceStatus        VendorInvoiceStatus? @default(PENDING)
-  paymentRemark              String?
-  actualReceivedAmount       Int?
-  actualPaidAmount           Int?
-  siteType                   SiteType?            @default(NORMAL)
-  websiteType                String?
-  invoiceNo                  String?             @default("0")
-  invoiceStatus              String?
-  priceWithGST               Int?
-  indexedUrl                 String?
-  statusUpdateDatetime       DateTime?
-
-  @@index([client_id])
-  @@index([user_id])
+  @@index([userId])
 }
 
 model User {
-  id                  Int                  @id @default(autoincrement())
-  name                String
-  email               String               @unique
-  suspended           Boolean              @default(false)
-  password            String
-  roleId              Int
-  role                Role                 @relation(fields: [roleId], references: [id])
-  lastLogin           String?               @default("")
-  lastLogout          String?               @default("")
-  loginId             Int?                  @default(0)
-  statusLogin         StatusLogin?          @default(ACTIVE)
-  superAppID          Int?                  @default(0)
-  secureKey           String?               @default("")
+  id        Int     @id @default(autoincrement())
+  name      String
+  email     String  @unique
+  suspended Boolean @default(false)
+  password  String
+
   permissionOverrides PermissionOverride[]
   resourceOverrides   ResourceOverride[]
-  clients             Client[]             @relation("UserClients")
-  orders              Order[]              @relation("UserOrders")
-  sites               Site[]               @relation("UserSites")
-  views               View[]
-  refreshToken        String[]             @default([""])
-  Vendor              Vendor[]             @relation("UserVendors")
+  refreshToken        String[]
+
+  clients Client[]
+  orders  Order[]
+  sites   Site[]
+  views   View[]
+  vendors Vendor[]
+
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id])
 
   @@index([roleId])
 }
 
+enum VendorCategory {
+  Individual
+  Agency
+}
+
 model Vendor {
-  id            Int      @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   name          String
   phone         String?
   email         String?
-  contactedFrom String?
+  pitchedFrom   String?
   bankName      String?
   accountNumber String?
   ifscCode      String?
   paypalId      String?
-  user_id       Int?
-  user          User?    @relation("UserVendors", fields: [user_id], references: [id])
-  timestamp     DateTime @default(now())
   skypeId       String?
   upiId         String?
-  sites         Site[]   @relation("VendorSites")
+  sites         Site[]
+  category      VendorCategory?
+
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+
+  pocId Int?
+  poc   User? @relation(fields: [pocId], references: [id])
 }
 
 model Site {
-  id                               Int       @id @default(autoincrement())
-  website                          String
-  niche                            String?
-  site_category                    String?
-  da                               Int
-  pa                               Int
-  vendor_id                        Int?      @default(1)
-  vendor                           Vendor?   @relation("VendorSites", fields: [vendor_id], references: [id])
-  price                            Int
-  sailing_price                    Int?
-  discount                         Int?
-  adult                            Int?
-  casino_adult                     Int?
-  contact                          String?
-  contact_from                     String?
-  web_category                     String?
-  follow                           String    @default("Do_follow")
-  price_category                   String    @default("Paid")
-  traffic                          Int       @default(0)
-  spam_score                       Int?
-  cbd_price                        Int?
-  remark                           String?
-  contact_from_id                  String?
-  vendor_country                   String?
-  phone_number                     String?
-  sample_url                       String?
-  bank_details                     String?
-  dr                               Int?
-  user_id                          Int
-  timestamp                        DateTime  @default(now())
-  web_ip                           String?
-  web_country                      String?
-  link_insertion_cost              String?
-  tat                              String?
-  social_media_posting             String    @default("No")
-  semrush_traffic                  Int?
-  semrush_first_country_name       String?
-  semrush_second_country_name      String?
-  semrush_first_country_traffic    Int?
-  semrush_second_country_traffic   Int?
-  semrush_third_country_name       String?
-  semrush_third_country_traffic    Int?
-  semrush_fourth_country_name      String?
-  semrush_fourth_country_traffic   Int?
-  semrush_fifth_country_name       String?
-  semrush_fifth_country_traffic    Int?
-  similarweb_traffic               Int?
-  vendor_invoice_status            String    @default("Pending")
-  main_category                    String?
-  site_update_date                 DateTime?
-  website_type                     String    @default("Default")
-  language                         String?
-  gst                              String?
-  disclaimer                       String?
-  anchor_text                      String?
-  banner_image_price               Int?
-  cp_update_date                   DateTime?
-  pure_category                    String?
-  availability                     String?
-  indexed_url                      String?
-  website_status                   String    @default("Normal")
-  website_quality                  String?
-  num_of_links                     Int?
-  semrush_updation_date            DateTime?
-  organic_traffic                  Int       @default(0)
-  organic_traffic_last_update_date DateTime  @default(now())
-  created_at                       DateTime  @default(now())
+  id                 Int                @id @default(autoincrement())
+  website            String
+  niche              String
+  contentCategories  String
+  siteClassification SiteClassification @default(Normal)
+  priceCategory      PriceCategory?     @default(Paid)
 
-  user User @relation("UserSites", fields: [user_id], references: [id])
+  domainAuthority    Int
+  pageAuthority      Int
+  linkAttribute      linkAttribute? @default(DoFollow)
+  ahrefTraffic       Int?
+  spamScore          Int
+  domainRating       Int?
+  socialMediaPosting Boolean?
 
-  @@index([user_id])
+  costPrice         Int
+  sellingPrice      Int
+  discount          Int?
+  adultPrice        Int?
+  casinoAdultPrice  Int?
+  cbdPrice          Int?
+  linkInsertionCost Int?
+
+  websiteRemark  String?
+  webIP          String?
+  webCountry     String?
+  turnAroundTime String?
+
+  semrushTraffic              Int
+  semrushFirstCountryName     String?
+  semrushSecondCountryName    String?
+  semrushFirstCountryTraffic  Int?
+  semrushSecondCountryTraffic Int?
+  semrushThirdCountryName     String?
+  semrushThirdCountryTraffic  Int?
+  semrushFourthCountryName    String?
+  semrushFourthCountryTraffic Int?
+  semrushFifthCountryName     String?
+  semrushFifthCountryTraffic  Int?
+  similarwebTraffic           Int?
+
+  siteUpdateDate   DateTime?    @updatedAt()
+  websiteType      WebsiteType? @default(Default)
+  language         String?
+  disclaimer       String?
+  anchorText       Boolean?
+  bannerImagePrice Int?
+
+  costPriceUpdateDate              DateTime?
+  pureCategory                     String?
+  availability                     Boolean?        @default(false)
+  isIndexed                        Boolean?
+  websiteStatus                    WebsiteStatus   @default(Normal)
+  websiteQuality                   WebsiteQuality? @default(Pure)
+  numberOfLinks                    Int?
+  semrushUpdateDate                DateTime?
+  semrushOrganicTraffic            Int             @default(0)
+  semrushOrganicTrafficLastUpdated DateTime        @default(now())
+
+  createdAt DateTime @default(now())
+  udpatedAt DateTime @updatedAt
+
+  vendorId Int?    @default(1)
+  vendor   Vendor? @relation(fields: [vendorId], references: [id])
+
+  pocId Int?
+  poc   User? @relation(fields: [pocId], references: [id])
+
+  orders Order[] @relation("OrderSite")
+}
+
+model Client {
+  id               Int     @id @default(autoincrement())
+  name             String
+  phone            String?
+  email            String?
+  fbId             String?
+  contactedFrom    String?
+  website          String?
+  source           String?
+  clientClientName String?
+  projects         String?
+
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+
+  orders Order[]
+
+  pocId Int?  @default(1)
+  poc   User? @relation(fields: [pocId], references: [id])
+
+  @@index([pocId])
+}
+
+model Order {
+  id        Int       @id @default(autoincrement())
+  orderDate DateTime?
+
+  orderStatus           OrderStatus @default(Pending)
+  vendorAssignedDate    DateTime? // auto-update middleware
+  orderStatusUpdateDate DateTime? // auto-update middleware
+  publishDate           DateTime? // auto-update middleware
+  publishURL            String?
+
+  orderRemark         String?
+  mainRemark          String?
+  clientPaymentRemark String?
+
+  clientContentCost    Int?
+  clientProposedAmount Int?
+  clientPaymentStatus  ClientPaymentStatus? @default(Pending)
+  clientReceivedAmount Int?
+  clientPaymentDate    DateTime?
+
+  vendorInvoiceStatus VendorInvoiceStatus? @default(Pending)
+  vendorPaymentStatus VendorPaymentStatus? @default(Unpaid)
+  vendorPaymentDate   DateTime?
+  vendorPaymentAmount Int?
+
+  invoiceNumber    String?
+  costPriceWithGST Int?
+
+  indexedScreenShotLink String?
+
+  siteId Int?
+  site   Site? @relation("OrderSite", fields: [siteId], references: [id])
+
+  salesPersonId Int?
+  salesPerson   User? @relation(fields: [salesPersonId], references: [id])
+
+  clientId Int?
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([salesPersonId])
 }
