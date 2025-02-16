@@ -121,8 +121,15 @@ const EditUser: React.FC = () => {
         // 1) Fetch all (global) permissions and resources
         const permissionsResponse: GetAllPermissionsResponse = await getAllPermissions();
         if (permissionsResponse.success) {
-          setAllPermissions(permissionsResponse.data.permissions);
-          setAllResources(permissionsResponse.data.resources);
+          setAllPermissions(permissionsResponse.data.permissions.map(p => ({
+            id: p.id,
+            name: p.key
+          })));
+          setAllResources(permissionsResponse.data.resources.map(r => ({
+            id: r.id,
+            table: r.key.split('.')[0],
+            column: r.key.split('.')[1] || r.key
+          })));
         } else {
           setError(permissionsResponse.message || 'Failed to fetch permissions.');
           return;
@@ -134,8 +141,15 @@ const EditUser: React.FC = () => {
         );
         if (userPermissionsResponse.success) {
           // The user’s default perms/resources
-          setUserDefaultPermissions(userPermissionsResponse.data.permissions);
-          setUserDefaultResources(userPermissionsResponse.data.resources);
+          setUserDefaultPermissions(userPermissionsResponse.data.permissions.map(p => ({
+            id: p.id,
+            name: p.key
+          })));
+          setUserDefaultResources(userPermissionsResponse.data.resources.map(r => ({
+            id: r.id,
+            table: r.key.split('.')[0],
+            column: r.key.split('.')[1] || r.key
+          })));
 
           // The override arrays
           setInitialOverrides({
@@ -424,8 +438,15 @@ const EditUser: React.FC = () => {
       const rolePermsResponse: GetRolePermissionsResponse = await getRolePermissions(newRoleId);
       if (rolePermsResponse.success) {
         // 3) update userDefaultPermissions/resources
-        setUserDefaultPermissions(rolePermsResponse.data.permissions);
-        setUserDefaultResources(rolePermsResponse.data.resources);
+        setUserDefaultPermissions(rolePermsResponse.data.permissions.map(p => ({
+          id: p.id,
+          name: p.key
+        })));
+        setUserDefaultResources(rolePermsResponse.data.resources.map(r => ({
+          id: r.id,
+          table: r.key.split('.')[0],
+          column: r.key.split('.')[1] || r.key
+        })));
       } else {
         // handle error
         console.error(rolePermsResponse.message || 'Failed to fetch role-based perms/resources');

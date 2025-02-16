@@ -41,7 +41,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   views: Array<{ id: number; viewName: string }>;
   currentViewId: number | null;
   onSelectView: (viewId: number) => void;
-  handleConfirmDelete: (view: View) => void;
+  handleConfirmDelete: (view: View) => Promise<void>;
   searchQuery: string;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
 }
@@ -70,8 +70,6 @@ export function AppSidebar({
     const lower = searchQuery.toLowerCase();
     return sortedViews.filter((v) => v.viewName.toLowerCase().includes(lower));
   }, [searchQuery, sortedViews]);
-
-  console.log("The received current view id is: ", currentViewId);
 
   return (
     <Sidebar {...props} className="p-0"> {/* Remove padding from the Sidebar */}

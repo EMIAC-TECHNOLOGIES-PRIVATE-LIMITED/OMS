@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState, useMemo, } from "react";
+import React, { useCallback, useEffect, useRef, useState, } from "react";
 import { Spinner } from '../UI/index';
 import { AppSidebar } from "@/components/app-sidebar";
-import DataTableNew from "../DataTable/DataTableFinal";
+
 import {
   deleteView,
   getFilteredData,
@@ -16,7 +16,6 @@ import {
   FilterConfig,
   GetFilteredDataRequest,
   GetFilteredDataResponse,
-  View,
 } from "../../../../shared/src/types";
 import {
   Breadcrumb,
@@ -39,6 +38,8 @@ import PaginationControlsNew from "../UI/PaginationControls/PaginationControls";
 import FilterPanelNew from "../UI/FilterPanel/FilterPanel3";
 import { Button } from "../ui/button";
 import debounce from "lodash.debounce";
+import DataGrid from "../DataTable/DataTable";
+
 
 
 interface DataPageProps {
@@ -50,270 +51,98 @@ interface DataPageProps {
 const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [initialLoading, setInitialLoading] = useState<boolean>(true);
-
+  const [processing, setProcessing] = useState<boolean>(false);
   const [tableData, setTableData] = useState<Array<{ [key: string]: any }>>([]);
-  const [totalRecords, setTotalRecords] = useState<number>(0);
-
-  // Filter & Sorting
-  const [initialFilterConfig, setInitialFilterConfig] = useState<FilterConfig>({
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [filterConfig, setFilterConfig] = useState<FilterConfig>({
     columns: [],
-    appliedFilters: {},
-    appliedSorting: [],
+    filters: [],
+    connector: "AND",
+    sort: []
   });
-  const [currentFilterConfig, setCurrentFilterConfig] = useState<FilterConfig>({
-    columns: [],
-    appliedFilters: {},
-    appliedSorting: [],
-  });
-
-  // Pagination
+  const [dirtyFilter, setDirtyFilter] = useState(false);
+  const initialFilterConfig = useRef<string | null>(null);
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
-  const [initialPage, setInitialPage] = useState<number>(1);
-  const [initialPageSize, setInitialPageSize] = useState<number>(25);
-
-  // Views
   const [views, setViews] = useState<Array<{ id: number; viewName: string }>>([]);
   const [currentViewId, setCurrentViewId] = useState<number | null>(null);
   const [currentViewName, setCurrentViewName] = useState<string>("");
   const [initialViewName, setInitialViewName] = useState<string>("");
-  const [isModified, setIsModified] = useState<boolean>(false);
-  const [initalLoadingCount, setInitialLoadingCount] = useState<number>(0);
-
-  // Columns
   const [availableColumns, setAvailableColumns] = useState<{
     [key: string]: string;
   }>({});
 
+  const [filteredColumns, setFilteredColumns] = useState<string[]>([]);
+  const [sortedColumns, setSortedColumns] = useState<string[]>([]);
 
-
-
-  // For tracking if we have fetched data
-  const hasFetchedInitialData = useRef<boolean>(false);
+  const initialFire = useRef<number>(3);
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
- 
   const modalRef = useRef<HTMLDivElement>(null);
-
-  // For searching among views (in the sidebar)
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-
-
-  //  Modal Outside-Click 
-  const handleClickOutside = useCallback(
-    (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        setIsModalOpen(false);
-        
-      }
-    },
-    []
-  );
-
-  // add event listener for outside click
-  useEffect(() => {
-    if (isModalOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+      setIsModalOpen(false);
     }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => handleClickOutside(e);
+
+    if (isModalOpen) {
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }
   }, [isModalOpen, handleClickOutside]);
 
-  const fetchViewData = useCallback(
-    async (viewId: number | null) => {
-      if (viewId === currentViewId && hasFetchedInitialData.current) return;
-      setInitialLoadingCount(0);
-      setLoading(true);
-      setError(null);
-      let retryAttempted = false;
-
-      try {
-        const resp = viewId
-          ? await getViewData(resource, viewId)
-          : await getViewData(resource);
-
-        if (resp.success) {
-          const data = resp.data;
-
-          if (data.viewId !== currentViewId) {
-            setCurrentViewId(data.viewId);
-            window.localStorage.setItem(`${resource}-viewId`, data.viewId.toString());
-          }
-
-          setTableData(data.data);
-          setViews(data.views);
-          setTotalRecords(data.totalRecords);
-
-          // Pagination
-          setPage(data.page);
-          setPageSize(data.pageSize);
-          setInitialPage(data.page);
-          setInitialPageSize(data.pageSize);
-
-          // Columns
-          setAvailableColumns(Object.fromEntries(Object.entries(data.availableColumnsType).filter(([key]) => key !== "id")));
-
-          // Filter config
-          setInitialFilterConfig({
-            columns: Object.keys(data.column),
-            appliedFilters: data.appliedFilters,
-            appliedSorting: data.appliedSorting,
-          });
-          setCurrentFilterConfig({
-            columns: Object.keys(data.column),
-            appliedFilters: data.appliedFilters,
-            appliedSorting: data.appliedSorting,
-          });
-
-          // View name
-          setCurrentViewName(data.viewName);
-          setInitialViewName(data.viewName);
-        }
-      } catch (err: any) {
-        if (!retryAttempted) {
-          retryAttempted = true;
-          try {
-            const retryResp = await getViewData(resource);
-            if (retryResp.success) {
-              const data = retryResp.data;
-
-              if (data.viewId !== currentViewId) {
-                setCurrentViewId(data.viewId);
-                window.localStorage.setItem(`${resource}-viewId`, data.viewId.toString());
-              }
-
-              setTableData(data.data);
-              setViews(data.views);
-              setTotalRecords(data.totalRecords);
-
-              setPage(data.page);
-              setPageSize(data.pageSize);
-              setInitialPage(data.page);
-              setInitialPageSize(data.pageSize);
-
-              setAvailableColumns(Object.fromEntries(Object.entries(data.availableColumnsType).filter(([key]) => key !== "id")));
-
-              setInitialFilterConfig({
-                columns: Object.keys(data.column),
-                appliedFilters: data.appliedFilters,
-                appliedSorting: data.appliedSorting,
-              });
-              setCurrentFilterConfig({
-                columns: Object.keys(data.column),
-                appliedFilters: data.appliedFilters,
-                appliedSorting: data.appliedSorting,
-              });
-
-              setCurrentViewName(data.viewName);
-              setInitialViewName(data.viewName);
-              return;
-            }
-          } catch (retryErr) {
-            setError(handleApiError(retryErr, "Retry failed while fetching view data."));
-          }
-        } else {
-          setError(handleApiError(err, "An error occurred while fetching view data."));
-        }
-      } finally {
-        // setLoading(false);
-        setInitialLoading(false);
-        hasFetchedInitialData.current = true;
-      }
-    },
-    [resource, currentViewId]
-  );
-
-  useEffect(() => {
-    if (!hasFetchedInitialData.current) {
-      const stored = window.localStorage.getItem(`${resource}-viewId`);
-      const parsed = stored ? parseInt(stored, 10) : null;
-      fetchViewData(parsed);
-    }
-  }, [fetchViewData, resource]);
-
-  useEffect(() => {
-    if (initialLoading) return;
-
-    if(initalLoadingCount < 4){
-      setInitialLoadingCount(initalLoadingCount + 1);
-      return;
-    }
-
-
-    const debouncedFetch = debounce(async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const req: GetFilteredDataRequest = {
-          columns: currentFilterConfig.columns,
-          filters: currentFilterConfig.appliedFilters,
-          sorting: currentFilterConfig.appliedSorting,
-          page,
-          pageSize,
-        };
-
-        const resp: GetFilteredDataResponse = await getFilteredData(
-          resource,
-          req.columns,
-          req.filters,
-          req.sorting,
-          page,
-          pageSize
-        );
-
-        if (resp.success) {
-          setTableData(resp.data.data);
-          setTotalRecords(resp.data.totalRecords);
-        } else {
-          setError("Failed to fetch filtered data.");
-        }
-      } catch (err: any) {
-        setError(handleApiError(err, "An error occurred while fetching filtered data."));
-      } finally {
-        setLoading(false);
-      }
-    }, 500);
-
-    debouncedFetch();
-
-
-    return () => {
-      debouncedFetch.cancel();
-    };
-  }, [
-    currentFilterConfig,
-    resource,
-    initialLoading,
-    initialFilterConfig,
-    initialPage,
-    initialPageSize,
-  ]);
-
-  const fetchFilteredData = useCallback(async () => {
-    if (initialLoading) return;
-
+  // fetching view data 
+  const fetchViewData = useCallback(async (viewId: number | null) => {
     setLoading(true);
     setError(null);
+    initialFire.current = 3;
+    try {
+      const resp = viewId
+        ? await getViewData(resource, viewId)
+        : await getViewData(resource);
 
+      if (resp.success) {
+        const data = resp.data;
+
+        setCurrentViewId(data.viewId);
+        window.localStorage.setItem(`${resource}-viewId`, data.viewId.toString());
+        setPage(1);
+        setPageSize(25);
+        setTableData(data.data);
+        setViews(data.views);
+        setTotalRecords(data.totalRecords);
+        setAvailableColumns(data.availableColumnsType);
+        setFilterConfig(data.appliedFilters);
+        setCurrentViewName(data.viewName);
+        setInitialViewName(data.viewName);
+        initialFilterConfig.current = JSON.stringify(data.appliedFilters);
+        setDirtyFilter(false);
+      }
+    } catch (error: any) {
+      setError(handleApiError(error, "An error occurred while fetching view data."));
+    } finally {
+      setLoading(false);
+    }
+  }, [resource]);
+
+  // fetch filtered data function
+  const fetchFilteredData = useCallback(async (filterConfig: FilterConfig, page: number, pageSize: number) => {
+    setLoading(true);
+    setError(null);
     try {
       const req: GetFilteredDataRequest = {
-        columns: currentFilterConfig.columns,
-        filters: currentFilterConfig.appliedFilters,
-        sorting: currentFilterConfig.appliedSorting,
+        appliedFilters: filterConfig,
         page,
         pageSize,
       };
-
       const resp: GetFilteredDataResponse = await getFilteredData(
         resource,
-        req.columns,
-        req.filters,
-        req.sorting,
+        req.appliedFilters,
         page,
         pageSize
       );
@@ -321,39 +150,60 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
       if (resp.success) {
         setTableData(resp.data.data);
         setTotalRecords(resp.data.totalRecords);
-      } else {
-        setError("Failed to fetch filtered data.");
       }
     } catch (err: any) {
       setError(handleApiError(err, "An error occurred while fetching filtered data."));
     } finally {
       setLoading(false);
     }
-  }, [
-    initialLoading,
-    currentFilterConfig,
-    page,
-    pageSize,
-    resource,
-  ]); 
+  }, [filterConfig, page, pageSize, resource]);
 
-
+  // initial view data fetching fire
   useEffect(() => {
-    fetchFilteredData();
-  }, [fetchFilteredData]);
+    const viewId = window.localStorage.getItem(`${resource}-viewId`);
+    if (viewId) {
+      fetchViewData(parseInt(viewId));
+    } else {
+      fetchViewData(null);
+    }
+  }, [resource]);
 
-  // set-reset IsModified
+  // columns to be passed for colouring to dataTable component.
   useEffect(() => {
-    const sameFilter =
-      JSON.stringify(currentFilterConfig) === JSON.stringify(initialFilterConfig);
-    const sameName = currentViewName === initialViewName;
-    setIsModified(!sameFilter || !sameName);
-  }, [currentFilterConfig, initialFilterConfig, currentViewName, initialViewName]);
+    // For filters - this part is correct since filters is an array of objects with a column property
+    const columns = filterConfig?.filters?.map((f) => f.column);
+    setFilteredColumns(columns || []);
+
+    // For sort - need to fix this part
+    // Current structure is array of objects where each object has a key-value pair
+    const sortColumns = filterConfig?.sort?.map(sortObj =>
+      // Get the first (and only) key from the object
+      Object.keys(sortObj)[0]
+    );
+    setSortedColumns(sortColumns || []);
+  }, [filterConfig]);
+
+  const handleFilterChange = useCallback((newConfig: FilterConfig) => {
+    setFilterConfig(newConfig);
+    setDirtyFilter(JSON.stringify(newConfig) !== initialFilterConfig.current);
+    const debouncedFetch = debounce(async () => {
+      fetchFilteredData(newConfig, page, pageSize);
+    }, 300);
+    debouncedFetch();
+
+    return () => {
+      debouncedFetch.cancel();
+    };
+  }, [filterConfig, page, pageSize]);
+
+  const handlePageChange = useCallback((newPage: number, newPageSize: number) => {
+    setPage(newPage);
+    setPageSize(newPageSize);
+    fetchFilteredData(filterConfig, newPage, newPageSize);
+  }, [filterConfig]);
 
   const handleSaveView = useCallback(async () => {
-    setLoading(true);
     setError(null);
-
     try {
       if (!currentViewId || initialViewName === "grid") {
         let finalName = currentViewName;
@@ -361,94 +211,53 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
           finalName = getRandomCartoonName();
           setCurrentViewName(finalName);
         }
-        const resp = await createView(
-          resource,
-          finalName,
-          currentFilterConfig.columns,
-          currentFilterConfig.appliedFilters,
-          currentFilterConfig.appliedSorting
-        );
+        const resp = await createView(resource, finalName, filterConfig ? filterConfig : {});
         if (resp.success) {
-          setCurrentViewId(resp.data.viewId);
-          window.localStorage.setItem(`${resource}-viewId`, resp.data.viewId.toString());
+          setCurrentViewId(resp.data.newViewId);
+          window.localStorage.setItem(`${resource}-viewId`, resp.data.newViewId.toString());
           setViews(resp.data.views);
-          setInitialFilterConfig(currentFilterConfig);
           setInitialViewName(finalName);
         }
       } else {
-        const resp = await updateView(
-          resource,
-          currentViewId,
-          currentViewName,
-          currentFilterConfig.columns,
-          currentFilterConfig.appliedFilters,
-          currentFilterConfig.appliedSorting
-        );
+        const resp = await updateView(resource, currentViewId, currentViewName, filterConfig);
         if (resp.success) {
-          setViews(resp.data.views);
-          setInitialFilterConfig(currentFilterConfig);
-          setInitialViewName(currentViewName);
-        } else {
-          setError("Failed to save the view.");
+          setViews((prev) =>
+            prev.map((v) => v.id === currentViewId
+              ? { id: currentViewId, viewName: currentViewName }
+              : v
+            )
+          );
         }
       }
+
+      initialFilterConfig.current = JSON.stringify(filterConfig);
+      setDirtyFilter(false);
     } catch (err: any) {
       setError(handleApiError(err, "An error occurred while saving the view."));
-    } finally {
-      // setLoading(false);
     }
-  }, [resource, currentViewId, initialViewName, currentViewName, currentFilterConfig]);
+  }, [resource, currentViewId, initialViewName, currentViewName, filterConfig]);
 
-  const handleDeleteView = useCallback(
-    async (view: View) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const resp: DeleteViewResponse = await deleteView(resource, view.id);
-        if (resp.success) {
-          setViews(resp.data.views);
-          if (currentViewId === view.id) {
-            window.localStorage.removeItem(`${resource}-viewId`);
-            fetchViewData(null);
-          }
-        } else {
-          setError("Failed to refresh views after deletion.");
+  const handleDeleteView = useCallback(async (view: { id: number, viewName: string }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('[DataPage] : Handle delete view called with view : ', view);
+      const resp: DeleteViewResponse = await deleteView(resource, view.id);
+      if (resp.success) {
+        setViews(prev => prev.filter(v => v.id !== view.id));
+        if (currentViewId === view.id) {
+          window.localStorage.removeItem(`${resource}-viewId`);
+          await fetchViewData(null);
         }
-      } catch (err: any) {
-        setError(handleApiError(err, "An error occurred while deleting the view."));
-      } finally {
-        setLoading(false);
+      } else {
+        setError("Failed to refresh views after deletion.");
       }
-    },
-    [currentViewId, resource, fetchViewData]
-  );
-
- 
-
-
-
-  // filtered and sorted columns 
-  const filteredColumns = useMemo(() => {
-    const columns = new Set<string>();
-    Object.values(currentFilterConfig.appliedFilters || {}).forEach(filterGroup => {
-      filterGroup?.forEach(filter => {
-        Object.keys(filter).forEach(column => {
-          columns.add(column);
-        });
-      });
-    });
-    return columns;
-  }, [currentFilterConfig.appliedFilters]);
-
-  const sortedColumns = useMemo(() => {
-    const columns = new Set<string>();
-    currentFilterConfig.appliedSorting.forEach(sort => {
-      Object.keys(sort).forEach(column => {
-        columns.add(column);
-      });
-    });
-    return columns;
-  }, [currentFilterConfig.appliedSorting]);
+    } catch (err: any) {
+      setError(handleApiError(err, "An error occurred while deleting the view."));
+    } finally {
+      setLoading(false);
+    }
+  }, [currentViewId, resource, fetchViewData]);
 
 
   return (
@@ -460,14 +269,13 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
             views={views}
             currentViewId={currentViewId}
             onSelectView={(id) => fetchViewData(id)}
-            handleConfirmDelete={(v: View) => handleDeleteView(v)}
+            handleConfirmDelete={(v: { id: number, viewName: string }) => handleDeleteView(v)}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
           />
 
           {/* MAIN CONTENT */}
           <SidebarInset className="flex flex-1 flex-col overflow-hidden">
-
 
             {/* Header with trigger + breadcrumb */}
             <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 relative">
@@ -494,30 +302,24 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                     <BreadcrumbItem>
                       <ColumnPanelNew
                         resource={resource}
-                        filterConfig={currentFilterConfig}
+                        filterConfig={filterConfig}
                         availableColumnsTypes={availableColumns}
-                        onFilterChange={(newConfig) => {
-                          setCurrentFilterConfig(newConfig);
-                        }}
+                        onFilterChange={handleFilterChange}
                       />
+
                     </BreadcrumbItem>
                     <BreadcrumbItem>
                       <FilterPanelNew
                         availableColumnTypes={availableColumns}
-                        filterConfig={currentFilterConfig}
-                        onFilterChange={(newConfig) => {
-                          setCurrentFilterConfig(newConfig);
-                        }}
-
-                      />
+                        filterConfig={filterConfig}
+                        onFilterChange={handleFilterChange}
+                        resource={resource} />
                     </BreadcrumbItem>
                     <BreadcrumbItem>
                       <SortingPanelNew
                         resource={resource}
-                        filterConfig={currentFilterConfig}
-                        onFilterChange={(newConfig) => {
-                          setCurrentFilterConfig(newConfig);
-                        }}
+                        filterConfig={filterConfig}
+                        onFilterChange={handleFilterChange}
                         availableColumnsTypes={availableColumns}
                       />
                     </BreadcrumbItem>
@@ -525,17 +327,17 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       <Button
                         onClick={handleSaveView}
                         size={"sm"}
-                        disabled={!isModified}
+                        disabled={!dirtyFilter && currentViewName === initialViewName}
                         className="w-24"
-                        variant={isModified ? "brandOutline" : "secondary"}
+                        variant={"brandOutline"}
                       >
                         Save View
                       </Button>
                     </BreadcrumbItem>
                     <BreadcrumbItem>
                       {/* sowing total fetched records */}
-                      {loading && <Spinner imagePath="./image.png" size={35} />}
-                      {!loading && <p>
+                      {(loading || processing) && <Spinner imagePath="./image.png" size={35} />}
+                      {!loading && !processing && <p>
                         Fetched {totalRecords} records
                       </p>}
                     </BreadcrumbItem>
@@ -545,11 +347,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       <PaginationControlsNew
                         page={page}
                         pageSize={pageSize}
-                        totalPages={Math.ceil(totalRecords / pageSize)}
-                        handlePageChange={(newPage, newPageSize) => {
-                          setPage(newPage);
-                          setPageSize(newPageSize);
-                        }}
+                        totalPages={Math.ceil((totalRecords ?? 0) / pageSize)}
+                        handlePageChange={handlePageChange}
                       />
                     </BreadcrumbItem>
                   </div>
@@ -563,23 +362,21 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
             <div className="flex flex-1 flex-col gap-4"> {/* Added overflow-hidden */}
               {/* Main content container (table) */}
               <div className="relative flex-1 rounded-xl bg-muted/50"> {/* MARKER*/}
-                <div className="relative h-screen w-full  rounded-lg bg-white shadow-md ">
+                <div className="relative h-screen w-full rounded-lg bg-white shadow-md ">
                   {/* Horizontal scroll wrapper */}
-                  <div className="w-full h-screen overflow-y-auto ">
-                    <DataTableNew
+                  <div >
+                    <DataGrid
                       data={tableData}
                       availableColumnTypes={availableColumns}
                       loading={loading}
-                      error={error}
                       resource={resource}
-                      handleDataChange={(data) => setTableData(data)}
-                      handleTotalRecordsChange={() =>
-                        setTotalRecords((prev) => prev - 1)
-                      }
-                      filteredColumns={filteredColumns} 
-                      sortedColumns={sortedColumns}    
-                      fetchFilteredData={fetchFilteredData}
+                      filteredColumns={filteredColumns}
+                      sortedColumns={sortedColumns}
+                      setProcessing={setProcessing}
+                      totalRecords={totalRecords}
+                      setTotalRecords={setTotalRecords}
                     />
+
                   </div>
 
                   {/* Watermark overlay */}
@@ -588,8 +385,6 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                     alt="Watermark"
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-5"
                   />
-
-
 
                   {/* Error alert */}
                   {error && (

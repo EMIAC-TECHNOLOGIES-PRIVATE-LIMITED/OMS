@@ -253,7 +253,7 @@ export interface GetFilteredDataResponse {
 
 export interface CreateViewRequest {
     viewName: string;
-    appliedFilters: FilterConfig;
+    filterConfig: FilterConfig;
 }
 
 export interface CreateViewResponse {
@@ -338,7 +338,7 @@ export interface FilterConfig {
     connector?: 'AND' | 'OR';
     sort?: {
         [key: string]: 'asc' | 'desc';
-    };
+    }[];
 }
 
 export interface View {
@@ -375,6 +375,11 @@ export interface UpdateDataResponse {
 }
 
 export interface createDataResponse {
+    status: number;
+    message: string;
+    success: boolean;
+}
+export interface deleteDataResponse {
     status: number;
     message: string;
     success: boolean;

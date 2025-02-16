@@ -6,7 +6,7 @@ import Spinner from "./Spinner/Spinner";
 
 
 import Panel from "./Panel/Panel";
-import FilterPanelNew from "./FilterPanel/FilterPanelNew";
+import FilterPanelNew from "./FilterPanel/FilterPanel3";
 import ColumnPanelNew from "./ColumnPanel/ColumnPanelNew";
 import SortingPanelNew from "./SortingPanel/SortingPanelNew";
 import PaginationControlsNew from "./PaginationControls/PaginationControlsNew";

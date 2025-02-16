@@ -44,7 +44,13 @@ function VendorLookupTool() {
     try {
       const response: VendorCheckerResponse = await vendorChecker(domainArray);
       if (response.success && response.data) {
-        setDomainVendors(response.data.domainsFound.vendors);
+        const mappedVendors = Object.fromEntries(
+          Object.entries(response.data.domainsFound.vendors).map(([domain, vendors]) => [
+            domain,
+            vendors.map(vendor => ({ ...vendor, vendorCountry: null }))
+          ])
+        );
+        setDomainVendors(mappedVendors);
         setDomainsNotFound(response.data.domainsNotFound);
         setShowResults(true);
       } else {

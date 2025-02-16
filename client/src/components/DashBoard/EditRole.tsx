@@ -76,8 +76,12 @@ const EditRole: React.FC = () => {
         // 1. Fetch all permissions and resources
         const permsResponse: GetAllPermissionsResponse = await getAllPermissions();
         if (permsResponse.success) {
-          setAllPermissions(permsResponse.data.permissions);
-          setAllResources(permsResponse.data.resources);
+          setAllPermissions(permsResponse.data.permissions.map(p => ({ id: p.id, name: p.key })));
+          setAllResources(permsResponse.data.resources.map(r => ({ 
+            id: r.id, 
+            table: r.key,
+            column: r.key 
+          })));
         } else {
           setError(permsResponse.message || 'Failed to fetch global permissions/resources.');
           setLoading(false);

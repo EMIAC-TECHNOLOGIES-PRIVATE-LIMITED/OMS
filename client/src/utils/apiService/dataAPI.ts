@@ -9,6 +9,8 @@ import {
     DeleteViewResponse,
     UpdateViewResponse,
     UpdateDataResponse,
+    deleteDataResponse,
+    createDataResponse,
 } from '../../../../shared/src/types';
 
 // dataAPI.ts
@@ -27,32 +29,24 @@ export async function getViewData(route: string, viewId?: number): Promise<GetVi
 
 export async function getFilteredData(
     route: string,
-    columns: GetFilteredDataRequest['columns'],
-    filters: GetFilteredDataRequest['filters'],
-    sorting: GetFilteredDataRequest['sorting'],
+    appliedFilters: GetFilteredDataRequest['appliedFilters'],
     page: GetFilteredDataRequest['page'] = 1,
     pageSize: GetFilteredDataRequest['pageSize'] = 25
 
 ): Promise<GetFilteredDataResponse> {
     return apiRequest<GetFilteredDataResponse>(`/data/${route}/data?page=${page}&pageSize=${pageSize}`, 'POST', undefined, {
-        columns,
-        filters,
-        sorting,
+        appliedFilters,
     });
 }
 
 export async function createView(
     route: string,
     viewName: CreateViewRequest['viewName'],
-    columns: CreateViewRequest['columns'],
-    filters: CreateViewRequest['filters'],
-    sorting: CreateViewRequest['sorting']
+    filterConfig: CreateViewRequest['filterConfig']
 ): Promise<CreateViewResponse> {
     return apiRequest<CreateViewResponse>(`/data/${route}`, 'POST', undefined, {
         viewName,
-        columns,
-        filters,
-        sorting,
+        filterConfig,
     });
 }
 
@@ -60,45 +54,44 @@ export async function updateView(
     route: string,
     viewId: UpdateViewRequest['viewId'],
     viewName: UpdateViewRequest['viewName'],
-    columns: UpdateViewRequest['columns'],
-    filters: UpdateViewRequest['filters'],
-    sorting: UpdateViewRequest['sorting']
+    filterConfig: UpdateViewRequest['appliedFilters']
 ): Promise<UpdateViewResponse> {
-    return apiRequest<UpdateViewResponse>(`/data/${route}/${viewId}`, 'PUT', undefined, {
+    return apiRequest<UpdateViewResponse>(`/data/${route}`, 'PUT', undefined, {
+        viewId,
         viewName,
-        columns,
-        filters,
-        sorting,
+        filterConfig,
     });
 }
 
 export async function deleteView(
     route: string,
     viewId: number): Promise<DeleteViewResponse> {
-    return apiRequest<DeleteViewResponse>(`/data/${route}/${viewId}`, 'DELETE');
+    return apiRequest<DeleteViewResponse>(`/data/${route}`, 'DELETE', undefined, {
+        viewId
+    }
+    );
 }
 
 
 export async function deleteData(
     route: string,
-    data: {
-        id: number;
-    }
-): Promise<any> {
-    return apiRequest<any>(`/data/${route}/delete`, 'DELETE', undefined, data);
+    data: number[]
+): Promise<deleteDataResponse> {
+    return await apiRequest<deleteDataResponse>(`/data/${route}/delete`, 'DELETE', undefined, data);
 }
 
 
 export async function updateData(
     route: string,
     data: Record<string, any>
-): Promise<any> {
+): Promise<UpdateDataResponse> {
     return apiRequest<UpdateDataResponse>(`/data/${route}/update`, 'PUT', undefined, data);
 }
 
+
 export async function createData(
     route: string,
-    data: Record<string, any>
-): Promise<any> {
-    return apiRequest<any>(`/data/${route}/create`, 'PUT', undefined, data);
+    data: Record<string, any>[]
+): Promise<createDataResponse> {
+    return await apiRequest<createDataResponse>(`/data/${route}/create`, 'PUT', undefined, data);
 }

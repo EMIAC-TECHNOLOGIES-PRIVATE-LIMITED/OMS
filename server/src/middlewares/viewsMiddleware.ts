@@ -44,6 +44,7 @@ const viewsMiddleware = async (
         return res
             .status(STATUS_CODES.UNAUTHORIZED)
             .json(
+                
                 new APIError(
                     STATUS_CODES.UNAUTHORIZED,
                     "Access token is missing",

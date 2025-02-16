@@ -29,9 +29,15 @@ export const dataController = {
                     json(new APIError(STATUS_CODES.UNAUTHORIZED, "You do not have permission to update this data", [], false))
             }
 
+            const flatData = Object.entries(data).reduce((acc, [key, value]) => {
+                const parts = key.split(".");
+                const newKey = parts[1];
+                acc[newKey] = value;
+                return acc;
+            }, {} as Record<string, any>);
 
-            const id = data.id
-            delete data.id;
+            const id = flatData.id
+            delete flatData.id;
 
             console.log("Recievd id is ", id);
 
@@ -39,7 +45,7 @@ export const dataController = {
                 where: {
                     id,
                 },
-                data,
+                data: flatData,
 
             });
 
@@ -70,8 +76,13 @@ export const dataController = {
             }
 
 
-            const deleteData = await (prismaClient as any)[modelName].delete({
-                where: { id: data.id }
+            const deleteData = await (prismaClient as any)[modelName].deleteMany({
+                where:
+                {
+                    id: {
+                        in: data
+                    }
+                }
             });
 
             return res.status(STATUS_CODES.OK).json(new APIResponse(STATUS_CODES.OK, "Data deleted successfully", deleteData, true));
@@ -117,7 +128,7 @@ export const dataController = {
 
             if (modelName === "Order") {
                 const addData = await (prismaClient as any)[modelName].createMany({
-                    data: data.map(( item ) => ({
+                    data: data.map((item) => ({
                         ...item,
                         salesPersonId: userId,
                     })),
@@ -125,7 +136,7 @@ export const dataController = {
                 });
             } else {
                 const addData = await (prismaClient as any)[modelName].createMany({
-                    data: data.map(( item ) => ({
+                    data: data.map((item) => ({
                         ...item,
                         pocId: userId,
                     })),

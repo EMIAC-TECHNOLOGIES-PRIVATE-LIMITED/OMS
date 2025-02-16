@@ -14,8 +14,8 @@ router.get('/:resource/:viewId?', viewsMiddleware, viewsController.getView);
 router.post('/:resource', viewsMiddleware, viewsController.createView);
 router.post('/:resource/data', viewsMiddleware, viewsController.getData);
 
-router.put('/:resource/:viewId?', viewsMiddleware, viewsController.updateView);
-router.delete('/:resource/:viewId', viewsMiddleware, viewsController.deleteView);
+router.put('/:resource/', viewsMiddleware, viewsController.updateView);
+router.delete('/:resource/', viewsMiddleware, viewsController.deleteView);
 
 
 export default router;

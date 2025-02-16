@@ -4,8 +4,7 @@ export type QueryObject = {
     select?: any;
     where: object;
     orderBy?: object;
-    take: number;
-    skip: number;
+ 
 };
 
 const getTableAndColumn = (resource: string): { table: string; column: string } => {
@@ -37,8 +36,7 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                 select: {},
                 where: {},
                 orderBy: {},
-                take: 10,
-                skip: 0,
+               
             };
             break;
         case 'site':
@@ -48,15 +46,14 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                 },
                 where: {},
                 orderBy: {},
-                take: 10,
-                skip: 0,
+              
             };
             break;
         case 'order':
             baseQuery = {
                 select: {
                     client: { select: {} },
-                    site: { 
+                    site: {
                         select: {
                             vendor: { select: {} }
                         }
@@ -64,8 +61,7 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                 },
                 where: {},
                 orderBy: {},
-                take: 10,
-                skip: 0,
+               
             };
             break;
         default:
@@ -74,8 +70,7 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                 select: {},
                 where: {},
                 orderBy: {},
-                take: 10,
-                skip: 0,
+             
             };
     }
 
@@ -239,29 +234,48 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
     return {};
 };
 
-const buildOrderByClause = (sort: { [key: string]: 'asc' | 'desc' }, model: string): any => {
-    let orderBy: any = {};
+type SortDirection = 'asc' | 'desc';
+type SortConfig = { [key: string]: SortDirection } | Array<{ [key: string]: SortDirection }>;
+
+const buildOrderByClause = (sort: SortConfig, model: string) => {
+    let orderBy: any[] = []; // Change to array
     const modelLower = model.toLowerCase();
 
-    Object.entries(sort).forEach(([field, direction]) => {
+    // Handle both array and object input formats
+    const sortEntries = Array.isArray(sort)
+        ? Object.entries(sort[0] || {})
+        : Object.entries(sort || {});
+
+    sortEntries.forEach(([field, direction]) => {
         const { table, column } = getTableAndColumn(field);
+
         if (table === modelLower) {
-            orderBy[column] = direction;
+            // Push as individual order condition
+            orderBy.push({ [column]: direction });
         } else {
             switch (modelLower) {
                 case 'site':
                     if (table === 'vendor') {
-                        orderBy.vendor = { [column]: direction };
+                        orderBy.push({
+                            vendor: { [column]: direction }
+                        });
                     }
                     break;
                 case 'order':
                     if (table === 'client') {
-                        orderBy.client = { [column]: direction };
+                        orderBy.push({
+                            client: { [column]: direction }
+                        });
                     } else if (table === 'site') {
-                        orderBy.site = { [column]: direction };
+                        orderBy.push({
+                            site: { [column]: direction }
+                        });
                     } else if (table === 'vendor') {
-                        if (!orderBy.site) orderBy.site = {};
-                        orderBy.site.vendor = { [column]: direction };
+                        orderBy.push({
+                            site: {
+                                vendor: { [column]: direction }
+                            }
+                        });
                     }
                     break;
             }
@@ -278,24 +292,25 @@ export const secondaryQueryBuilder = (
     forCount: boolean = false
 ) => {
     let query = primaryQueryBuilder(model, resources);
-    
+
     if (filterConfig.columns && filterConfig.columns.length > 0) {
         query.select = excludeColumnsFromSelect(query.select, filterConfig.columns, model);
     }
-    
+
     if (filterConfig.filters && filterConfig.filters.length > 0) {
         const whereConditions = filterConfig.filters.map(filter => buildWhereCondition(filter, model));
         query.where = { [filterConfig.connector || 'AND']: whereConditions };
     }
-    
+
     if (filterConfig.sort) {
+        // console.log('[secondary query buiilder] : inside the if block for sorting')
         query.orderBy = buildOrderByClause(filterConfig.sort, model);
     }
-    
+
     if (forCount) {
         delete query.select;
         delete query.orderBy;
     }
-    
+
     return query;
 };

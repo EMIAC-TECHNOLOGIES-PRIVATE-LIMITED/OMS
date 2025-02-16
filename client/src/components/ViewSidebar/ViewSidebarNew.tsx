@@ -5,10 +5,7 @@ import { Trash2, Grid, BarChart2, X } from 'lucide-react'; // Replace with your 
 
 interface ViewSidebarNewProps {
   resource: string;
-  views: Array<{
-    id: number;
-    viewName: string;
-  }>;
+  views: Array<View>;
   currentViewId: number | null;
   onSelectView: (viewId: number) => void;
   onDeleteView: (view: View) => Promise<void>;

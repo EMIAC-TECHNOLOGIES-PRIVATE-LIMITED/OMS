@@ -21,10 +21,7 @@ import { Label } from "@/components/ui/label";
 
 interface ViewSidebarNewProps {
   resource: string;
-  views: Array<{
-    id: number;
-    viewName: string;
-  }>;
+  views: Array<View>;
   currentViewId: number | null;
   onSelectView: (viewId: number) => void;
   onDeleteView: (view: View) => Promise<void>;

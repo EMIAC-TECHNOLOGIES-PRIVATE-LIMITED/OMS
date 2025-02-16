@@ -82,6 +82,12 @@ enum WebsiteQuality {
   Multi
 }
 
+
+enum VendorCategory {
+  Individual
+  Agency
+}
+
 model Role {
   id          Int          @id @default(autoincrement())
   name        String       @unique
@@ -168,10 +174,6 @@ model User {
   @@index([roleId])
 }
 
-enum VendorCategory {
-  Individual
-  Agency
-}
 
 model Vendor {
   id            Int             @id @default(autoincrement())

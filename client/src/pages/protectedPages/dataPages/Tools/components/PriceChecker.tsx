@@ -17,7 +17,7 @@ interface DomainPriceInfo {
     country?: string | null;
   };
   price: number;
-  sailingPrice: number | null;
+  sellingPrice: number | null;
   discount: number | null;
 }
 
@@ -153,8 +153,8 @@ function PriceLookupTool() {
                         <TableCell>{domain.vendor.name || 'N/A'}</TableCell>
                         <TableCell>${domain.price.toFixed(2)}</TableCell>
                         <TableCell>
-                          {domain.sailingPrice
-                            ? `$${domain.sailingPrice.toFixed(2)}`
+                          {domain.sellingPrice
+                            ? `$${domain.sellingPrice.toFixed(2)}`
                             : 'N/A'}
                         </TableCell>
                         <TableCell>

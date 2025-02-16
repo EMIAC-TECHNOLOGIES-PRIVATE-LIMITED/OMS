@@ -1,10 +1,11 @@
 import React, { ChangeEvent } from 'react';
 import {
-  FilterPanelNew,
   ColumnPanelNew,
   SortingPanelNew,
   PaginationControlsNew,
 } from '../UI';
+
+import FilterPanel from '../UI/FilterPanel/FilterPanel3';
 
 import { FilterConfig } from '../../../../shared/src/types';
 import { availableColumnsTypes } from '../../types';
@@ -64,11 +65,11 @@ const FilterComponentNew: React.FC<FilterComponentNewProps> = ({
           availableColumnsTypes={availableColumnsTypes}
           onFilterChange={onFilterChange}
         />
-        <FilterPanelNew
+        <FilterPanel
           resource={resource}
           filterConfig={filterConfig}
           onFilterChange={onFilterChange}
-          availableColumnsTypes={availableColumnsTypes}
+          availableColumnTypes={availableColumnsTypes}
         />
 
         <SortingPanelNew
