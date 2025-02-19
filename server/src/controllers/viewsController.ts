@@ -33,13 +33,13 @@ export const viewsController = {
                 );
         }
 
-        
+
         const query = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig);
         const query2 = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig, true);
 
 
         try {
-            const [data, totalRecords] = await Promise.all([
+            const [data, filteredCount, totalCount] = await Promise.all([
                 (prismaClient as any)[modelName].findMany({
                     ...query,
                     skip,
@@ -48,10 +48,9 @@ export const viewsController = {
                 (prismaClient as any)[modelName].count({
                     ...query2,
                 }),
+                (prismaClient as any)[modelName].count(),
             ]);
 
-            console.log(query2);
-            console.log(totalRecords);
 
             let columnTypes = modelInfo.getModelColumns(modelName);
 
@@ -74,7 +73,8 @@ export const viewsController = {
             const response = {
                 viewId: view.id,
                 viewName: view.viewName,
-                totalRecords,
+                filteredCount,
+                totalCount,
                 page,
                 pageSize,
                 data: flatData,
@@ -89,7 +89,7 @@ export const viewsController = {
                 .status(STATUS_CODES.OK)
                 .json(new APIResponse(STATUS_CODES.OK, "Data fetched successfully", transformedResponse, true));
         } catch (error: any) {
-            
+
             return res
                 .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
                 .json(
@@ -169,7 +169,7 @@ export const viewsController = {
             }, {} as Record<string, string>);
             const flatData = flattenData(data, modelName.toLowerCase(), flatCols);
             const response = {
-                totalRecords,
+                filteredCount: totalRecords,
                 data: flatData,
             } as GetFilteredDataResponse['data'];
 
@@ -306,7 +306,7 @@ const flattenData = (
         return Object.entries(obj).reduce((acc: Record<string, any>, [key, value]) => {
             const newKey = prefix ? `${prefix}.${key}` : key;
 
-         
+
 
             if (value === null) {
                 acc[newKey] = null;

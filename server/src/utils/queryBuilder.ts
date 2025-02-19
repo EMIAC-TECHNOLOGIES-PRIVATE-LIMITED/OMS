@@ -184,6 +184,7 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
         return {
             [column]: {
                 [operator]: filter.value,
+                mode: 'insensitive'
             },
         };
     }
@@ -195,6 +196,7 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
                     vendor: {
                         [column]: {
                             [operator]: filter.value,
+                            mode: 'insensitive'
                         },
                     },
                 };
@@ -206,6 +208,7 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
                     client: {
                         [column]: {
                             [operator]: filter.value,
+                            mode: 'insensitive'
                         },
                     },
                 };
@@ -214,6 +217,7 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
                     site: {
                         [column]: {
                             [operator]: filter.value,
+                            mode: 'insensitive'
                         },
                     },
                 };
@@ -223,6 +227,7 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
                         vendor: {
                             [column]: {
                                 [operator]: filter.value,
+                                mode: 'insensitive'
                             },
                         },
                     },

@@ -24,7 +24,6 @@ function Layout() {
         <>
             {isAuthenticated ? <LoggedInHeader /> : <> </>}
             <Outlet />
-      
             <Toaster />
         </>
     );

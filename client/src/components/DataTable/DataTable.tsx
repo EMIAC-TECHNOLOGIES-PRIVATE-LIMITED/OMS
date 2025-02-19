@@ -1,15 +1,15 @@
-import { AllCommunityModule, ModuleRegistry, themeQuartz, CellKeyDownEvent } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry, themeQuartz, CellKeyDownEvent, IRowNode, RowSelectedEvent, Column } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { ColDef } from "ag-grid-community";
+import { ColDef, ICellRendererParams } from "ag-grid-community";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import TableSkeleton from "./Skeleton";
 import EnumBadge, { getEnumValues, EnumBadgeProps } from "../../utils/EnumUtil/EnumUtil";
-import {  deleteData, updateData } from "@/utils/apiService/dataAPI";
+import { deleteData, updateData } from "@/utils/apiService/dataAPI";
 import { useToast } from "@/hooks/use-toast";
 import { authAtom } from "@/store/atoms/atoms";
 import { useRecoilValue } from "recoil";
 import NoDataTable from "./NoData";
-import {  useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Fab, Action } from 'react-tiny-fab';
 import 'react-tiny-fab/dist/styles.css';
 
@@ -27,8 +27,6 @@ import { FilePlus, Plus } from "lucide-react";
 import CreateSheet from "./CreateSheet";
 
 
-
-
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface DataGridProps {
@@ -38,26 +36,119 @@ interface DataGridProps {
   };
   loading?: boolean;
   resource: string;
-  filteredColumns: string[]
-  sortedColumns: string[]
+  filteredColumns: string[];
+  sortedColumns: string[];
   setProcessing: (value: boolean) => void;
-  totalRecords: number | null;
-  setTotalRecords: (value: number) => void;
+  totalCount: number | null;
+  setTotalCount: (value: number) => void;
+  filteredCount: number | null;
+
 }
 
-const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading, resource, filteredColumns, sortedColumns, setProcessing, totalRecords, setTotalRecords }) => {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+interface RowNumberCellRendererParams extends ICellRendererParams {
+  node: IRowNode;
+  api: any;
+  isHeader: boolean;
+}
+
+const RowNumberCellRenderer: React.FC<RowNumberCellRendererParams> = (params) => {
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const isHeader = params.isHeader;
+
+  if (isHeader) {
+    // Always show checkbox in the header
+    const handleHeaderCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const checked = event.target.checked;
+      params.api.forEachNode((node: any) => node.setSelected(checked));
+      params.api.refreshCells({ force: true }); // Force refresh all cells
+    };
+
+    return (
+      <div
+        className="h-4 w-4 cursor-pointer absolute transition-all duration-100 ease-in-out rounded-md 
+        accent-brand focus:ring-brand-light focus:ring-2 pl-1"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <input
+          type="checkbox"
+          onChange={handleHeaderCheckboxChange}
+          checked={params.api.getSelectedRows().length === params.api.getDisplayedRowCount()}
+          className="h-4 w-4 cursor-pointer"
+        />
+      </div>
+    );
+  }
+
+  // Regular cell rendering
+  const rowNumber = (params.node?.rowIndex ?? 0) + 1;
+  const isSelected = params.node?.isSelected() ?? false;
+
+  useEffect(() => {
+    // Force refresh of component when selection state changes
+    return () => setIsHovered(false);
+  }, [rowNumber, isSelected]);
+
+  // Show checkbox when hovered or selected
+  const showCheckbox = isHovered || isSelected;
+
+  return (
+    <div
+      className="h-full w-full flex items-center justify-center cursor-pointer relative -m-2 p-2"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => {
+
+        if (params.node) {
+          params.node.setSelected(!isSelected);
+        }
+      }}
+    >
+      <div className="relative w-3 h-3 flex items-center justify-center">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => {
+            if (params.node) {
+              params.node.setSelected(!isSelected);
+            }
+          }}
+
+          className={`h-4 w-4 cursor-pointer absolute transition-all duration-100 ease-in-out rounded-md 
+        accent-brand focus:ring-brand-light focus:ring-2 ${showCheckbox ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+            }`}
+        />
+        <span className={`text-gray-600 select-none absolute transition-all duration-100 ease-in-out ${showCheckbox ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+          }`}>
+          {rowNumber}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+
+const DataGrid: React.FC<DataGridProps> = ({
+  data,
+  availableColumnTypes,
+  loading,
+  resource,
+  filteredColumns,
+  sortedColumns,
+  setProcessing,
+  totalCount,
+  setTotalCount,
+  filteredCount,
+}) => {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [selectedRowsForDelete, setSelectedRowsForDelete] = useState<any[]>([]);
   const [gridApi, setGridApi] = useState<any>(null);
+  const [toastVisible, setToastVisible] = useState<boolean>(false);
+  const [isCreateSheetOpen, setIsCreateSheetOpen] = useState<boolean>(false);
+  const gridRef = useRef<any>(null);
 
   const auth = useRecoilValue(authAtom);
   const { toast } = useToast();
-
-  const [toastVisible, setToastVisible] = useState(false);
-  const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
-
-
-
 
   const gridTheme = themeQuartz.withParams({
     accentColor: 'green',
@@ -75,7 +166,7 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
     actionButtonStyles: {
       backgroundColor: '#007b3c',
     },
-    position: { bottom: 20, right: 24 }
+    position: { bottom: 20, right: 24 } as const
   };
 
   const hasCreatePermission = useMemo(() =>
@@ -94,9 +185,9 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
           .map(col => col.getColDef().headerName || col.getColId())
           .join('\t');
 
-        const rowData = selectedRows.map(row =>
+        const rowData = selectedRows.map((row: Record<string, any>) =>
           visibleColumns
-            .map(col => row[col.getColId()] ?? '')
+            .map((col: Column) => row[col.getColId()] ?? '')
             .join('\t')
         ).join('\n');
 
@@ -109,8 +200,6 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
       const api = params.api;
       const selectedRows = api.getSelectedRows();
 
-      console.log("[DataTable] : delete button pressed with following row ids : ", selectedRows);
-
       if (selectedRows && selectedRows.length > 0) {
         setSelectedRowsForDelete(selectedRows);
         setGridApi(api);
@@ -119,23 +208,103 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (gridApi) {
+        // Handle Ctrl+C
+        if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+          const selectedRows = gridApi.getSelectedRows();
+          if (selectedRows && selectedRows.length > 0) {
+            const visibleColumns = gridApi.getAllDisplayedColumns();
+            const headers = visibleColumns
+              //@ts-ignore
+              .map(col => col.getColDef().headerName || col.getColId())
+              .join('\t');
+
+            const rowData = selectedRows.map((row: Record<string, any>) =>
+              visibleColumns
+                //@ts-ignore
+                .map(col => row[col.getColId()] ?? '')
+                .join('\t')
+            ).join('\n');
+
+            navigator.clipboard.writeText(`${headers}\n${rowData}`);
+            showCopiedToast(selectedRows.length);
+          }
+        }
+
+        // Handle Delete key
+        if (event.key === 'Delete' && auth.userInfo.permissions.some((permission: any) => permission.name === `_delete_${resource}`)) {
+          const selectedRows = gridApi.getSelectedRows();
+          if (selectedRows && selectedRows.length > 0) {
+            setSelectedRowsForDelete(selectedRows);
+            setGridApi(gridApi);
+            setIsDeleteDialogOpen(true);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [gridApi, auth.userInfo.permissions, resource]);
+
+  // Handle row selection changes to ensure UI updates
+  const onRowSelected = (event: RowSelectedEvent) => {
+    if (event.api) {
+      event.api.refreshCells({
+        force: true,
+        columns: ['rowNumberSelect']
+      });
+    }
+  };
+
+  // Set grid API on grid ready
+  const onGridReady = (params: any) => {
+    setGridApi(params.api);
+    gridRef.current = params;
+  };
+
   const showCopiedToast = (rows: number) => {
     setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 2000)
+    setTimeout(() => setToastVisible(false), 2000);
     toast({
       variant: 'default',
       title: 'Copied',
       description: `${rows} row(s) copied to clipboard`,
       duration: 1500,
     });
-  }
-
-
+  };
 
   const generateColumnDefs = (): ColDef[] => {
-    const columnDefs: ColDef[] = [];
+    const columnDefs: ColDef[] = [
+      {
+        headerName: '',
+        field: 'rowNumberSelect',
+        width: 60,
+        minWidth: 60,
+        maxWidth: 60,
+        pinned: 'left',
+        lockPosition: true,
+        suppressMovable: true,
+        sortable: false,
+        headerComponent: RowNumberCellRenderer,
+        headerComponentParams: { isHeader: true },
+        suppressSizeToFit: true,
+        checkboxSelection: false,
+        headerCheckboxSelection: false,
+        cellRenderer: RowNumberCellRenderer,
+        cellStyle: {
+          padding: '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }
+      }
+    ];
 
-    Object.keys(data[0]).forEach((key) => {
+    const firstRow = data && data.length > 0 ? data[0] : {};
+    Object.keys(firstRow).forEach((key) => {
       const [parentField, childField] = key.split('.');
       if (childField === 'id' || childField === 'siteId' || childField === 'salesPersonId' || childField === 'clientId' || childField === 'pocId' || childField === 'vendorId') {
         return;
@@ -288,7 +457,6 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
         resizable: true,
         editable: isEditable,
         cellStyle: filteredColumns.includes(key) ? { backgroundColor: '#ddebfc' } : sortedColumns.includes(key) ? { backgroundColor: '#e1fbe9' } : {},
-        // Updated cellRenderer logic
         ...(columnType === 'Boolean?' || columnType === 'Boolean'
           ? {
             cellRenderer: 'agCheckboxCellRenderer',
@@ -304,7 +472,7 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
               if (enumMatch) {
                 const enumName = enumMatch[1];
                 const value = params.data[key];
-                
+
                 return <EnumBadge enum={enumName as EnumBadgeProps['enum']} value={value} />;
               }
 
@@ -342,20 +510,19 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
     return metrics.width + 20;
   };
 
-  if (loading || !data || totalRecords === null) {
+  if (loading || !data || totalCount === null) {
     return (
-      <div className="w-screen h-lvh ">
+      <div className="w-screen h-lvh">
         <TableSkeleton />
       </div>
-    )
+    );
   }
 
-  if (totalRecords === 0) {
-    return (
-      <NoDataTable hasFilters />
-    )
+  if (filteredCount === 0) {
+    return <NoDataTable hasFilters />;
   }
 
+ 
   return (
     <>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -366,6 +533,7 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
               This action cannot be undone. It will permanently delete {selectedRowsForDelete.length} record(s).
             </AlertDialogDescription>
           </AlertDialogHeader>
+         
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
@@ -378,7 +546,7 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
 
                 if (deleteResponse.success) {
                   setToastVisible(true);
-                  setTimeout(() => setToastVisible(false), 3500)
+                  setTimeout(() => setToastVisible(false), 3500);
                   toast({
                     title: 'Success',
                     description: `${selectedRowsForDelete.length} record(s) deleted successfully`,
@@ -388,11 +556,11 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
                   const selectedNodes = gridApi.getSelectedNodes();
                   gridApi.applyTransaction({ remove: selectedNodes.map((node: { data: any }) => node.data) });
 
-                  setTotalRecords(totalRecords - selectedRowsForDelete.length);
+                  setTotalCount(totalCount - selectedRowsForDelete.length);
 
                 } else {
                   setToastVisible(true);
-                  setTimeout(() => setToastVisible(false), 3500)
+                  setTimeout(() => setToastVisible(false), 3500);
                   toast({
                     variant: 'destructive',
                     title: 'Error',
@@ -408,45 +576,51 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog >
 
       <div className="w-screen h-lvh">
         <AgGridReact
           rowSelection={{
             mode: 'multiRow',
-            enableClickSelection: false
+            enableClickSelection: false,
+            checkboxes: false,
+            headerCheckbox: false,
           }}
           theme={gridTheme}
           rowData={data}
           columnDefs={generateColumnDefs()}
           defaultColDef={defaultColDef}
           onCellKeyDown={onCellKeyDown}
+          onRowSelected={onRowSelected}
+          onGridReady={onGridReady}
           enableBrowserTooltips={false}
+          // suppressCellFocus={true}
           tooltipShowDelay={500}
           tooltipHideDelay={1000}
           tooltipInteraction={true}
+          ref={gridRef}
         />
       </div>
 
-      {hasCreatePermission && !toastVisible && !isCreateSheetOpen && (
-
-
-        <Fab
-          mainButtonStyles={fabStyles.mainButtonStyles}
-          style={fabStyles.position}
-          icon={<Plus size={24} />}
-          event='click'
-
-        >
-          <Action
-            text="Add Record"
-            style={fabStyles.actionButtonStyles}
-            onClick={() => setIsCreateSheetOpen(true)}
+      {
+        hasCreatePermission && !toastVisible && !isCreateSheetOpen && (
+          <Fab
+            mainButtonStyles={fabStyles.mainButtonStyles}
+            style={fabStyles.position}
+            icon={<Plus size={24} />}
+            event='click'
           >
-            <FilePlus size={20} />
-          </Action>
-        </Fab>
-      )}
+            <Action
+              text="Add Record"
+              style={fabStyles.actionButtonStyles}
+              onClick={() => setIsCreateSheetOpen(true)}
+            >
+              <FilePlus size={20} />
+            </Action>
+          </Fab>
+        )
+      }
+
       <CreateSheet
         resource={resource}
         isOpen={isCreateSheetOpen}
@@ -459,5 +633,3 @@ const DataGrid: React.FC<DataGridProps> = ({ data, availableColumnTypes, loading
 };
 
 export default DataGrid;
-
-

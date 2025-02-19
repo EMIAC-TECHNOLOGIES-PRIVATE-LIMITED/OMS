@@ -217,7 +217,8 @@ export interface GetViewDataResponse {
     data: {
         viewId: number;
         viewName: string;
-        totalRecords: number;
+        filteredCount: number;
+        totalCount: number;
         data: Array<{
             [key: string]: string | number | boolean | Date | unknown;
         }>;
@@ -243,7 +244,7 @@ export interface GetFilteredDataResponse {
     status: number;
     message: string;
     data: {
-        totalRecords: number;
+        filteredCount: number;
         data: Array<{
             [key: string]: string | number | boolean | Date | unknown;
         }>;

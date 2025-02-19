@@ -8,9 +8,10 @@ generator client {
 datasource db {
   provider = "postgresql"
 
-  // url = env("DATABASE_URL")
-  url = "postgresql://postgres:randompassword@localhost:5432/mydb?schema=public"
+  url = env("DATABASE_URL")
 }
+
+// url = "postgresql://postgres:randompassword@localhost:5432/mydb?schema=public"
 
 enum ClientPaymentStatus {
   Received
@@ -81,7 +82,6 @@ enum WebsiteQuality {
   AlmostPure
   Multi
 }
-
 
 enum VendorCategory {
   Individual
@@ -174,7 +174,6 @@ model User {
   @@index([roleId])
 }
 
-
 model Vendor {
   id            Int             @id @default(autoincrement())
   name          String
@@ -258,7 +257,7 @@ model Site {
   semrushOrganicTrafficLastUpdated DateTime        @default(now())
 
   createdAt DateTime @default(now())
-  udpatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   vendorId Int?    @default(1)
   vendor   Vendor? @relation(fields: [vendorId], references: [id])
@@ -297,9 +296,9 @@ model Order {
   orderDate DateTime?
 
   orderStatus           OrderStatus @default(Pending)
-  vendorAssignedDate    DateTime? // auto-update middleware
-  orderStatusUpdateDate DateTime? // auto-update middleware
-  publishDate           DateTime? // auto-update middleware
+  vendorAssignedDate    DateTime?
+  orderStatusUpdateDate DateTime?
+  publishDate           DateTime?
   publishURL            String?
 
   orderRemark         String?

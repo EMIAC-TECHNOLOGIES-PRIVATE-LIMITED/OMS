@@ -53,7 +53,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [processing, setProcessing] = useState<boolean>(false);
   const [tableData, setTableData] = useState<Array<{ [key: string]: any }>>([]);
-  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [filterCount, setFilterCount] = useState<number>(0);
   const [filterConfig, setFilterConfig] = useState<FilterConfig>({
     columns: [],
     filters: [],
@@ -115,7 +116,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
         setPageSize(25);
         setTableData(data.data);
         setViews(data.views);
-        setTotalRecords(data.totalRecords);
+        setTotalCount(data.totalCount);
+        setFilterCount(data.filteredCount);
         setAvailableColumns(data.availableColumnsType);
         setFilterConfig(data.appliedFilters);
         setCurrentViewName(data.viewName);
@@ -149,7 +151,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
 
       if (resp.success) {
         setTableData(resp.data.data);
-        setTotalRecords(resp.data.totalRecords);
+        setFilterCount(resp.data.filteredCount);
       }
     } catch (err: any) {
       setError(handleApiError(err, "An error occurred while fetching filtered data."));
@@ -338,7 +340,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       {/* sowing total fetched records */}
                       {(loading || processing) && <Spinner imagePath="./image.png" size={35} />}
                       {!loading && !processing && <p>
-                        Fetched {totalRecords} records
+                        Filtered {filterCount} of {totalCount} records
                       </p>}
                     </BreadcrumbItem>
                   </div>
@@ -347,7 +349,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       <PaginationControlsNew
                         page={page}
                         pageSize={pageSize}
-                        totalPages={Math.ceil((totalRecords ?? 0) / pageSize)}
+                        totalPages={Math.ceil((totalCount ?? 0) / pageSize)}
                         handlePageChange={handlePageChange}
                       />
                     </BreadcrumbItem>
@@ -373,8 +375,10 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       filteredColumns={filteredColumns}
                       sortedColumns={sortedColumns}
                       setProcessing={setProcessing}
-                      totalRecords={totalRecords}
-                      setTotalRecords={setTotalRecords}
+                      totalCount={totalCount}
+                      setTotalCount={setTotalCount}
+                      filteredCount={filterCount}
+            
                     />
 
                   </div>
