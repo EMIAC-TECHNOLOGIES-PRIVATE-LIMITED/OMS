@@ -1,5 +1,3 @@
-// src/components/Dashboard/EditRole.tsx
-
 import React, { useEffect, useState, ChangeEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -7,17 +5,12 @@ import {
   getRolePermissions,
   manageRoleAccess,
 } from '../../utils/apiService/adminAPI';
-import {
-  Permission,
-  Resource,
-} from '../../types/adminTable';
+import { Permission, Resource } from '../../types/adminTable';
 import {
   GetAllPermissionsResponse,
   GetRolePermissionsResponse,
   ManageRoleAccessResponse,
 } from '../../../../shared/src/types';
-
-// NEW: Framer Motion & Hero Icons imports for collapsible UI
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 
@@ -54,12 +47,11 @@ const EditRole: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
-  // NEW: Track expanded/collapsed sections by permission ID
+  // Track expanded/collapsed sections by permission ID
   const [expandedPermissions, setExpandedPermissions] = useState<{ [key: number]: boolean }>({});
 
   /**
-   * 1. Fetch global (all) permissions/resources
-   * 2. Fetch role-specific permissions/resources
+   * Fetch global permissions/resources and role-specific data
    */
   useEffect(() => {
     const fetchRoleData = async () => {
@@ -73,22 +65,28 @@ const EditRole: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // 1. Fetch all permissions and resources
+        // Fetch all permissions and resources
         const permsResponse: GetAllPermissionsResponse = await getAllPermissions();
         if (permsResponse.success) {
-          setAllPermissions(permsResponse.data.permissions.map(p => ({ id: p.id, name: p.key })));
-          setAllResources(permsResponse.data.resources.map(r => ({ 
-            id: r.id, 
-            table: r.key,
-            column: r.key 
-          })));
+          // Filter out permissions starting with underscore (e.g., _create_site)
+          const permissions = permsResponse.data.permissions
+            .map((p) => ({ id: p.id, name: p.key }));
+          setAllPermissions(permissions);
+
+          // Map resources, keeping the full key but preparing for parsing
+          const resources = permsResponse.data.resources.map((r) => ({
+            id: r.id,
+            table: r.key.split('.')[0].toLowerCase(), // e.g., "site" from "Site.id"
+            column: r.key.split('.')[1], // e.g., "id" from "Site.id"
+          }));
+          setAllResources(resources);
         } else {
           setError(permsResponse.message || 'Failed to fetch global permissions/resources.');
           setLoading(false);
           return;
         }
 
-        // 2. Fetch role's current permissions and resources
+        // Fetch role's current permissions and resources
         const rolePermsResponse: GetRolePermissionsResponse = await getRolePermissions(
           parseInt(roleId, 10)
         );
@@ -125,7 +123,7 @@ const EditRole: React.FC = () => {
   }, [roleId]);
 
   /**
-   * Determine if the form has been modified
+   * Detect if the form has been modified
    */
   useEffect(() => {
     const modified =
@@ -134,24 +132,23 @@ const EditRole: React.FC = () => {
   }, [initialOverrides, currentOverrides]);
 
   /**
-   * Check if a permission is currently granted
+   * Check if a permission is granted
    */
-  const isPermissionGranted = (permId: number) => {
+  const isPermissionGranted = (permId: number): boolean => {
     const override = currentOverrides.permissions.find((p) => p.id === permId);
     return override?.granted ?? false;
   };
 
   /**
-   * Check if a resource is currently granted
+   * Check if a resource is granted
    */
-  const isResourceGranted = (resId: number) => {
+  const isResourceGranted = (resId: number): boolean => {
     const override = currentOverrides.resources.find((r) => r.id === resId);
     return override?.granted ?? false;
   };
 
   /**
-   * Toggle a permission’s granted status
-   * If unchecking a permission => uncheck all resources associated with it
+   * Toggle a permission’s granted status and update related resources
    */
   const handlePermissionChange = (permissionId: number) => (
     e: ChangeEvent<HTMLInputElement>
@@ -162,11 +159,10 @@ const EditRole: React.FC = () => {
       let updatedPermissions = toggleItem(prev.permissions, permissionId, granted);
 
       if (!granted) {
-        // figure out permission name from allPermissions
         const permObj = allPermissions.find((p) => p.id === permissionId);
         if (permObj) {
           const relatedResources = allResources.filter(
-            (res) => res.table === permObj.name
+            (res) => res.table === permObj.name.toLowerCase()
           );
           let updatedResources = [...prev.resources];
           relatedResources.forEach((res) => {
@@ -189,7 +185,6 @@ const EditRole: React.FC = () => {
 
   /**
    * Toggle a resource’s granted status
-   * Disabled if parent permission is not granted
    */
   const handleResourceChange = (resourceId: number) => (
     e: ChangeEvent<HTMLInputElement>
@@ -222,8 +217,7 @@ const EditRole: React.FC = () => {
   };
 
   /**
-   * Save changes => manageRoleAccess
-   * Filter out only those permissions/resources with granted = true
+   * Save changes to the server
    */
   const handleSave = async () => {
     if (!roleId) {
@@ -264,13 +258,15 @@ const EditRole: React.FC = () => {
   };
 
   /**
-   * Cancel => navigate back to role list
+   * Cancel and navigate back
    */
   const handleCancel = () => {
     navigate('/dashboard/manageroles');
   };
 
-  // NEW: Toggle expanded/collapsed for a particular permission section
+  /**
+   * Toggle expanded/collapsed state for a permission section
+   */
   const togglePermissionSection = (permissionId: number) => {
     setExpandedPermissions((prev) => ({
       ...prev,
@@ -287,14 +283,11 @@ const EditRole: React.FC = () => {
   }
 
   if (error) {
-    return (
-      <div className="p-4 text-red-500">{error}</div>
-    );
+    return <div className="p-4 text-red-500">{error}</div>;
   }
 
   /**
-   * Group the resources by each permission => similar to "sections"
-   * but we rely on resource.table === permission.name
+   * Group resources by their permission prefix (e.g., "site" from "Site.id")
    */
   const permissionsWithResources: Array<{
     permission: Permission;
@@ -302,68 +295,56 @@ const EditRole: React.FC = () => {
   }> = allPermissions.map((permission) => ({
     permission,
     resources: allResources.filter(
-      (resource) => resource.table === permission.name
+      (resource) => resource.table === permission.name.toLowerCase()
     ),
   }));
 
   return (
     <div className="p-6">
-      {/* 
-        1. Action Buttons moved to top 
-        2. Title also displayed at the top 
-      */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <h2 className="text-2xl font-semibold mb-4 sm:mb-0">Edit Role Permissions</h2>
         <div className="flex space-x-3">
           <button
             onClick={handleSave}
             disabled={!isModified || saving}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${!isModified || saving
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              !isModified || saving
                 ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
                 : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
+            }`}
           >
             {saving ? 'Saving...' : 'Save'}
           </button>
           <button
             onClick={handleCancel}
             disabled={saving}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${saving
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              saving
                 ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
                 : 'bg-red-600 text-white hover:bg-red-700'
-              }`}
+            }`}
           >
             Cancel
           </button>
         </div>
       </div>
 
-      {/* Feedback Messages */}
       {saveSuccess && (
-        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">
-          {saveSuccess}
-        </div>
+        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">{saveSuccess}</div>
       )}
       {saveError && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
-          {saveError}
-        </div>
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">{saveError}</div>
       )}
 
-      {/* Collapsible sections for each permission */}
       <div className="space-y-4">
         {permissionsWithResources.map(({ permission, resources }) => {
-          // check if the permission is granted
           const permGranted = isPermissionGranted(permission.id);
           const isExpanded = expandedPermissions[permission.id] || false;
-
-          // NEW: Show "x / y selected" for the resources
           const selectedCount = resources.filter((r) => isResourceGranted(r.id)).length;
           const totalCount = resources.length;
 
           return (
             <div key={permission.id} className="bg-white shadow rounded p-4">
-              {/* Permission Header (click to expand/collapse) */}
               <button
                 type="button"
                 onClick={() => togglePermissionSection(permission.id)}
@@ -394,7 +375,6 @@ const EditRole: React.FC = () => {
                 )}
               </button>
 
-              {/* Animate presence of resource list when expanded */}
               <AnimatePresence>
                 {isExpanded && (
                   <motion.div
@@ -405,7 +385,6 @@ const EditRole: React.FC = () => {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden mt-4"
                   >
-                    {/* Two-column layout of resources */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {resources.map((resource) => {
                         const resourceGranted = isResourceGranted(resource.id);
@@ -417,15 +396,15 @@ const EditRole: React.FC = () => {
                               checked={resourceGranted}
                               onChange={handleResourceChange(resource.id)}
                               disabled={!permGranted}
-                              className={`mr-2 h-4 w-4 ${!permGranted
+                              className={`mr-2 h-4 w-4 ${
+                                !permGranted
                                   ? 'text-gray-300 border-gray-300 cursor-not-allowed'
                                   : 'text-blue-600 border-gray-300 rounded'
-                                }`}
+                              }`}
                             />
                             <label
                               htmlFor={`resource-${resource.id}`}
-                              className={`${!permGranted ? 'text-gray-400' : 'text-gray-700'
-                                }`}
+                              className={`${!permGranted ? 'text-gray-400' : 'text-gray-700'}`}
                             >
                               {resource.column.charAt(0).toUpperCase() +
                                 resource.column.slice(1)}

@@ -1,6 +1,5 @@
 import * as React from "react";
 import { Trash2, Grid, BarChart2 } from "lucide-react";
-
 import { SearchForm } from "@/components/search-form";
 import {
   Sidebar,
@@ -30,13 +29,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 
 import { ChevronsLeftRightEllipsis } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSetRecoilState } from "recoil";
+import { showFabAtom } from "@/store/atoms/atoms";
 
 interface View {
   id: number;
   viewName: string;
 }
 
-// Props for hooking up dynamic “views” logic
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   views: Array<{ id: number; viewName: string }>;
   currentViewId: number | null;
@@ -55,7 +55,8 @@ export function AppSidebar({
   setSearchQuery,
   ...props
 }: AppSidebarProps) {
-  // Sort “grid” first, then alphabetical
+  const setShowFab = useSetRecoilState(showFabAtom);
+
   const sortedViews = React.useMemo(() => {
     const defaultView = views.filter((v) => v.viewName === "grid");
     const otherViews = views
@@ -64,16 +65,20 @@ export function AppSidebar({
     return [...defaultView, ...otherViews];
   }, [views]);
 
-  // Filter by search
   const filteredViews = React.useMemo(() => {
     if (!searchQuery.trim()) return sortedViews;
     const lower = searchQuery.toLowerCase();
     return sortedViews.filter((v) => v.viewName.toLowerCase().includes(lower));
   }, [searchQuery, sortedViews]);
 
+  // Handler for AlertDialog open state changes
+  const handleDialogOpenChange = (open: boolean) => {
+    setShowFab(!open); // Hide FAB when dialog is open, show when closed
+  };
+
   return (
-    <Sidebar {...props} className="p-0"> {/* Remove padding from the Sidebar */}
-      <SidebarHeader className="p-0"> {/* Remove padding from SidebarHeader */}
+    <Sidebar {...props} className="p-0">
+      <SidebarHeader className="p-0">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger
@@ -91,7 +96,6 @@ export function AppSidebar({
           </Tooltip>
         </TooltipProvider>
 
-        {/* Search form for filtering “views” */}
         <SearchForm
           placeholder="Search views..."
           value={searchQuery}
@@ -100,13 +104,11 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Single Group: “Views” */}
         <SidebarGroup>
           <SidebarGroupLabel>Views</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {filteredViews.map((view) => (
-
                 <SidebarMenuItem
                   className={cn(
                     "flex items-center gap-2 w-full px-2 py-1 rounded-lg transition-colors duration-200 ease-in-out",
@@ -114,7 +116,6 @@ export function AppSidebar({
                   )}
                   key={view.id}
                 >
-                  {/* View button */}
                   <SidebarMenuButton asChild>
                     <button
                       onClick={() => onSelectView(view.id)}
@@ -131,9 +132,8 @@ export function AppSidebar({
                     </button>
                   </SidebarMenuButton>
 
-                  {/* Delete button */}
                   {view.viewName !== "grid" && (
-                    <AlertDialog>
+                    <AlertDialog onOpenChange={handleDialogOpenChange}>
                       <AlertDialogTrigger>
                         <Button variant="ghost" size="sm" className="p-1">
                           <Trash2 className="w-5 h-5 red-600" />
@@ -159,7 +159,6 @@ export function AppSidebar({
                     </AlertDialog>
                   )}
                 </SidebarMenuItem>
-
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -167,6 +166,6 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarRail />
-    </Sidebar >
+    </Sidebar>
   );
 }

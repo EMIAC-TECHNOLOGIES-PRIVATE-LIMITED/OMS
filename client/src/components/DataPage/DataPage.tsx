@@ -49,6 +49,8 @@ interface DataPageProps {
 }
 
 const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
+
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [processing, setProcessing] = useState<boolean>(false);
@@ -206,6 +208,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
 
   const handleSaveView = useCallback(async () => {
     setError(null);
+    setProcessing(true);
     try {
       if (!currentViewId || initialViewName === "grid") {
         let finalName = currentViewName;
@@ -223,6 +226,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
       } else {
         const resp = await updateView(resource, currentViewId, currentViewName, filterConfig);
         if (resp.success) {
+          setInitialViewName(currentViewName);
           setViews((prev) =>
             prev.map((v) => v.id === currentViewId
               ? { id: currentViewId, viewName: currentViewName }
@@ -231,11 +235,12 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
           );
         }
       }
-
       initialFilterConfig.current = JSON.stringify(filterConfig);
       setDirtyFilter(false);
     } catch (err: any) {
       setError(handleApiError(err, "An error occurred while saving the view."));
+    } finally {
+      setProcessing(false);
     }
   }, [resource, currentViewId, initialViewName, currentViewName, filterConfig]);
 
@@ -260,6 +265,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
       setLoading(false);
     }
   }, [currentViewId, resource, fetchViewData]);
+
 
 
   return (
@@ -333,7 +339,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                         className="w-24"
                         variant={"brandOutline"}
                       >
-                        Save View
+                        {(!dirtyFilter && currentViewName === initialViewName) ? "Saved" : "Save View"}
                       </Button>
                     </BreadcrumbItem>
                     <BreadcrumbItem>
@@ -378,7 +384,10 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       totalCount={totalCount}
                       setTotalCount={setTotalCount}
                       filteredCount={filterCount}
-            
+                      refreshRecords={(addedRecords: number) => {
+                        fetchFilteredData(filterConfig, page, pageSize)
+                        setTotalCount((prev) => prev ? prev + addedRecords : addedRecords);
+                      }}
                     />
 
                   </div>

@@ -1,17 +1,19 @@
 import { AllCommunityModule, ModuleRegistry, themeQuartz, CellKeyDownEvent, IRowNode, RowSelectedEvent, Column } from "ag-grid-community";
-import { AgGridReact } from "ag-grid-react";
+import { AgGridReact, CustomCellRendererProps, CustomTooltipProps } from "ag-grid-react";
 import { ColDef, ICellRendererParams } from "ag-grid-community";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import TableSkeleton from "./Skeleton";
 import EnumBadge, { getEnumValues, EnumBadgeProps } from "../../utils/EnumUtil/EnumUtil";
 import { deleteData, updateData } from "@/utils/apiService/dataAPI";
 import { useToast } from "@/hooks/use-toast";
-import { authAtom } from "@/store/atoms/atoms";
-import { useRecoilValue } from "recoil";
+import { authAtom, showFabAtom } from "@/store/atoms/atoms";
+import { useRecoilState, useRecoilValue } from "recoil";
 import NoDataTable from "./NoData";
-import { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Fab, Action } from 'react-tiny-fab';
 import 'react-tiny-fab/dist/styles.css';
+
+import { LargeTextEditor, DateEditor } from "./CustomEditors";
 
 import {
   AlertDialog,
@@ -24,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog"
 import { FilePlus, Plus } from "lucide-react";
-import CreateSheet from "./CreateSheet";
+import CreateSheet from "./CreateSheet2";
 
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -42,7 +44,7 @@ interface DataGridProps {
   totalCount: number | null;
   setTotalCount: (value: number) => void;
   filteredCount: number | null;
-
+  refreshRecords: (addedRecords: number) => void;
 }
 
 interface RowNumberCellRendererParams extends ICellRendererParams {
@@ -50,6 +52,12 @@ interface RowNumberCellRendererParams extends ICellRendererParams {
   api: any;
   isHeader: boolean;
 }
+
+const hyperLinkToolTipColumns = ['site.website', 'Client.website', 'Order.publishURL', 'Order.indexedScreenShotLink'];
+
+const formatNumberColumns = ['site.ahrefTraffic', 'Site.domainAuthority', 'Site.pageAuthority', 'Site.spamScore', 'Site.costPrice', 'Site.sellingPrice', 'Site.semrushTraffic', 'Site.semrushOrganicTraffic', 'Site.domainRating', 'Site.adultPrice', 'Site.casinoAdultPrice', 'Site.cbdPrice', 'Site.linkInsertionCost', 'Site.semrushFirstCountryTraffic', 'Site.semrushSecondCountryTraffic', 'Site.semrushThirdCountryTraffic', 'Site.semrushFourthCountryTraffic', 'Site.semrushFifthCountryTraffic', 'Site.similarwebTraffic', 'Site.bannerImagePrice', 'Site.numberOfLinks', 'Order.clientContentCost', 'Order.clientProposedAmount', 'Order.clientReceivedAmount', 'Order.vendorPaymentAmount', 'Order.costPriceWithGST']
+
+const largeTextEditorColumns = ['site.contentCategories', 'Site.websiteRemark', 'Site.disclaimer', 'Client.projects', 'Order.orderRemark', 'Order.mainRemark', 'Order.clientPaymentRemark']
 
 const RowNumberCellRenderer: React.FC<RowNumberCellRendererParams> = (params) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -128,6 +136,41 @@ const RowNumberCellRenderer: React.FC<RowNumberCellRendererParams> = (params) =>
 };
 
 
+const HyperlinkTooltip = (props: CustomTooltipProps) => {
+  const ensureAbsoluteUrl = (url: string): string => {
+    if (url && typeof url === 'string') {
+
+      if (!url.match(/^https?:\/\//i)) {
+
+        return `https://${url}`;
+      }
+    }
+    return url;
+  };
+  const handleClick = () => {
+   
+    const { hideTooltipCallback } = props;
+    if (hideTooltipCallback) {
+      hideTooltipCallback();
+    }
+  };
+
+  const absoluteUrl = ensureAbsoluteUrl(props.value);
+
+  return (
+    <div className="bg-white/95 text-brand underline backdrop-blur-sm shadow-lg border border-gray-100 px-4 py-3 rounded-lg">
+      <a
+        href={absoluteUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleClick}
+      >
+        {props.value}
+      </a>
+    </div>
+  );
+};
+
 const DataGrid: React.FC<DataGridProps> = ({
   data,
   availableColumnTypes,
@@ -139,16 +182,21 @@ const DataGrid: React.FC<DataGridProps> = ({
   totalCount,
   setTotalCount,
   filteredCount,
+  refreshRecords
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [selectedRowsForDelete, setSelectedRowsForDelete] = useState<any[]>([]);
   const [gridApi, setGridApi] = useState<any>(null);
-  const [toastVisible, setToastVisible] = useState<boolean>(false);
+  const [showFab, setShowFab] = useRecoilState(showFabAtom);
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState<boolean>(false);
   const gridRef = useRef<any>(null);
-
   const auth = useRecoilValue(authAtom);
   const { toast } = useToast();
+
+
+  useEffect(() => {
+    setShowFab(!isDeleteDialogOpen)
+  }, [isDeleteDialogOpen])
 
   const gridTheme = themeQuartz.withParams({
     accentColor: 'green',
@@ -266,8 +314,8 @@ const DataGrid: React.FC<DataGridProps> = ({
   };
 
   const showCopiedToast = (rows: number) => {
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 2000);
+    setShowFab(false);
+    setTimeout(() => setShowFab(true), 2000);
     toast({
       variant: 'default',
       title: 'Copied',
@@ -322,12 +370,13 @@ const DataGrid: React.FC<DataGridProps> = ({
             return '';
           }
 
-          if (columnType === 'DateTime?' || columnType === 'DateTime') {
-            return new Date(params.data[key]).toLocaleDateString();
-          }
+          // if (columnType === 'DateTime?' || columnType === 'DateTime') {
+          //   return new Date(params.data[key]).toLocaleDateString();
+          // }
 
           return params.data[key];
         },
+
         tooltipValueGetter: (params) => {
           if (params.value === null || params.value === undefined) {
             return '';
@@ -341,10 +390,8 @@ const DataGrid: React.FC<DataGridProps> = ({
 
           return params.value.toString();
         },
-        tooltipComponentParams: {
-          color: '#333',
-          backgroundColor: '#fff',
-        },
+        tooltipComponent: hyperLinkToolTipColumns.includes(key) ? HyperlinkTooltip : undefined,
+
         cellDataType: (() => {
           if (!columnType) return 'string';
 
@@ -427,7 +474,7 @@ const DataGrid: React.FC<DataGridProps> = ({
           }
 
           if (columnType === 'DateTime?' || columnType === 'DateTime') {
-            return "agDateCellEditor";
+            return DateEditor;
           }
 
           const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
@@ -435,7 +482,18 @@ const DataGrid: React.FC<DataGridProps> = ({
             return 'agSelectCellEditor';
           }
 
+          if (largeTextEditorColumns.includes(key)) {
+            return LargeTextEditor;
+          }
           return 'agTextCellEditor';
+        })(),
+        cellEditorPopup: (() => {
+          if (!columnType) return true;
+
+          const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
+          if (enumMatch) return false;
+
+          return columnType === 'String' || columnType === 'String?' || columnType === 'DateTime?' || columnType === 'DateTime';
         })(),
         cellEditorParams: (() => {
           if (!columnType) return undefined;
@@ -446,7 +504,7 @@ const DataGrid: React.FC<DataGridProps> = ({
             const values = getEnumValues(enumName);
             return {
               values: values,
-              ...(columnType.endsWith('?') && { values: ['', ...values] })
+              ...(columnType.endsWith('?') && { values: [null, ...values] })
             };
           }
           return undefined;
@@ -457,6 +515,7 @@ const DataGrid: React.FC<DataGridProps> = ({
         resizable: true,
         editable: isEditable,
         cellStyle: filteredColumns.includes(key) ? { backgroundColor: '#ddebfc' } : sortedColumns.includes(key) ? { backgroundColor: '#e1fbe9' } : {},
+
         ...(columnType === 'Boolean?' || columnType === 'Boolean'
           ? {
             cellRenderer: 'agCheckboxCellRenderer',
@@ -464,21 +523,35 @@ const DataGrid: React.FC<DataGridProps> = ({
               disabled: !isEditable,
             }
           }
-          : {
-            cellRenderer: (params: any) => {
-              if (!columnType) return params.value;
-
-              const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
-              if (enumMatch) {
-                const enumName = enumMatch[1];
-                const value = params.data[key];
-
-                return <EnumBadge enum={enumName as EnumBadgeProps['enum']} value={value} />;
+          : formatNumberColumns.includes(key)
+            ? {
+              cellRenderer: (params: CustomCellRendererProps) => {
+                return new Intl.NumberFormat('en-IN').format(params.value);
               }
-
-              return params.value;
             }
-          }
+            :
+            (columnType === 'DateTime?' || columnType === 'DateTime') ? {
+
+              cellRenderer: (params: CustomCellRendererProps) => {
+                if (!params.value) return '';
+                return new Date(params.data[key]).toLocaleDateString();
+              }
+            } :
+              {
+                cellRenderer: (params: CustomCellRendererProps) => {
+                  if (!columnType) return params.value;
+
+                  const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
+                  if (enumMatch) {
+                    const enumName = enumMatch[1];
+                    const value = params.data[key];
+
+                    return <EnumBadge enum={enumName as EnumBadgeProps['enum']} value={value} />;
+                  }
+
+                  return params.value;
+                }
+              }
         )
       };
 
@@ -522,7 +595,7 @@ const DataGrid: React.FC<DataGridProps> = ({
     return <NoDataTable hasFilters />;
   }
 
- 
+
   return (
     <>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -533,7 +606,7 @@ const DataGrid: React.FC<DataGridProps> = ({
               This action cannot be undone. It will permanently delete {selectedRowsForDelete.length} record(s).
             </AlertDialogDescription>
           </AlertDialogHeader>
-         
+
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
@@ -545,8 +618,8 @@ const DataGrid: React.FC<DataGridProps> = ({
                 const deleteResponse = await deleteData(resource, idsToDelete);
 
                 if (deleteResponse.success) {
-                  setToastVisible(true);
-                  setTimeout(() => setToastVisible(false), 3500);
+                  setShowFab(false);
+                  setTimeout(() => setShowFab(true), 3500);
                   toast({
                     title: 'Success',
                     description: `${selectedRowsForDelete.length} record(s) deleted successfully`,
@@ -559,8 +632,8 @@ const DataGrid: React.FC<DataGridProps> = ({
                   setTotalCount(totalCount - selectedRowsForDelete.length);
 
                 } else {
-                  setToastVisible(true);
-                  setTimeout(() => setToastVisible(false), 3500);
+                  setShowFab(false);
+                  setTimeout(() => setShowFab(true), 3500);
                   toast({
                     variant: 'destructive',
                     title: 'Error',
@@ -594,6 +667,11 @@ const DataGrid: React.FC<DataGridProps> = ({
           onRowSelected={onRowSelected}
           onGridReady={onGridReady}
           enableBrowserTooltips={false}
+          components={{
+            largeTextEditor: LargeTextEditor,
+            dateEditor: DateEditor,
+            HyperlinkTooltip: HyperlinkTooltip,
+          }}
           // suppressCellFocus={true}
           tooltipShowDelay={500}
           tooltipHideDelay={1000}
@@ -603,7 +681,7 @@ const DataGrid: React.FC<DataGridProps> = ({
       </div>
 
       {
-        hasCreatePermission && !toastVisible && !isCreateSheetOpen && (
+        hasCreatePermission && showFab && !isCreateSheetOpen && (
           <Fab
             mainButtonStyles={fabStyles.mainButtonStyles}
             style={fabStyles.position}
@@ -625,7 +703,7 @@ const DataGrid: React.FC<DataGridProps> = ({
         resource={resource}
         isOpen={isCreateSheetOpen}
         onClose={() => setIsCreateSheetOpen(false)}
-        onSubmit={() => { }}
+        onSubmit={refreshRecords}
         availableColumnTypes={availableColumnTypes}
       />
     </>

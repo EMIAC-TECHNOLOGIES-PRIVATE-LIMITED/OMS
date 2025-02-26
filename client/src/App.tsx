@@ -36,6 +36,7 @@ const ProtectedRoute = ({ allowedRoles = [] }: { allowedRoles?: string[] }) => {
     return <div>Loading...</div>;
   }
 
+
   if (!isAuthenticated) {
     return (
       <Navigate

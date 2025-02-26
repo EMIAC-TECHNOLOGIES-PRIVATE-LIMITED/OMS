@@ -1,5 +1,5 @@
 import React, { useEffect, useState, ChangeEvent } from 'react';
-import { useParams } from 'react-router-dom'; // Removed navigate since Cancel now discards changes locally
+import { useParams } from 'react-router-dom';
 import {
   getAllPermissions,
   getUserPermissions,
@@ -19,15 +19,11 @@ import {
   GetAllPermissionsResponse,
   GetUserPermissionsResponse,
   ManageUserAccessResponse,
-  // NEW: For roles
   GetAllRolesResponse,
-  // NEW: For role-based fetch
   GetRolePermissionsResponse,
-  // NEW: For suspend/revoke user
   SuspendUserResponse,
   RevokeUserResponse,
 } from '../../../../shared/src/types';
-
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 
@@ -82,13 +78,13 @@ const EditUser: React.FC = () => {
   // Collapsible sections
   const [expandedPermissions, setExpandedPermissions] = useState<{ [key: number]: boolean }>({});
 
-  // NEW: All roles for the dropdown, plus states for storing the user’s role
+  // All roles for the dropdown, plus states for storing the user’s role
   const [allRoles, setAllRoles] = useState<RoleItem[]>([]);
   const [initialRoleId, setInitialRoleId] = useState<number | null>(null);
   const [currentRoleId, setCurrentRoleId] = useState<number | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
-  // NEW: Suspended state + confirmation modals
+  // Suspended state + confirmation modals
   const [isSuspended, setIsSuspended] = useState<boolean>(false);
   const [showSuspendConfirm, setShowSuspendConfirm] = useState<boolean>(false);
   const [showRevokeConfirm, setShowRevokeConfirm] = useState<boolean>(false);
@@ -110,7 +106,7 @@ const EditUser: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch all roles first (for dropdown)
+        // Fetch all roles for dropdown
         const rolesResponse: GetAllRolesResponse = await getAllRoles();
         if (rolesResponse.success) {
           setAllRoles(rolesResponse.data);
@@ -118,38 +114,44 @@ const EditUser: React.FC = () => {
           console.error(rolesResponse.message || 'Failed to fetch roles.');
         }
 
-        // 1) Fetch all (global) permissions and resources
+        // Fetch all (global) permissions and resources
         const permissionsResponse: GetAllPermissionsResponse = await getAllPermissions();
         if (permissionsResponse.success) {
-          setAllPermissions(permissionsResponse.data.permissions.map(p => ({
-            id: p.id,
-            name: p.key
-          })));
-          setAllResources(permissionsResponse.data.resources.map(r => ({
+          // Filter out permissions starting with underscore
+          const permissions = permissionsResponse.data.permissions
+           
+            .map((p) => ({ id: p.id, name: p.key }));
+          setAllPermissions(permissions);
+
+          // Parse resources in Permission.Resource format
+          const resources = permissionsResponse.data.resources.map((r) => ({
             id: r.id,
-            table: r.key.split('.')[0],
-            column: r.key.split('.')[1] || r.key
-          })));
+            table: r.key.split('.')[0].toLowerCase(), // e.g., "site" from "Site.id"
+            column: r.key.split('.')[1], // e.g., "id" from "Site.id"
+          }));
+          setAllResources(resources);
         } else {
           setError(permissionsResponse.message || 'Failed to fetch permissions.');
           return;
         }
 
-        // 2) Fetch user-specific defaults & overrides
+        // Fetch user-specific defaults & overrides
         const userPermissionsResponse: GetUserPermissionsResponse = await getUserPermissions(
           parseInt(userId)
         );
         if (userPermissionsResponse.success) {
-          // The user’s default perms/resources
-          setUserDefaultPermissions(userPermissionsResponse.data.permissions.map(p => ({
-            id: p.id,
-            name: p.key
-          })));
-          setUserDefaultResources(userPermissionsResponse.data.resources.map(r => ({
+          // User’s default perms/resources
+          const defaultPermissions = userPermissionsResponse.data.permissions
+            .filter((p) => !p.key.startsWith('_'))
+            .map((p) => ({ id: p.id, name: p.key }));
+          setUserDefaultPermissions(defaultPermissions);
+
+          const defaultResources = userPermissionsResponse.data.resources.map((r) => ({
             id: r.id,
-            table: r.key.split('.')[0],
-            column: r.key.split('.')[1] || r.key
-          })));
+            table: r.key.split('.')[0].toLowerCase(),
+            column: r.key.split('.')[1],
+          }));
+          setUserDefaultResources(defaultResources);
 
           // The override arrays
           setInitialOverrides({
@@ -161,12 +163,10 @@ const EditUser: React.FC = () => {
             resourceOverride: userPermissionsResponse.data.resourceOverrides,
           });
 
-          // NEW: Store user’s role from userPermissionsResponse.data.roleId
+          // Store user’s role, name, and suspended status
           setInitialRoleId(userPermissionsResponse.data.roleId);
           setCurrentRoleId(userPermissionsResponse.data.roleId);
           setUserName(userPermissionsResponse.data.name);
-
-          // NEW: Store isSuspended
           setIsSuspended(userPermissionsResponse.data.isSuspended);
         } else {
           setError(userPermissionsResponse.message || 'Failed to fetch user permissions.');
@@ -233,17 +233,12 @@ const EditUser: React.FC = () => {
    * ---------------
    */
   useEffect(() => {
-    // Compare overrides
     const overridesChanged =
       JSON.stringify(initialOverrides.permissionOverride) !==
-      JSON.stringify(currentOverrides.permissionOverride) ||
+        JSON.stringify(currentOverrides.permissionOverride) ||
       JSON.stringify(initialOverrides.resourceOverride) !==
-      JSON.stringify(currentOverrides.resourceOverride);
-
-    // Compare role
+        JSON.stringify(currentOverrides.resourceOverride);
     const roleChanged = currentRoleId !== initialRoleId;
-
-    // If either overrides or role changed => isModified = true
     setIsModified(overridesChanged || roleChanged);
   }, [initialOverrides, currentOverrides, currentRoleId, initialRoleId]);
 
@@ -252,9 +247,6 @@ const EditUser: React.FC = () => {
    *   Check helpers using finalPermissions/finalResources
    * ----------------------------------------------------------
    */
-
-  
-
   const getPermissionNameById = (permissionId: number): string => {
     const permission = allPermissions.find((perm) => perm.id === permissionId);
     return permission ? permission.name : '';
@@ -268,7 +260,7 @@ const EditUser: React.FC = () => {
   const handlePermissionChange = (permissionId: number) => (
     e: ChangeEvent<HTMLInputElement>
   ) => {
-    if (isSuspended) return; // if user is suspended, disallow edits
+    if (isSuspended) return;
 
     const granted = e.target.checked;
 
@@ -288,48 +280,41 @@ const EditUser: React.FC = () => {
         ];
       }
 
+      // If permission is unchecked, uncheck related resources
+      if (!granted) {
+        const relatedResources = allResources.filter(
+          (resource) => resource.table === getPermissionNameById(permissionId).toLowerCase()
+        );
+        let updatedResourceOverrides = [...prev.resourceOverride];
+        relatedResources.forEach((resource) => {
+          const resourceExists = updatedResourceOverrides.find(
+            (ro) => ro.resourceId === resource.id
+          );
+          if (resourceExists) {
+            updatedResourceOverrides = updatedResourceOverrides.map((ro) =>
+              ro.resourceId === resource.id ? { ...ro, granted: false } : ro
+            );
+          } else {
+            updatedResourceOverrides.push({ resourceId: resource.id, granted: false });
+          }
+        });
+        return {
+          permissionOverride: updatedPermissionOverrides,
+          resourceOverride: updatedResourceOverrides,
+        };
+      }
+
       return {
         ...prev,
         permissionOverride: updatedPermissionOverrides,
       };
     });
-
-    // If permission is unchecked => also uncheck all related resources
-    if (!granted) {
-      const relatedResources = allResources.filter(
-        (resource) => resource.table === getPermissionNameById(permissionId)
-      );
-      relatedResources.forEach((resource) => {
-        setCurrentOverrides((prev) => {
-          const resourceExists = prev.resourceOverride.find(
-            (ro) => ro.resourceId === resource.id
-          );
-          let updatedResourceOverrides: ResourceOverride[];
-
-          if (resourceExists) {
-            updatedResourceOverrides = prev.resourceOverride.map((ro) =>
-              ro.resourceId === resource.id ? { ...ro, granted: false } : ro
-            );
-          } else {
-            updatedResourceOverrides = [
-              ...prev.resourceOverride,
-              { resourceId: resource.id, granted: false },
-            ];
-          }
-
-          return {
-            ...prev,
-            resourceOverride: updatedResourceOverrides,
-          };
-        });
-      });
-    }
   };
 
   const handleResourceChange = (resourceId: number) => (
     e: ChangeEvent<HTMLInputElement>
   ) => {
-    if (isSuspended) return; // if user is suspended, disallow edits
+    if (isSuspended) return;
 
     const granted = e.target.checked;
 
@@ -338,7 +323,6 @@ const EditUser: React.FC = () => {
         (ro) => ro.resourceId === resourceId
       );
       let updatedResourceOverrides: ResourceOverride[];
-
       if (overrideExists) {
         updatedResourceOverrides = prev.resourceOverride.map((ro) =>
           ro.resourceId === resourceId ? { ...ro, granted } : ro
@@ -349,7 +333,6 @@ const EditUser: React.FC = () => {
           { resourceId, granted },
         ];
       }
-
       return {
         ...prev,
         resourceOverride: updatedResourceOverrides,
@@ -374,7 +357,6 @@ const EditUser: React.FC = () => {
       setSaveError(null);
       setSaveSuccess(null);
 
-      // Save permission/resource overrides
       const response: ManageUserAccessResponse = await manageUserAccess(
         parseInt(userId),
         currentOverrides.permissionOverride,
@@ -383,7 +365,6 @@ const EditUser: React.FC = () => {
       );
 
       if (response.success) {
-        // Sync up initial state
         setInitialOverrides({
           permissionOverride: currentOverrides.permissionOverride,
           resourceOverride: currentOverrides.resourceOverride,
@@ -401,7 +382,7 @@ const EditUser: React.FC = () => {
     }
   };
 
-  // B) CANCEL => revert to initial overrides, revert to initial role, clear success/error
+  // B) CANCEL
   const handleCancel = () => {
     setCurrentOverrides({
       permissionOverride: [...initialOverrides.permissionOverride],
@@ -411,48 +392,45 @@ const EditUser: React.FC = () => {
     setSaveError(null);
     setSaveSuccess(null);
     setIsModified(false);
-    // We intentionally do NOT navigate anywhere now
   };
 
-  // C) RESET => empty the current override arrays (not the same as CANCEL)
+  // C) RESET
   const handleReset = () => {
-    if (isSuspended) return; // if user is suspended, do nothing
+    if (isSuspended) return;
     setCurrentOverrides({
       permissionOverride: [],
       resourceOverride: [],
     });
   };
 
-  // D) Role change => fetch that role’s permissions/resources => set as userDefault
+  // D) Role change
   const handleRoleChange = async (newRoleId: number) => {
     if (!userId) return;
 
     try {
-      // 1) Clear overrides
       setCurrentOverrides({
         permissionOverride: [],
         resourceOverride: [],
       });
 
-      // 2) fetch the new role’s default perms/resources
       const rolePermsResponse: GetRolePermissionsResponse = await getRolePermissions(newRoleId);
       if (rolePermsResponse.success) {
-        // 3) update userDefaultPermissions/resources
-        setUserDefaultPermissions(rolePermsResponse.data.permissions.map(p => ({
-          id: p.id,
-          name: p.key
-        })));
-        setUserDefaultResources(rolePermsResponse.data.resources.map(r => ({
-          id: r.id,
-          table: r.key.split('.')[0],
-          column: r.key.split('.')[1] || r.key
-        })));
+        setUserDefaultPermissions(
+          rolePermsResponse.data.permissions
+            .filter((p) => !p.key.startsWith('_'))
+            .map((p) => ({ id: p.id, name: p.key }))
+        );
+        setUserDefaultResources(
+          rolePermsResponse.data.resources.map((r) => ({
+            id: r.id,
+            table: r.key.split('.')[0].toLowerCase(),
+            column: r.key.split('.')[1],
+          }))
+        );
       } else {
-        // handle error
         console.error(rolePermsResponse.message || 'Failed to fetch role-based perms/resources');
       }
 
-      // 4) set currentRoleId to new
       setCurrentRoleId(newRoleId);
     } catch (error: any) {
       console.error(error.message);
@@ -460,7 +438,7 @@ const EditUser: React.FC = () => {
   };
 
   /**
-   * Suspend / Revoke handlers + confirmation modals
+   * Suspend / Revoke handlers
    */
   const handleSuspendClick = () => {
     setShowSuspendConfirm(true);
@@ -529,7 +507,9 @@ const EditUser: React.FC = () => {
     resources: Array<Resource & { granted: boolean }>;
   }> = finalPermissions.map((permission) => ({
     permission,
-    resources: finalResources.filter((res) => res.table === permission.name),
+    resources: finalResources.filter(
+      (res) => res.table === permission.name.toLowerCase()
+    ),
   }));
 
   return (
@@ -615,7 +595,6 @@ const EditUser: React.FC = () => {
         <h2 className="text-2xl font-semibold mb-4 sm:mb-0">{`Edit User Permissions : ${userName}`}</h2>
 
         <div className="flex flex-wrap gap-3 items-center justify-end">
-          {/* NEW: Suspend/Revoke button (conditional color & label) */}
           {isSuspended ? (
             <button
               onClick={handleRevokeClick}
@@ -632,7 +611,6 @@ const EditUser: React.FC = () => {
             </button>
           )}
 
-          {/* NEW: Role dropdown */}
           <select
             className="px-3 py-2 rounded-md border border-gray-300 text-gray-700"
             value={currentRoleId ?? ''}
@@ -649,38 +627,38 @@ const EditUser: React.FC = () => {
             ))}
           </select>
 
-          {/* Save Button */}
           <button
             onClick={handleSave}
             disabled={!isModified || saving}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${!isModified || saving
-              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              !isModified || saving
+                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
           >
             {saving ? 'Saving...' : 'Save'}
           </button>
 
-          {/* Cancel Button */}
           <button
             onClick={handleCancel}
             disabled={saving}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${saving
-              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-              : 'bg-gray-500 text-white hover:bg-gray-600'
-              }`}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              saving
+                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+                : 'bg-gray-500 text-white hover:bg-gray-600'
+            }`}
           >
             Cancel
           </button>
 
-          {/* Reset to Default */}
           <button
             onClick={handleReset}
             disabled={saving || isSuspended}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${saving || isSuspended
-              ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-              : 'bg-yellow-600 text-white hover:bg-yellow-700'
-              }`}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              saving || isSuspended
+                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
+                : 'bg-yellow-600 text-white hover:bg-yellow-700'
+            }`}
           >
             Reset to Default
           </button>
@@ -689,14 +667,10 @@ const EditUser: React.FC = () => {
 
       {/* Feedback Messages */}
       {saveSuccess && (
-        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">
-          {saveSuccess}
-        </div>
+        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">{saveSuccess}</div>
       )}
       {saveError && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
-          {saveError}
-        </div>
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">{saveError}</div>
       )}
 
       {/* Collapsible Permissions Sections */}
@@ -709,13 +683,14 @@ const EditUser: React.FC = () => {
 
           return (
             <div key={permission.id} className="bg-white shadow rounded p-4">
-              {/* Permission Header (Collapsible Trigger) */}
               <button
                 type="button"
-                onClick={() => setExpandedPermissions((prev) => ({
-                  ...prev,
-                  [permission.id]: !prev[permission.id],
-                }))}
+                onClick={() =>
+                  setExpandedPermissions((prev) => ({
+                    ...prev,
+                    [permission.id]: !prev[permission.id],
+                  }))
+                }
                 className="w-full flex items-center justify-between"
               >
                 <div className="flex items-center">
@@ -744,7 +719,6 @@ const EditUser: React.FC = () => {
                 )}
               </button>
 
-              {/* Collapsible Body (Resources) */}
               <AnimatePresence>
                 {isExpanded && (
                   <motion.div
@@ -766,15 +740,15 @@ const EditUser: React.FC = () => {
                               checked={resourceGranted}
                               onChange={handleResourceChange(resource.id)}
                               disabled={!permissionGranted || isSuspended}
-                              className={`mr-2 h-4 w-4 ${!permissionGranted || isSuspended
-                                ? 'text-gray-300 border-gray-300 cursor-not-allowed'
-                                : 'text-blue-600 border-gray-300 rounded'
-                                }`}
+                              className={`mr-2 h-4 w-4 ${
+                                !permissionGranted || isSuspended
+                                  ? 'text-gray-300 border-gray-300 cursor-not-allowed'
+                                  : 'text-blue-600 border-gray-300 rounded'
+                              }`}
                             />
                             <label
                               htmlFor={`resource-${resource.id}`}
-                              className={`${!permissionGranted || isSuspended ? 'text-gray-400' : 'text-gray-700'
-                                }`}
+                              className={`${!permissionGranted || isSuspended ? 'text-gray-400' : 'text-gray-700'}`}
                             >
                               {resource.column.charAt(0).toUpperCase() +
                                 resource.column.slice(1)}

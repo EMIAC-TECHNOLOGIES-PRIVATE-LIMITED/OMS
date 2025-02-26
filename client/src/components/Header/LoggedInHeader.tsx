@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
-import { authAtom } from '../../store/atoms/atoms';
+import { authAtom, showFabAtom } from '../../store/atoms/atoms';
 import { signOut } from '../../utils/apiService/authAPI';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,6 +48,11 @@ function LoggedInHeader() {
   const auth = useRecoilValue(authAtom);
   const setAuth = useSetRecoilState(authAtom);
   const navigate = useNavigate();
+  const setShowFab = useSetRecoilState(showFabAtom);
+
+  useEffect(() => {
+    setShowFab(!isIssueDialogOpen);
+  }, [isIssueDialogOpen])
 
 
   const handleLogout = async () => {
@@ -78,10 +83,12 @@ function LoggedInHeader() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + formData.screenshots.length > 5) {
+      
       toast({
         variant: "destructive",
         title: "Maximum limit exceeded",
-        description: "You can only upload up to 5 screenshots."
+        description: "You can only upload up to 5 screenshots.",
+        duration: 3000
       });
       return;
     }
@@ -123,9 +130,14 @@ function LoggedInHeader() {
 
       const result = await response.json();
       console.log('Issue reported successfully:', result);
+      setShowFab(false);
+      setTimeout(()=>{
+        setShowFab(true);
+      }, 3500)
       toast({
         title: 'Issue Reported Successfully',
         description: "We'll look into this and get back to you soon.",
+        duration : 3000
       });
 
       // Reset the form state

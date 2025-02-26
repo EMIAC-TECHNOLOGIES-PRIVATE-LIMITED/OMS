@@ -140,7 +140,7 @@ function PriceLookupTool() {
                       <TableHead>Domain</TableHead>
                       <TableHead>Vendor</TableHead>
                       <TableHead>Price</TableHead>
-                      <TableHead>Sailing Price</TableHead>
+                      <TableHead>Selling Price</TableHead>
                       <TableHead>Discount</TableHead>
                     </TableRow>
                   </TableHeader>

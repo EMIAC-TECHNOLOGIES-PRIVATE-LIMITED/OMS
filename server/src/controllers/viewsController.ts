@@ -7,20 +7,26 @@ import { CreateViewResponse, GetFilteredDataResponse, GetViewDataResponse, Updat
 import { transformDates } from '../utils/dateTransformer';
 import { PrismaModelInfo } from '../utils/prismaModelInfo';
 import { secondaryQueryBuilder } from '../utils/queryBuilder';
+import { flattenData } from '../utils/flatData';
 
 
 const modelInfo = new PrismaModelInfo();
 
 export const viewsController = {
     getView: async (req: AuthRequest, res: Response): Promise<Response> => {
+      
+
         const page = parseInt(req.query.page as string, 10) || 1;
         const pageSize = parseInt(req.query.pageSize as string, 10) || 25;
         const skip = (page - 1) * pageSize;
         const take = pageSize;
 
+     
+
         const { view, permittedColumns, userViews, modelName } = req;
 
         if (!modelName || !view || !permittedColumns) {
+           
             return res
                 .status(STATUS_CODES.BAD_REQUEST)
                 .json(
@@ -33,12 +39,24 @@ export const viewsController = {
                 );
         }
 
-
+       
         const query = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig);
         const query2 = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig, true);
 
+        if (modelName === 'Client') {
+            query.where = { pocId: req.user?.userId };
+            query2.where = { pocId: req.user?.userId };
+         
+        }
+
+        if (modelName === 'Order') {
+            query.where = { salesPersonId: req.user?.userId };
+            query2.where = { salesPersonId: req.user?.userId };
+        
+        }
 
         try {
+     
             const [data, filteredCount, totalCount] = await Promise.all([
                 (prismaClient as any)[modelName].findMany({
                     ...query,
@@ -53,22 +71,20 @@ export const viewsController = {
 
 
             let columnTypes = modelInfo.getModelColumns(modelName);
-
             const availableColumnsType = Object.fromEntries(
                 Object.entries(columnTypes).filter(([key]) => permittedColumns.includes(key))
             );
 
-            // convert the first letter of the object keys to lowercase in availableColumnsType
             const flatCols = Object.keys(availableColumnsType).reduce((acc, key) => {
                 const newKey = key.charAt(0).toLowerCase() + key.slice(1);
                 acc[newKey] = availableColumnsType[key];
                 return acc;
             }, {} as Record<string, string>);
 
+   
 
             const flatData = flattenData(data, modelName.toLowerCase(), flatCols);
-
-
+        
 
             const response = {
                 viewId: view.id,
@@ -84,19 +100,19 @@ export const viewsController = {
             } as GetViewDataResponse['data'];
 
             const transformedResponse = transformDates(response);
-
+          
             return res
                 .status(STATUS_CODES.OK)
                 .json(new APIResponse(STATUS_CODES.OK, "Data fetched successfully", transformedResponse, true));
         } catch (error: any) {
-
+          
             return res
                 .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
                 .json(
                     new APIError(
                         STATUS_CODES.INTERNAL_SERVER_ERROR,
                         "Error fetching data",
-                        [error],
+                        [error.message || error],
                         false
                     ).toJSON()
                 );
@@ -116,7 +132,7 @@ export const viewsController = {
         const filterConfig = req.body.appliedFilters;
 
         if (!modelName || !permittedColumns || !filterConfig) {
-            console.log(`[getView] Bad request: Model name, view, or permitted columns missing.`);
+
             return res
                 .status(STATUS_CODES.BAD_REQUEST)
                 .json(
@@ -133,6 +149,18 @@ export const viewsController = {
         // console.log('[getData controller] : query from secondary query builder is  : ', query)
 
         const query2 = secondaryQueryBuilder(modelName, permittedColumns, filterConfig, true);
+
+        if (modelName === 'Client') {
+            query.where = { pocId: req.user?.userId };
+            query2.where = { pocId: req.user?.userId };
+         
+        }
+
+        if (modelName === 'Order') {
+            query.where = { salesPersonId: req.user?.userId };
+            query2.where = { salesPersonId: req.user?.userId };
+        
+        }
 
 
         try {
@@ -296,79 +324,3 @@ export const viewsController = {
  * @param availableColumnsType - A reference object whose keys define the desired order.
  * @returns An array of flattened objects with keys sorted according to availableColumnsType.
  */
-const flattenData = (
-    data: Object[],
-    resource: string,
-    availableColumnsType: Record<string, any>
-): Record<string, any>[] => {
-
-    const flattenObject = (obj: Object, prefix: string = ''): Record<string, any> => {
-        return Object.entries(obj).reduce((acc: Record<string, any>, [key, value]) => {
-            const newKey = prefix ? `${prefix}.${key}` : key;
-
-
-
-            if (value === null) {
-                acc[newKey] = null;
-            } else if (typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
-                Object.assign(acc, flattenObject(value, newKey));
-            } else {
-                acc[newKey] = value;
-            }
-
-            return acc;
-        }, {});
-    };
-
-    const sortObjectKeysByReference = (
-        subset: Record<string, any>,
-        reference: Record<string, any>
-    ): Record<string, any> => {
-        const sorted: Record<string, any> = {};
-
-        // // Debug before sorting
-        // console.log('Before sorting - Date fields in subset:',
-        //     Object.keys(subset).filter(k => k.includes('Date')));
-
-        // First pass: handle keys that exist in reference
-        for (const refKey of Object.keys(reference)) {
-            if (Object.prototype.hasOwnProperty.call(subset, refKey)) {
-                sorted[refKey] = subset[refKey];
-            }
-        }
-
-        // Second pass: handle remaining keys from subset
-        for (const key of Object.keys(subset)) {
-            if (!Object.prototype.hasOwnProperty.call(sorted, key)) {
-                sorted[key] = subset[key];
-            }
-        }
-
-        // // Debug after sorting
-        // console.log('After sorting - Date fields in result:',
-        //     Object.keys(sorted).filter(k => k.includes('Date')));
-
-        return sorted;
-    };
-
-    return data.map((obj) => {
-        const flattened = flattenObject(obj);
-
-        // // Debug flattened object
-        // console.log('After flattening - Date fields:',
-        //     Object.keys(flattened).filter(k => k.includes('Date')));
-
-        const prefixed = Object.entries(flattened).reduce((acc: Record<string, any>, [key, value]) => {
-            const newKey = key.includes('.') ? key : `${resource}.${key}`;
-            acc[newKey] = value;
-            return acc;
-        }, {});
-
-        // // Debug after prefixing
-        // console.log('After prefixing - Date fields:',
-        //     Object.keys(prefixed).filter(k => k.includes('Date')));
-
-        const sorted = sortObjectKeysByReference(prefixed, availableColumnsType);
-        return sorted;
-    });
-};

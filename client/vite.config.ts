@@ -10,5 +10,11 @@ export default defineConfig({
       '@shared': '../shared/dist',
       "@": path.resolve(__dirname, "./src")
     }
+
+  },
+  server: {
+    hmr: {
+      overlay: false
+    }
   }
 })

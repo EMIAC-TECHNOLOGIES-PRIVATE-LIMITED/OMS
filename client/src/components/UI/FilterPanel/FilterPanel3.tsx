@@ -40,7 +40,7 @@ interface FilterPanelProps {
 interface LocalFilter {
     column?: string;
     operator?: string;
-    value?: string | number | boolean | Date;
+    value?: string | number | boolean | Date | null;
     isComplete: boolean;
 }
 
@@ -382,46 +382,61 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     }, []);
 
     const getOperatorsByType = useCallback((type: string): { value: string; label: string }[] => {
-        switch (type) {
-            case 'String':
-            case 'String?':
-                return [
-                    { value: 'contains', label: 'Contains' },
-                    { value: 'startsWith', label: 'Starts With' },
-                    { value: 'endsWith', label: 'Ends With' },
-                    { value: 'equals', label: 'Equals' },
-                    { value: 'in', label: 'In (comma-separated)' },
-                ];
-            case 'Int':
-            case 'Int?':
-                return [
-                    { value: 'gte', label: 'Greater Than or Equal To' },
-                    { value: 'lte', label: 'Less Than or Equal To' },
-                    { value: 'gt', label: 'Greater Than' },
-                    { value: 'lt', label: 'Less Than' },
-                    { value: 'equals', label: 'Equals' },
-                    { value: 'in', label: 'In (comma-separated)' },
-                ];
-            case 'Boolean':
-            case 'Boolean?':
-                return [{ value: 'equals', label: 'Equals' }];
-            case 'DateTime':
-            case 'DateTime?':
-                return [
-                    { value: 'equals', label: 'Equals' },
-                    { value: 'gt', label: 'After' },
-                    { value: 'lt', label: 'Before' },
-                ];
-            default:
-                const enumMatch = type.match(/^Enum\((.+?)\)\??$/);
-                if (enumMatch) {
-                    return [{ value: 'equals', label: 'Is' }];
-                }
-                return [{ value: 'equals', label: 'Equals' }];
+
+        const baseOperators = (() => {
+            switch (type) {
+                case 'String':
+                case 'String?':
+                    return [
+                        { value: 'contains', label: 'Contains' },
+                        { value: 'startsWith', label: 'Starts With' },
+                        { value: 'endsWith', label: 'Ends With' },
+                        { value: 'equals', label: 'Equals' },
+
+                    ];
+                case 'Int':
+                case 'Int?':
+                    return [
+                        { value: 'gte', label: 'Greater Than or Equal To' },
+                        { value: 'lte', label: 'Less Than or Equal To' },
+                        { value: 'gt', label: 'Greater Than' },
+                        { value: 'lt', label: 'Less Than' },
+                        { value: 'equals', label: 'Equals' },
+
+                    ];
+                case 'Boolean':
+                case 'Boolean?':
+                    return [{ value: 'equals', label: 'Equals' }];
+                case 'DateTime':
+                case 'DateTime?':
+                    return [
+                        { value: 'equals', label: 'Equals' },
+                        { value: 'gt', label: 'After' },
+                        { value: 'lt', label: 'Before' },
+                        {value: 'lte', label: 'On or Before'},
+                        {value: 'gte', label: 'On or After'}
+                    ];
+                default:
+                    const enumMatch = type.match(/^Enum\((.+?)\)\??$/);
+                    if (enumMatch) {
+                        return [{ value: 'equals', label: 'Is' }];
+                    }
+                    return [{ value: 'equals', label: 'Equals' }];
+            }
+        })();
+
+        if (type.endsWith('?')) {
+            return [
+                ...baseOperators,
+                { value: 'isNull', label: 'Is Null' },
+                { value: 'isNotNull', label: 'Is Not Null' }
+            ];
         }
+
+        return baseOperators;
     }, []);
 
-   const updateGlobalFilterState = useCallback((filters: LocalFilter[], connector?: 'AND' | 'OR') => {
+    const updateGlobalFilterState = useCallback((filters: LocalFilter[], connector?: 'AND' | 'OR') => {
         const completeFilters = filters.filter(f => f.isComplete);
         const newFilterConfig: FilterConfig = {
             ...filterConfig,
@@ -455,6 +470,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             const newFilters = [...prev];
             let processedValue = value;
 
+            // Handle column change
             if (field === 'column' && newFilters[index].isComplete) {
                 const previousColumnType = newFilters[index].column
                     ? availableColumnTypes[newFilters[index].column]
@@ -477,6 +493,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 }
             }
 
+            // Handle empty value
             if (field === 'value' && value === '') {
                 newFilters[index] = {
                     ...newFilters[index],
@@ -486,7 +503,19 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 return newFilters;
             }
 
-            // Handle DateTime and other type conversions
+            // Handle operator change for null operators
+            if (field === 'operator' && (value === 'isNull' || value === 'isNotNull')) {
+                newFilters[index] = {
+                    ...newFilters[index],
+                    operator: value,
+                    value: null,
+                    isComplete: true
+                };
+                debouncedUpdateGlobalState(newFilters);
+                return newFilters;
+            }
+
+            // Handle value changes for different types
             if (field === 'value' && newFilters[index].column) {
                 const columnType = availableColumnTypes[newFilters[index].column];
                 if (columnType === 'DateTime' || columnType === 'DateTime?') {
@@ -505,6 +534,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 }
             }
 
+            // Update the filter
             newFilters[index] = {
                 ...newFilters[index],
                 [field]: processedValue,
@@ -513,6 +543,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                     : !!(newFilters[index].column && newFilters[index].operator && newFilters[index].value !== undefined)
             };
 
+            // If filter is complete, update global state
             if (newFilters[index].isComplete) {
                 debouncedUpdateGlobalState(newFilters);
             }
@@ -562,6 +593,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         const columnType = filter.column ? availableColumnTypes[filter.column] : undefined;
         const operators = columnType ? getOperatorsByType(columnType) : [];
         const inputType = columnType ? getInputTypeForColumn(columnType) : 'text';
+        const isNullOperator = filter.operator === 'isNull' || filter.operator === 'isNotNull';
 
         return (
             <div key={index} className="flex items-center gap-2 mb-2">
@@ -583,20 +615,20 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                         disabled={!filter.column}
                     />
 
-                    {columnType === 'DateTime' || columnType === 'DateTime?' ? (
+                    {!isNullOperator && columnType === 'DateTime' || columnType === 'DateTime?' ? (
                         <DatePickerWithPresets
                             value={filter.value ? new Date(filter.value as string) : undefined}
                             onChange={(date) => handleFilterChange(index, 'value', date)}
                             disabled={!filter.column || !filter.operator}
                         />
-                    ) : inputType === 'select' || (columnType && columnType.match(/^Enum\((.+?)\)\??$/)) ? (
+                    ) : !isNullOperator && (inputType === 'select' || (columnType && columnType.match(/^Enum\((.+?)\)\??$/))) ? (
                         <ValueSelectionPopover
                             columnType={columnType as string}
                             value={filter.value}
                             onChange={(value) => handleFilterChange(index, 'value', value)}
                             disabled={!filter.column || !filter.operator}
                         />
-                    ) : (
+                    ) : !isNullOperator ? (
                         <Input
                             type={inputType}
                             placeholder="Enter value"
@@ -610,7 +642,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                             }}
                             disabled={!filter.column || !filter.operator}
                         />
-                    )}
+                    ) : null}
 
                     <Button
                         variant="ghost"
