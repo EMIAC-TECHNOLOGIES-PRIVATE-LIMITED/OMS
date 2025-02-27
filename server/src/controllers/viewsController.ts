@@ -14,19 +14,19 @@ const modelInfo = new PrismaModelInfo();
 
 export const viewsController = {
     getView: async (req: AuthRequest, res: Response): Promise<Response> => {
-      
+
 
         const page = parseInt(req.query.page as string, 10) || 1;
         const pageSize = parseInt(req.query.pageSize as string, 10) || 25;
         const skip = (page - 1) * pageSize;
         const take = pageSize;
 
-     
+
 
         const { view, permittedColumns, userViews, modelName } = req;
 
         if (!modelName || !view || !permittedColumns) {
-           
+
             return res
                 .status(STATUS_CODES.BAD_REQUEST)
                 .json(
@@ -39,24 +39,45 @@ export const viewsController = {
                 );
         }
 
-       
+
         const query = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig);
         const query2 = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig, true);
 
-        if (modelName === 'Client') {
-            query.where = { pocId: req.user?.userId };
-            query2.where = { pocId: req.user?.userId };
-         
-        }
 
-        if (modelName === 'Order') {
-            query.where = { salesPersonId: req.user?.userId };
-            query2.where = { salesPersonId: req.user?.userId };
-        
+        if (req.user?.role.name !== 'Admin') {
+            const accessIds = req.user?.userAccess.push(req.user?.userId);
+            if (modelName === 'Client') {
+                query.where = {
+                    pocId: {
+                        in: accessIds
+                    }
+                };
+                query2.where = {
+                    pocId: {
+                        in: accessIds
+                    }
+                };
+
+            }
+
+            if (modelName === 'Order') {
+                query.where = {
+                    salesPersonId:
+                    {
+                        in: accessIds
+                    }
+                };
+                query2.where = {
+                    salesPersonId: {
+                        in: accessIds
+                    }
+                };
+
+            }
         }
 
         try {
-     
+
             const [data, filteredCount, totalCount] = await Promise.all([
                 (prismaClient as any)[modelName].findMany({
                     ...query,
@@ -81,10 +102,10 @@ export const viewsController = {
                 return acc;
             }, {} as Record<string, string>);
 
-   
+
 
             const flatData = flattenData(data, modelName.toLowerCase(), flatCols);
-        
+
 
             const response = {
                 viewId: view.id,
@@ -100,12 +121,12 @@ export const viewsController = {
             } as GetViewDataResponse['data'];
 
             const transformedResponse = transformDates(response);
-          
+
             return res
                 .status(STATUS_CODES.OK)
                 .json(new APIResponse(STATUS_CODES.OK, "Data fetched successfully", transformedResponse, true));
         } catch (error: any) {
-          
+
             return res
                 .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
                 .json(
@@ -150,16 +171,36 @@ export const viewsController = {
 
         const query2 = secondaryQueryBuilder(modelName, permittedColumns, filterConfig, true);
 
-        if (modelName === 'Client') {
-            query.where = { pocId: req.user?.userId };
-            query2.where = { pocId: req.user?.userId };
-         
-        }
+        if (req.user?.role.name !== 'Admin') {
+            const accessIds = req.user?.userAccess.push(req.user?.userId);
+            if (modelName === 'Client') {
+                query.where = {
+                    pocId: {
+                        in: accessIds
+                    }
+                };
+                query2.where = {
+                    pocId: {
+                        in: accessIds
+                    }
+                };
 
-        if (modelName === 'Order') {
-            query.where = { salesPersonId: req.user?.userId };
-            query2.where = { salesPersonId: req.user?.userId };
-        
+            }
+
+            if (modelName === 'Order') {
+                query.where = {
+                    salesPersonId:
+                    {
+                        in: accessIds
+                    }
+                };
+                query2.where = {
+                    salesPersonId: {
+                        in: accessIds
+                    }
+                };
+
+            }
         }
 
 

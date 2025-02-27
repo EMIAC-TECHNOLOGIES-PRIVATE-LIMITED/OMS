@@ -38,7 +38,7 @@ router.use(async (req, res, next) => {
                 return next();
             }
         }
-        console.log("<--------------- CODE REACHED HERE --------------->");
+      
         return res.status(403).json(new APIError(STATUS_CODES.FORBIDDEN, "Invalid access token", [], false));
     }
 })

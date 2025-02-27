@@ -96,8 +96,6 @@ export const dataController = {
     createData: async (req: AuthRequest, res: Response): Promise<Response> => {
         try {
             const userId = req.user?.userId;
-
-            // Ensure userId is present
             if (!userId) {
                 return res.status(STATUS_CODES.UNAUTHORIZED)
                     .json(new APIError(STATUS_CODES.UNAUTHORIZED, "User not authenticated", [], false));

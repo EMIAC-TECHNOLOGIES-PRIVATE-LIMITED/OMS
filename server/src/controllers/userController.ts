@@ -191,6 +191,7 @@ export async function signInController(req: Request, res: Response): Promise<Res
                 email: userFound.email,
                 userId: userFound.id,
                 role: userFound.role,
+                userAccess : userFound.userAccess,
             },
             jwtSecret,
             { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '7d'}

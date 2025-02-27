@@ -136,6 +136,7 @@ export interface JwtPayload {
         id: number;
         name: string
     }
+    userAccess: number[];
 }
 
 // Resource Interface
@@ -157,5 +158,5 @@ export interface AuthRequest extends Request {
     modelName?: string;
     view?: View;
     userViews?: { id: number; viewName: string }[];
-    filterConfig? : FilterConfig
+    filterConfig?: FilterConfig
 }

@@ -162,6 +162,8 @@ model User {
   resourceOverrides   ResourceOverride[]
   refreshToken        String[]
 
+  userAccess Int[]
+
   clients Client[]
   orders  Order[]
   sites   Site[]
