@@ -23,7 +23,7 @@ import { createData } from '@/utils/apiService/dataAPI';
 import {
   ICellRendererParams,
 } from 'ag-grid-community';
-import {  useSetRecoilState } from 'recoil';
+import { useSetRecoilState } from 'recoil';
 import { showFabAtom } from '@/store/atoms/atoms';
 
 // Updated styles to fix cell editing alignment
@@ -291,8 +291,9 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
   const filteredColumns = useMemo(() => {
     return Object.entries(availableColumnTypes).reduce<Record<string, string>>(
       (acc, [key, value]) => {
-        const [, childField] = key.split('.');
-        if (
+        const [table, childField] = key.split('.');
+        console.log('Table:', table, 'ChildField:', childField);
+        if ((
           ![
             'id',
             'siteId',
@@ -302,7 +303,7 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
             'vendorId',
             'createdAt',
             'updatedAt',
-          ].includes(childField)
+          ].includes(childField)) || (table === 'Poc')
         ) {
           acc[key] = value;
         }

@@ -33,14 +33,14 @@ export interface SignOutResponse {
     };
 }
 
-export interface SignUpRequest {
+export interface createUserRequest {
     name: string;
     email: string;
     password: string;
     roleId: number;
 }
 
-export interface SignUpResponse {
+export interface createUserResponse {
     status: number;
     message: string;
     success: boolean;
@@ -82,14 +82,19 @@ export interface GetAllRolesResponse {
 export interface GetAllUsersResponse {
     status: number;
     message: string;
-    data: Array<{
-        id: number;
-        name: string;
-        role: {
+    data: {
+        users: Array<{
+            id: number;
             name: string;
-        };
-        suspended: boolean;
-    }>;
+            email: string;
+            role: {
+                name: string;
+            };
+            suspended: boolean;
+
+        }>;
+        totalUsers: number;
+    }
     success: boolean;
 }
 
@@ -104,6 +109,14 @@ export interface GetAllPermissionsResponse {
         resources: Array<{
             id: number;
             key: string
+        }>;
+        team: Array<{
+            id: number;
+            name: string;
+            role: {
+                id: number;
+                name: string;
+            }
         }>;
     };
     success: boolean;
@@ -156,6 +169,7 @@ export interface GetUserPermissionsResponse {
             resourceId: number;
             granted: boolean;
         }>;
+        userAccess: number[];
     };
     success: boolean;
 }
@@ -191,6 +205,7 @@ export interface ManageUserAccessRequest {
         resourceId: number;
         granted: boolean;
     }>;
+    userAccess: number[];
 }
 
 export interface ManageUserAccessResponse {
@@ -223,6 +238,9 @@ export interface GetViewDataResponse {
             [key: string]: string | number | boolean | Date | unknown;
         }>;
         availableColumnsType: {
+            [key: string]: string;
+        };
+        columnDefinations: {
             [key: string]: string;
         };
         appliedFilters: FilterConfig;

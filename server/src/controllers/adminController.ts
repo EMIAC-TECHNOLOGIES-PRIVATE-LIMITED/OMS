@@ -12,9 +12,14 @@ import {
     GetUserPermissionsResponse,
     GetRolePermissionsResponse,
     GetAllPermissionsResponse,
+    createUserResponse,
 } from '../../../shared/src/types';
 import { APIResponse, APIError } from '../utils/apiHandler';
 import { getAllPermissionsAndResources, getRolePermissionsAndResources, getUserPermissionsAndResources } from '../utils/getPermissions';
+import { SignupBody, signupSchema } from '../schemas/signupSchema';
+import STATUS_CODES from '../constants/statusCodes';
+import bcrypt from 'bcrypt';
+
 
 export async function suspendUser(req: Request, res: Response): Promise<Response<SuspendUserResponse>> {
     const { userId }: SuspendUserRequest = req.body;
@@ -63,7 +68,7 @@ export async function revokeUser(req: Request, res: Response): Promise<Response<
 }
 
 export async function manageUserAccess(req: Request, res: Response): Promise<Response<ManageUserAccessResponse>> {
-    const { userId, permissionOverride, resourceOverride, roleId }: ManageUserAccessRequest = req.body;
+    const { userId, permissionOverride, resourceOverride, roleId, userAccess }: ManageUserAccessRequest = req.body;
 
     try {
 
@@ -73,6 +78,7 @@ export async function manageUserAccess(req: Request, res: Response): Promise<Res
                     roleId,
                     permissionOverrides: { deleteMany: {} },
                     resourceOverrides: { deleteMany: {} },
+                    userAccess: userAccess
                 }
             });
         }
@@ -100,16 +106,6 @@ export async function manageUserAccess(req: Request, res: Response): Promise<Res
                     granted: override.granted,
                 })),
             });
-
-            await prismaClient.view.deleteMany({
-                where: {
-                    AND: [
-                        { userId },
-                        { viewName: 'grid' },
-                    ],
-                },
-            });
-
         }
 
         return res.status(200).json(new APIResponse(200, 'User access updated successfully', {}, true).toJSON());
@@ -137,15 +133,13 @@ export async function getRoles(req: Request, res: Response): Promise<Response<Ge
 }
 
 export async function getUsers(req: Request, res: Response): Promise<Response<GetAllUsersResponse>> {
-    const { page = 1, pageSize = 25, name } = req.body;
+    const { name } = req.body;
 
     try {
-        const skip = (page - 1) * pageSize;
-
-
         type UserWithRole = {
             id: number;
             name: string;
+            email: string;
             role: { name: string };
             suspended: boolean;
         };
@@ -154,15 +148,16 @@ export async function getUsers(req: Request, res: Response): Promise<Response<Ge
             select: {
                 id: true,
                 name: true,
+                email: true,
                 role: { select: { name: true } },
                 suspended: true,
+                _count : true
             },
             where: {
                 role: { name: { notIn: ['admin'] } },
             },
             orderBy: { role: { name: 'asc' } },
-            skip,
-            take: pageSize,
+          
         };
 
         if (name) {
@@ -174,7 +169,10 @@ export async function getUsers(req: Request, res: Response): Promise<Response<Ge
 
         const users = await prismaClient.user.findMany(query) as unknown as UserWithRole[];
 
-        const data: GetAllUsersResponse['data'] = users;
+        const data: GetAllUsersResponse['data'] = {
+            users: users,
+            totalUsers: users.length
+        };
 
         return res.status(200).json(new APIResponse(200, 'Users fetched successfully', data, true).toJSON());
     } catch (error) {
@@ -227,6 +225,8 @@ export async function getUserAccess(req: Request, res: Response): Promise<Respon
                 resourceId: resourceOverride.resourceId,
                 granted: resourceOverride.granted,
             })) || [],
+            userAccess: user.userAccess || [],
+
         };
 
 
@@ -257,7 +257,16 @@ export async function getRoleAccess(req: Request, res: Response): Promise<Respon
 
 export async function getAllAccess(req: Request, res: Response): Promise<Response<GetAllPermissionsResponse>> {
     try {
-        const data: GetAllPermissionsResponse['data'] = await getAllPermissionsAndResources();
+        const team = await prismaClient.user.findMany({
+            where: {},
+            select: {
+                id: true,
+                name: true,
+                role: true
+            }
+        })
+        const allPermissions = await getAllPermissionsAndResources();
+        const data: GetAllPermissionsResponse['data'] = { ...allPermissions, team };
 
         return res.status(200).json(new APIResponse(200, 'All permissions and resources fetched successfully', data, true).toJSON());
     } catch (error) {
@@ -290,14 +299,14 @@ export async function manageRoleAccess(req: Request, res: Response): Promise<Res
             return res.status(404).json(new APIError(404, 'Role not found or unable to update', [], false).toJSON());
         }
 
-        await prismaClient.view.deleteMany({
-            where: {
-                AND: [
-                    { viewName: 'grid' },
-                    { user: { roleId } },
-                ],
-            },
-        });
+        // await prismaClient.view.deleteMany({
+        //     where: {
+        //         AND: [
+        //             { viewName: 'grid' },
+        //             { user: { roleId } },
+        //         ],
+        //     },
+        // });
 
         return res.status(200).json(new APIResponse(200, 'Role updated successfully', {}, true).toJSON());
     } catch (error) {
@@ -305,3 +314,105 @@ export async function manageRoleAccess(req: Request, res: Response): Promise<Res
         return res.status(500).json(new APIError(500, 'Internal server error', [error instanceof Error ? error.message : 'Unknown error'], false).toJSON());
     }
 }
+
+export async function createUser(req: Request, res: Response): Promise<Response<createUserResponse>> {
+    const result = signupSchema.safeParse(req.body);
+    const saltRounds = 10;
+
+    if (!result.success) {
+        return res.status(STATUS_CODES.BAD_REQUEST).json(
+            new APIError(
+                STATUS_CODES.BAD_REQUEST,
+                "Invalid input",
+                result.error.errors,
+                false
+            ).toJSON()
+        );
+    }
+
+    const body: SignupBody = result.data;
+
+    const userExist = await prismaClient.user.findUnique({
+        where: {
+            email: body.email,
+        },
+    });
+
+    if (userExist) {
+        return res.status(STATUS_CODES.CONFLICT).json(
+            new APIError(
+                STATUS_CODES.CONFLICT,
+                "Email ID already in use.",
+                [],
+                false
+            ).toJSON()
+        );
+    }
+
+    try {
+        const validRole = await prismaClient.role.findUnique({
+            where: {
+                id: body.roleId,
+            },
+        });
+
+        if (!validRole) {
+            return res.status(STATUS_CODES.BAD_REQUEST).json(
+                new APIError(
+                    STATUS_CODES.BAD_REQUEST,
+                    "Invalid roleId provided",
+                    [],
+                    false
+                ).toJSON()
+            );
+        }
+    } catch (error) {
+        console.error("Role validation failed:", error);
+        return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
+            new APIError(
+                STATUS_CODES.INTERNAL_SERVER_ERROR,
+                "Role validation failed",
+                [error instanceof Error ? error.message : "Unknown error"],
+                false
+            ).toJSON()
+        );
+    }
+
+    try {
+        const salt = await bcrypt.genSalt(saltRounds);
+        const hashedPassword = await bcrypt.hash(body.password, salt);
+
+        const newUser = await prismaClient.user.create({
+            data: {
+                name: body.name,
+                email: body.email,
+                password: hashedPassword,
+                roleId: body.roleId,
+            },
+        });
+
+        return res.status(STATUS_CODES.CREATED).json(
+            new APIResponse(
+                STATUS_CODES.CREATED,
+                "User created successfully",
+                {
+                    userId: newUser.id,
+                },
+                true
+            ).toJSON()
+        );
+    } catch (error) {
+        console.error("User creation failed:", error);
+        return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
+            new APIError(
+                STATUS_CODES.INTERNAL_SERVER_ERROR,
+                "User creation failed",
+                [error instanceof Error ? error.message : "Unknown error"],
+                false
+            ).toJSON()
+        );
+    }
+
+}
+
+

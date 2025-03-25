@@ -1,10 +1,10 @@
 import express from "express";
-import { signInController, signOutController, signUpController } from "../controllers/userController";
+import { signInController, signOutController } from "../controllers/userController";
 import { userMiddleware } from "../middlewares/userMiddleware";
 import { userInfo } from "../controllers/userController";
 const router = express.Router();
 
-router.post('/signup', signUpController);
+
 router.post('/signin', signInController);
 router.post('/signout', signOutController)
 

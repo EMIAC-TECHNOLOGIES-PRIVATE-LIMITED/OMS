@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { FilterConfig } from '../../../../../shared/src/types';
-import { EyeOff, Check } from 'lucide-react';
+import { EyeOff, Check, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,6 +8,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuGroup
 } from '@/components/ui/dropdown-menu';
 import {
   Command,
@@ -52,9 +53,8 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
 
   const availableColumns = useMemo(
     () => Object.keys(filteredColumns),
-    [availableColumnsTypes]
+    [filteredColumns]
   );
-
 
   const sanitizeFilterConfig = (columns: string[]) => {
     const updatedFilterConfig = { ...filterConfig };
@@ -68,7 +68,6 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
 
     return updatedFilterConfig;
   };
-
 
   const handleColumnsChange = (updatedColumns: string[]) => {
     const newFilterConfig = sanitizeFilterConfig(updatedColumns);
@@ -85,10 +84,18 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
     return `${parentField.charAt(0).toUpperCase() + parentField.slice(1)} ${childField.charAt(0).toUpperCase() + childField.slice(1)}`;
   };
 
+  // New handlers for Show All and Hide All
+  const handleShowAll = () => {
+    handleColumnsChange(availableColumns);
+  };
+
+  const handleHideAll = () => {
+    handleColumnsChange([]);
+  };
 
   return (
     <div className="relative">
-      <DropdownMenu >
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="secondaryFlat"
@@ -106,8 +113,33 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
             <span>Hide Columns ({filterConfig.columns?.length || 0})</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-auto overflow-y-visible " align="end" sideOffset={4}>
+        <DropdownMenuContent className="w-auto overflow-y-visible" align="end" sideOffset={4}>
           <DropdownMenuLabel className='font-bold'>Select Columns</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+
+          {/* New Show All / Hide All buttons */}
+          <DropdownMenuGroup className="flex items-center justify-between p-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 flex-1"
+              onClick={handleShowAll}
+            >
+              <EyeOff className="w-3 h-3" />
+              <span>Hide All</span>
+
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 flex-1"
+              onClick={handleHideAll}
+            >
+              <Eye className="w-3 h-3" />
+              <span>Show All</span>
+            </Button>
+          </DropdownMenuGroup>
+
           <DropdownMenuSeparator />
           <Command>
             <CommandInput placeholder="Search columns..." />

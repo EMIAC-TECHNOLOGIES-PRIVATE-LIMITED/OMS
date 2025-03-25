@@ -45,3 +45,24 @@ export const showFabAtom = atom<boolean>({
   key: 'showAtom',
   default: true,
 });
+
+
+export const filterPanelOpenStateAtom = atom<boolean>({
+  key: 'filterPanelOpenStateAtom',
+  default: false,
+});
+
+interface LocalFilter {
+  column?: string;
+  operator?: string;
+  value?: string | number | boolean | Date | null;
+  isComplete: boolean;
+}
+
+export const filterPanelLocalFiltersAtom = atom<LocalFilter[]>({
+  key: 'filterPanelLocalFiltersAtom',
+  default: [],
+});
+
+
+

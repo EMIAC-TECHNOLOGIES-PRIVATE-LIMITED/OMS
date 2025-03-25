@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, } from "react";
 import { Spinner } from '../UI/index';
 import { AppSidebar } from "@/components/app-sidebar";
-
 import {
   deleteView,
   getFilteredData,
@@ -31,7 +30,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Input } from "../ui/input";
-
 import ColumnPanelNew from "../UI/ColumnPanel/ColumnPanelNew";
 import { SortingPanelNew } from "../UI";
 import PaginationControlsNew from "../UI/PaginationControls/PaginationControls";
@@ -39,8 +37,9 @@ import FilterPanelNew from "../UI/FilterPanel/FilterPanel3";
 import { Button } from "../ui/button";
 import debounce from "lodash.debounce";
 import DataGrid from "../DataTable/DataTable";
-
-
+import { useToast } from "@/hooks/use-toast";
+import { useSetRecoilState } from "recoil";
+import { showFabAtom } from "@/store/atoms/atoms";
 
 interface DataPageProps {
   apiEndpoint: string;
@@ -63,6 +62,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
     connector: "AND",
     sort: []
   });
+  const { toast } = useToast();
+  const setShowFAB = useSetRecoilState(showFabAtom);
   const [dirtyFilter, setDirtyFilter] = useState(false);
   const initialFilterConfig = useRef<string | null>(null);
   const [page, setPage] = useState<number>(1);
@@ -72,6 +73,9 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   const [currentViewName, setCurrentViewName] = useState<string>("");
   const [initialViewName, setInitialViewName] = useState<string>("");
   const [availableColumns, setAvailableColumns] = useState<{
+    [key: string]: string;
+  }>({});
+  const [columnDescriptions, setColumnDescriptions] = useState<{
     [key: string]: string;
   }>({});
 
@@ -92,7 +96,6 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => handleClickOutside(e);
-
     if (isModalOpen) {
       document.addEventListener("mousedown", handler);
       return () => document.removeEventListener("mousedown", handler);
@@ -121,6 +124,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
         setTotalCount(data.totalCount);
         setFilterCount(data.filteredCount);
         setAvailableColumns(data.availableColumnsType);
+        setColumnDescriptions(data.columnDefinations);
         setFilterConfig(data.appliedFilters);
         setCurrentViewName(data.viewName);
         setInitialViewName(data.viewName);
@@ -216,6 +220,17 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
           finalName = getRandomCartoonName();
           setCurrentViewName(finalName);
         }
+        if (views.some(v => v.viewName === finalName)) {
+          setShowFAB(false);
+          setTimeout(() => setShowFAB(true), 3500);
+          toast({
+            title: "View name already exists",
+            description: "Please choose a different name",
+            variant: 'destructive',
+            duration: 3000
+          })
+          return;
+        }
         const resp = await createView(resource, finalName, filterConfig ? filterConfig : {});
         if (resp.success) {
           setCurrentViewId(resp.data.newViewId);
@@ -224,6 +239,17 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
           setInitialViewName(finalName);
         }
       } else {
+        if (views.some(v => v.viewName === currentViewName && v.id !== currentViewId)) {
+          setShowFAB(false);
+          setTimeout(() => setShowFAB(true), 3500);
+          toast({
+            title: "View name already exists",
+            description: "Please choose a different name",
+            variant: 'destructive',
+            duration: 3000
+          })
+          return;
+        }
         const resp = await updateView(resource, currentViewId, currentViewName, filterConfig);
         if (resp.success) {
           setInitialViewName(currentViewName);
@@ -355,7 +381,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                       <PaginationControlsNew
                         page={page}
                         pageSize={pageSize}
-                        totalPages={Math.ceil((totalCount ?? 0) / pageSize)}
+                        totalPages={Math.ceil((filterCount ?? 0) / pageSize)}
                         handlePageChange={handlePageChange}
                       />
                     </BreadcrumbItem>
@@ -376,6 +402,7 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                     <DataGrid
                       data={tableData}
                       availableColumnTypes={availableColumns}
+                      columnDescriptions={columnDescriptions}
                       loading={loading}
                       resource={resource}
                       filteredColumns={filteredColumns}
@@ -388,6 +415,8 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
                         fetchFilteredData(filterConfig, page, pageSize)
                         setTotalCount((prev) => prev ? prev + addedRecords : addedRecords);
                       }}
+                      filterConfig={filterConfig}
+                      handleFilterChange={handleFilterChange}
                     />
 
                   </div>

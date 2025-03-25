@@ -9,6 +9,7 @@ export interface RoleTableRow {
 export interface UserTableRow {
   srNo: number;
   name: string;
+  email: string;
   role: string;
   isActive: JSX.Element;
   id: number;

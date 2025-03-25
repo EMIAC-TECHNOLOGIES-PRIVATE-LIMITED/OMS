@@ -9,10 +9,10 @@ router.put('/:resource/update', dataMiddleware, dataController.updateData);
 router.delete('/:resource/delete', dataMiddleware, dataController.deleteData);
 router.put('/:resource/create', dataMiddleware, dataController.createData);
 
-router.get('/:resource/:viewId?', viewsMiddleware, viewsController.getView);
+router.get('/:resource/:viewId?', viewsMiddleware,  viewsController.getView);
 
 router.post('/:resource', viewsMiddleware, viewsController.createView);
-router.post('/:resource/data', viewsMiddleware, viewsController.getData);
+router.post('/:resource/data', viewsMiddleware,  viewsController.getData);
 
 router.put('/:resource/', viewsMiddleware, viewsController.updateView);
 router.delete('/:resource/', viewsMiddleware, viewsController.deleteView);

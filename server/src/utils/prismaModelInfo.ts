@@ -12,7 +12,7 @@ export class PrismaModelInfo {
         this.prisma = prismaClient;
         // Access the Data Model Meta Format (DMMF)
         this.dmmf = (Prisma as any).dmmf;
-       
+
     }
 
     // Helper: retrieve a model definition from the DMMF by name (case-insensitive)
@@ -40,8 +40,8 @@ export class PrismaModelInfo {
                 fields[`${model.name}.${field.name}`] = fieldType;
             }
         }
-     
-        return fields; 
+
+        return fields;
     }
 
     /**
@@ -59,76 +59,76 @@ export class PrismaModelInfo {
         const cacheKey = `modelColumns:${modelLower}`;
         const cachedResult = modelInfoCache.get<{ [column: string]: string }>(cacheKey);
         if (cachedResult) {
-
             return cachedResult;
         }
 
         let columns: { [column: string]: string } = {};
-   
 
         switch (modelLower) {
-            case 'client':
-            case 'vendor': {
-                const modelDef = this.getModelDefinition(modelName);
-                if (!modelDef) {
-                    throw new Error(`Model ${modelName} not found in schema`);
-                }
+            case 'client': {
+                const modelDef = this.getModelDefinition('Client');
+                if (!modelDef) throw new Error(`Model Client not found in schema`);
                 columns = this.getScalarFields(modelDef);
+
+                // Add poc.name field
+                columns['Poc.name'] = 'String';
+                break;
+            }
+            case 'vendor': {
+                const modelDef = this.getModelDefinition('Vendor');
+                if (!modelDef) throw new Error(`Model Vendor not found in schema`);
+                columns = this.getScalarFields(modelDef);
+
+                // Add poc.name field
+                columns['Poc.name'] = 'String';
                 break;
             }
             case 'site': {
-                // For Site, include its own scalar fields…
                 const siteDef = this.getModelDefinition('Site');
-                if (!siteDef) {
-                    throw new Error(`Model Site not found in schema`);
-                }
+                if (!siteDef) throw new Error(`Model Site not found in schema`);
                 columns = this.getScalarFields(siteDef);
-                // …plus only the forward relation: Vendor.
                 const vendorDef = this.getModelDefinition('Vendor');
                 if (vendorDef) {
                     const vendorColumns = this.getScalarFields(vendorDef);
                     columns = { ...columns, ...vendorColumns };
                 }
+
+                // Add poc.name field
+                columns['Poc.name'] = 'String';
                 break;
             }
             case 'order': {
-                // For Order, include its own scalar fields…
                 const orderDef = this.getModelDefinition('Order');
-                if (!orderDef) {
-                    throw new Error(`Model Order not found in schema`);
-                }
+                if (!orderDef) throw new Error(`Model Order not found in schema`);
                 columns = this.getScalarFields(orderDef);
-                // …plus forward relation: Client.
                 const clientDef = this.getModelDefinition('Client');
                 if (clientDef) {
                     const clientColumns = this.getScalarFields(clientDef);
                     columns = { ...columns, ...clientColumns };
                 }
-                // …plus forward relation: Site.
                 const siteDef = this.getModelDefinition('Site');
                 if (siteDef) {
                     const siteColumns = this.getScalarFields(siteDef);
                     columns = { ...columns, ...siteColumns };
-                    // …and for Site, include its forward relation: Vendor.
                     const vendorDef = this.getModelDefinition('Vendor');
                     if (vendorDef) {
                         const vendorColumns = this.getScalarFields(vendorDef);
                         columns = { ...columns, ...vendorColumns };
                     }
                 }
+
+                // Add salesPerson.name field
+                columns['SalesPerson.name'] = 'String';
                 break;
             }
             default: {
                 const modelDef = this.getModelDefinition(modelName);
-                if (!modelDef) {
-                    throw new Error(`Model ${modelName} not found in schema`);
-                }
+                if (!modelDef) throw new Error(`Model ${modelName} not found in schema`);
                 columns = this.getScalarFields(modelDef);
                 break;
             }
         }
         modelInfoCache.set(cacheKey, columns);
-       
         return columns;
     }
 

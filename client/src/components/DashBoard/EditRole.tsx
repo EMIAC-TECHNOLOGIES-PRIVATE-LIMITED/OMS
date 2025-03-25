@@ -1,5 +1,5 @@
-import React, { useEffect, useState, ChangeEvent } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom'; // Add useLocation
 import {
   getAllPermissions,
   getRolePermissions,
@@ -11,12 +11,29 @@ import {
   GetRolePermissionsResponse,
   ManageRoleAccessResponse,
 } from '../../../../shared/src/types';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import {
+  Card,
+  CardHeader,
+  CardContent,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const EditRole: React.FC = () => {
   const { roleId } = useParams<{ roleId: string }>();
   const navigate = useNavigate();
+  const { state } = useLocation(); // Access navigation state
+  const roleName = (state as { roleName?: string } | undefined)?.roleName || 'Unknown Role'; // Default if not provided
+  const { toast } = useToast();
 
   // State: list of all permissions & resources
   const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
@@ -44,15 +61,8 @@ const EditRole: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
-  // Track expanded/collapsed sections by permission ID
-  const [expandedPermissions, setExpandedPermissions] = useState<{ [key: number]: boolean }>({});
-
-  /**
-   * Fetch global permissions/resources and role-specific data
-   */
+  // Fetch global permissions/resources and role-specific data
   useEffect(() => {
     const fetchRoleData = async () => {
       if (!roleId) {
@@ -65,19 +75,18 @@ const EditRole: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch all permissions and resources
         const permsResponse: GetAllPermissionsResponse = await getAllPermissions();
         if (permsResponse.success) {
-          // Filter out permissions starting with underscore (e.g., _create_site)
-          const permissions = permsResponse.data.permissions
-            .map((p) => ({ id: p.id, name: p.key }));
+          const permissions = permsResponse.data.permissions.map((p) => ({
+            id: p.id,
+            name: p.key,
+          }));
           setAllPermissions(permissions);
 
-          // Map resources, keeping the full key but preparing for parsing
           const resources = permsResponse.data.resources.map((r) => ({
             id: r.id,
-            table: r.key.split('.')[0].toLowerCase(), // e.g., "site" from "Site.id"
-            column: r.key.split('.')[1], // e.g., "id" from "Site.id"
+            table: r.key.split('.')[0].toLowerCase(),
+            column: r.key.split('.')[1],
           }));
           setAllResources(resources);
         } else {
@@ -86,7 +95,6 @@ const EditRole: React.FC = () => {
           return;
         }
 
-        // Fetch role's current permissions and resources
         const rolePermsResponse: GetRolePermissionsResponse = await getRolePermissions(
           parseInt(roleId, 10)
         );
@@ -122,43 +130,30 @@ const EditRole: React.FC = () => {
     fetchRoleData();
   }, [roleId]);
 
-  /**
-   * Detect if the form has been modified
-   */
+  // Detect if the form has been modified
   useEffect(() => {
-    const modified =
-      JSON.stringify(initialOverrides) !== JSON.stringify(currentOverrides);
+    const modified = JSON.stringify(initialOverrides) !== JSON.stringify(currentOverrides);
     setIsModified(modified);
   }, [initialOverrides, currentOverrides]);
 
-  /**
-   * Check if a permission is granted
-   */
+  // Check if a permission is granted
   const isPermissionGranted = (permId: number): boolean => {
     const override = currentOverrides.permissions.find((p) => p.id === permId);
     return override?.granted ?? false;
   };
 
-  /**
-   * Check if a resource is granted
-   */
+  // Check if a resource is granted
   const isResourceGranted = (resId: number): boolean => {
     const override = currentOverrides.resources.find((r) => r.id === resId);
     return override?.granted ?? false;
   };
 
-  /**
-   * Toggle a permission’s granted status and update related resources
-   */
-  const handlePermissionChange = (permissionId: number) => (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
-    const granted = e.target.checked;
-
+  // Toggle a permission’s granted status and update related resources
+  const handlePermissionChange = (permissionId: number) => (checked: boolean) => {
     setCurrentOverrides((prev) => {
-      let updatedPermissions = toggleItem(prev.permissions, permissionId, granted);
+      let updatedPermissions = toggleItem(prev.permissions, permissionId, checked);
 
-      if (!granted) {
+      if (!checked) {
         const permObj = allPermissions.find((p) => p.id === permissionId);
         if (permObj) {
           const relatedResources = allResources.filter(
@@ -183,15 +178,10 @@ const EditRole: React.FC = () => {
     });
   };
 
-  /**
-   * Toggle a resource’s granted status
-   */
-  const handleResourceChange = (resourceId: number) => (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
-    const granted = e.target.checked;
+  // Toggle a resource’s granted status
+  const handleResourceChange = (resourceId: number) => (checked: boolean) => {
     setCurrentOverrides((prev) => {
-      const updatedResources = toggleItem(prev.resources, resourceId, granted);
+      const updatedResources = toggleItem(prev.resources, resourceId, checked);
       return {
         ...prev,
         resources: updatedResources,
@@ -199,9 +189,21 @@ const EditRole: React.FC = () => {
     });
   };
 
-  /**
-   * Toggle logic for updating array of { id, granted }
-   */
+  // Select/Deselect all resources for a permission
+  const handleSelectAllResources = (resources: Resource[]) => (checked: boolean) => {
+    setCurrentOverrides((prev) => {
+      let updatedResources = [...prev.resources];
+      resources.forEach((resource) => {
+        updatedResources = toggleItem(updatedResources, resource.id, checked);
+      });
+      return {
+        ...prev,
+        resources: updatedResources,
+      };
+    });
+  };
+
+  // Toggle logic for updating array of { id, granted }
   const toggleItem = (
     arr: Array<{ id: number; granted: boolean }>,
     id: number,
@@ -216,18 +218,19 @@ const EditRole: React.FC = () => {
     return [...arr, { id, granted }];
   };
 
-  /**
-   * Save changes to the server
-   */
+  // Save changes to the server
   const handleSave = async () => {
     if (!roleId) {
-      setSaveError('Role ID is missing.');
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Role ID is missing.',
+        duration: 5000
+      });
       return;
     }
 
     setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(null);
 
     try {
       const finalPermissions = currentOverrides.permissions
@@ -246,49 +249,55 @@ const EditRole: React.FC = () => {
       if (response.success) {
         setInitialOverrides(currentOverrides);
         setIsModified(false);
-        setSaveSuccess('Role access updated successfully.');
+        toast({
+          title: 'Success',
+          description: 'Role access updated successfully.',
+          duration: 3000,
+          className: 'border border-brand ',
+        });
       } else {
-        setSaveError(response.message || 'Failed to update role access.');
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: response.message || 'Failed to update role access.',
+          duration: 5000
+        });
       }
     } catch (err: any) {
-      setSaveError(err.message || 'An unexpected error occurred while saving.');
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'An unexpected error occurred while saving.',
+        duration: 5000
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  /**
-   * Cancel and navigate back
-   */
+  // Cancel and navigate back
   const handleCancel = () => {
     navigate('/dashboard/manageroles');
-  };
-
-  /**
-   * Toggle expanded/collapsed state for a permission section
-   */
-  const togglePermissionSection = (permissionId: number) => {
-    setExpandedPermissions((prev) => ({
-      ...prev,
-      [permissionId]: !prev[permissionId],
-    }));
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <span className="text-gray-500">Loading role data...</span>
+        <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+        <span className="ml-2 text-gray-500">Loading role data...</span>
       </div>
     );
   }
 
   if (error) {
-    return <div className="p-4 text-red-500">{error}</div>;
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
   }
 
-  /**
-   * Group resources by their permission prefix (e.g., "site" from "Site.id")
-   */
+  // Group resources by their permission prefix
   const permissionsWithResources: Array<{
     permission: Permission;
     resources: Resource[];
@@ -300,111 +309,101 @@ const EditRole: React.FC = () => {
   }));
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h2 className="text-2xl font-semibold mb-4 sm:mb-0">Edit Role Permissions</h2>
-        <div className="flex space-x-3">
-          <button
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-2xl font-semibold">
+          Edit Role Permissions : {roleName}
+        </h2>
+        <div className="flex space-x-3 mt-4 sm:mt-0">
+          <Button
             onClick={handleSave}
             disabled={!isModified || saving}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              !isModified || saving
-                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+            variant={isModified && !saving ? 'brandOutline' : 'outline'}
           >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-          <button
-            onClick={handleCancel}
-            disabled={saving}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              saving
-                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                : 'bg-red-600 text-white hover:bg-red-700'
-            }`}
-          >
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save'
+            )}
+          </Button>
+          <Button onClick={handleCancel} disabled={saving} variant="destructiveOutline">
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
 
-      {saveSuccess && (
-        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">{saveSuccess}</div>
-      )}
-      {saveError && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">{saveError}</div>
-      )}
-
-      <div className="space-y-4">
+      <Accordion type="multiple" className="space-y-4">
         {permissionsWithResources.map(({ permission, resources }) => {
           const permGranted = isPermissionGranted(permission.id);
-          const isExpanded = expandedPermissions[permission.id] || false;
           const selectedCount = resources.filter((r) => isResourceGranted(r.id)).length;
           const totalCount = resources.length;
+          const allResourcesSelected = selectedCount === totalCount && totalCount > 0;
 
           return (
-            <div key={permission.id} className="bg-white shadow rounded p-4">
-              <button
-                type="button"
-                onClick={() => togglePermissionSection(permission.id)}
-                className="w-full flex items-center justify-between"
-              >
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`permission-${permission.id}`}
-                    checked={permGranted}
-                    onChange={handlePermissionChange(permission.id)}
-                    className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                  />
-                  <label
-                    htmlFor={`permission-${permission.id}`}
-                    className="font-medium text-gray-700"
-                  >
-                    {permission.name.charAt(0).toUpperCase() + permission.name.slice(1)}
-                  </label>
-                  <span className="ml-2 text-sm text-gray-500">
-                    ({selectedCount} / {totalCount} selected)
-                  </span>
-                </div>
-                {isExpanded ? (
-                  <ChevronUpIcon className="h-5 w-5 text-gray-600" />
-                ) : (
-                  <ChevronDownIcon className="h-5 w-5 text-gray-600" />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    key="resource-list"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden mt-4"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <AccordionItem value={`permission-${permission.id}`} key={permission.id}>
+              <Card>
+                <CardHeader>
+                  <AccordionTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`permission-${permission.id}`}
+                        checked={permGranted}
+                        onCheckedChange={handlePermissionChange(permission.id)}
+                        className="h-5 w-5 rounded border-gray-300"
+                      />
+                      <label
+                        htmlFor={`permission-${permission.id}`}
+                        className="font-medium text-gray-700"
+                      >
+                        {permission.name.charAt(0).toUpperCase() + permission.name.slice(1)}
+                      </label>
+                      <span className="text-sm text-gray-500">
+                        {totalCount > 0 && `${selectedCount}/${totalCount} selected`}
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                </CardHeader>
+                <AccordionContent>
+                  <CardContent>
+                    {resources.length > 0 && (
+                      <div className="mb-4 flex items-center space-x-2">
+                        <Checkbox
+                          id={`select-all-${permission.id}`}
+                          checked={allResourcesSelected}
+                          onCheckedChange={handleSelectAllResources(resources)}
+                          disabled={!permGranted}
+                          className="h-5 w-5 rounded border-gray-300"
+                        />
+                        <label
+                          htmlFor={`select-all-${permission.id}`}
+                          className={
+                            !permGranted ? 'text-gray-400' : 'text-gray-700 font-medium'
+                          }
+                        >
+                          Select All
+                        </label>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {resources.map((resource) => {
                         const resourceGranted = isResourceGranted(resource.id);
                         return (
-                          <div key={resource.id} className="flex items-center">
-                            <input
-                              type="checkbox"
+                          <div key={resource.id} className="flex items-center space-x-2">
+                            <Checkbox
                               id={`resource-${resource.id}`}
-                              checked={resourceGranted}
-                              onChange={handleResourceChange(resource.id)}
-                              disabled={!permGranted}
-                              className={`mr-2 h-4 w-4 ${
-                                !permGranted
-                                  ? 'text-gray-300 border-gray-300 cursor-not-allowed'
-                                  : 'text-blue-600 border-gray-300 rounded'
-                              }`}
+                              checked={resourceGranted || resource.column === 'id'}
+                              onCheckedChange={handleResourceChange(resource.id)}
+                              disabled={!permGranted || resource.column === 'id'}
+                              className="h-5 w-5 rounded border-gray-300"
                             />
                             <label
                               htmlFor={`resource-${resource.id}`}
-                              className={`${!permGranted ? 'text-gray-400' : 'text-gray-700'}`}
+                              className={
+                                !permGranted ? 'text-gray-400' : 'text-gray-700'
+                              }
                             >
                               {resource.column.charAt(0).toUpperCase() +
                                 resource.column.slice(1)}
@@ -413,13 +412,13 @@ const EditRole: React.FC = () => {
                         );
                       })}
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                  </CardContent>
+                </AccordionContent>
+              </Card>
+            </AccordionItem>
           );
         })}
-      </div>
+      </Accordion>
     </div>
   );
 };

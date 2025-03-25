@@ -59,6 +59,8 @@ export async function generateAccessToken(req: any, res: Response): Promise<bool
                 email: user.email,
                 userId: user.id,
                 role: user.role,
+                userAccess : user.userAccess,
+            
             },
             jwtSecret,
             { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '15m' }

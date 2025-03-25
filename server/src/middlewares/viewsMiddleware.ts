@@ -10,9 +10,8 @@ import { generateAccessToken } from '../utils/generateAccessToken';
 import 'dotenv/config';
 import { View } from '@shared/types';
 
-/**
+/*
  * req structure after next() is called =>
- *
  * req.user (Decoded JWT payload with user information)
  * req.modelName (Capitalized resource name, example : "Sites")
  * req.permittedColumns (Array of Columns the user is authorized to access.)
@@ -44,7 +43,6 @@ const viewsMiddleware = async (
         return res
             .status(STATUS_CODES.UNAUTHORIZED)
             .json(
-                
                 new APIError(
                     STATUS_CODES.UNAUTHORIZED,
                     "Access token is missing",

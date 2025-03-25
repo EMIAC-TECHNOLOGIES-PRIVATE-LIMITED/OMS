@@ -176,7 +176,6 @@ export const getPermissionCached = async function (
     }
 };
 
-
 export const getUserPermission = async function (
     userId: number
 ): Promise<{ id: number; name: string }[]> {
@@ -222,7 +221,6 @@ export const getUserPermission = async function (
         return [];
     }
 };
-
 
 export const getUserPermissionsAndResources = async function (
     userId: number

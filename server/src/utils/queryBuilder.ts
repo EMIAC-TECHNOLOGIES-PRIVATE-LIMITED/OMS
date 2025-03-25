@@ -16,10 +16,10 @@ const getTableAndColumn = (resource: string): { table: string; column: string } 
 const shouldProcessResource = (model: string, resourceTable: string): boolean => {
     const modelLower = model.toLowerCase();
     const validTables: { [key: string]: string[] } = {
-        client: ['client'],
-        vendor: ['vendor'],
-        site: ['site', 'vendor'],
-        order: ['order', 'client', 'site', 'vendor'],
+        client: ['client', 'poc'],
+        vendor: ['vendor', 'poc'],
+        site: ['site', 'vendor', 'poc'],
+        order: ['order', 'client', 'site', 'vendor', 'salesPerson'],
     };
     const resourceLower = resourceTable.toLowerCase();
     return validTables[modelLower]?.includes(resourceLower) || false;
@@ -39,7 +39,7 @@ const enumFields: { [key: string]: string[] } = {
     ],
     vendor: ['VendorCategory'],
     client: [],
-    order: ['orderStatus', 'orderStatus','vendorInvoiceStatus', 'vendorInvoiceStatus']
+    order: ['orderStatus', 'orderStatus', 'vendorInvoiceStatus', 'vendorInvoiceStatus']
 };
 
 const isEnumField = (model: string, field: string): boolean => {
@@ -58,7 +58,13 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
         case 'client':
         case 'vendor':
             baseQuery = {
-                select: {},
+                select: {
+                    poc: {
+                        select: {
+                            id: true,
+                        }
+                    }
+                },
                 where: {},
                 orderBy: {},
             };
@@ -66,7 +72,13 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
         case 'site':
             baseQuery = {
                 select: {
+                    poc: {
+                        select: {
+                            id: true,
+                        }
+                    },
                     vendor: { select: {} }
+
                 },
                 where: {},
                 orderBy: {},
@@ -79,6 +91,11 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                     site: {
                         select: {
                             vendor: { select: {} }
+                        }
+                    },
+                    salesPerson: {
+                        select: {
+                            id: true,
                         }
                     }
                 },
@@ -104,12 +121,24 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
             baseQuery.select[column] = true;
         } else {
             switch (modelLower) {
+                case 'client':
+                    if (table === 'poc') {
+                        baseQuery.select.poc.select[column] = true;
+                    }
+                    break;
+                case 'vendor':
+                    if (table === 'poc') {
+                        baseQuery.select.poc.select[column] = true;
+                    }
+                    break;
                 case 'site':
                     if (table === 'vendor') {
                         if (!baseQuery.select.vendor) {
                             baseQuery.select.vendor = { select: {} };
                         }
                         baseQuery.select.vendor.select[column] = true;
+                    } else if (table === 'poc') {
+                        baseQuery.select.poc.select[column] = true;
                     }
                     break;
                 case 'order':
@@ -131,6 +160,8 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                             baseQuery.select.site.select.vendor = { select: {} };
                         }
                         baseQuery.select.site.select.vendor.select[column] = true;
+                    } else if (table === 'salesPerson') {
+                        baseQuery.select.salesPerson.select[column] = true;
                     }
                     break;
             }
@@ -141,6 +172,8 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
 };
 
 function removeNestedField(obj: any, path: string[]): void {
+    if (!obj || path.length === 0) return;
+
     let current = obj;
     for (let i = 0; i < path.length - 1; i++) {
         if (!current[path[i]]) {
@@ -148,6 +181,7 @@ function removeNestedField(obj: any, path: string[]): void {
         }
         current = current[path[i]];
     }
+
     const lastKey = path[path.length - 1];
     if (current && current.hasOwnProperty(lastKey)) {
         delete current[lastKey];
@@ -160,15 +194,24 @@ const excludeColumnsFromSelect = (baseSelect: any, excludeColumns: string[], mod
 
     excludeColumns.forEach(col => {
         const { table, column } = getTableAndColumn(col);
+
         if (table === modelLower) {
             if (newSelect.hasOwnProperty(column)) {
                 delete newSelect[column];
             }
         } else {
             switch (modelLower) {
+                case 'client':
+                case 'vendor':
+                    if (table === 'poc' && newSelect.poc && newSelect.poc.select) {
+                        removeNestedField(newSelect.poc.select, [column]);
+                    }
+                    break;
                 case 'site':
                     if (table === 'vendor' && newSelect.vendor && newSelect.vendor.select) {
                         removeNestedField(newSelect.vendor.select, [column]);
+                    } else if (table === 'poc' && newSelect.poc && newSelect.poc.select) {
+                        removeNestedField(newSelect.poc.select, [column]);
                     }
                     break;
                 case 'order':
@@ -176,8 +219,11 @@ const excludeColumnsFromSelect = (baseSelect: any, excludeColumns: string[], mod
                         removeNestedField(newSelect.client.select, [column]);
                     } else if (table === 'site' && newSelect.site && newSelect.site.select) {
                         removeNestedField(newSelect.site.select, [column]);
-                    } else if (table === 'vendor' && newSelect.site && newSelect.site.select && newSelect.site.select.vendor && newSelect.site.select.vendor.select) {
+                    } else if (table === 'vendor' && newSelect.site && newSelect.site.select &&
+                        newSelect.site.select.vendor && newSelect.site.select.vendor.select) {
                         removeNestedField(newSelect.site.select.vendor.select, [column]);
+                    } else if (table === 'salesPerson' && newSelect.salesPerson && newSelect.salesPerson.select) {
+                        removeNestedField(newSelect.salesPerson.select, [column]);
                     }
                     break;
             }
@@ -191,6 +237,21 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
     const { table, column } = getTableAndColumn(filter.column);
     const operator = filter.operator || 'equals';
     const modelLower = model.toLowerCase();
+
+    if (column === 'name') {
+        const condition = isTextBasedOperator(operator)
+            ? { name: { [operator]: filter.value, mode: 'insensitive' } }
+            : { name: { [operator]: filter.value } };
+        
+        // Check if we're filtering on the model's own name column
+        if (table === modelLower) {
+            return { name: condition.name };
+        } else if (modelLower === 'order' && table === 'salesPerson') {
+            return { salesPerson: condition };
+        } else if (table === 'poc') {
+            return { poc: condition };
+        }
+    }
 
     if (operator === 'isNull') {
         const condition = { [column]: null };
@@ -246,7 +307,7 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
 
     // Check if the field is an enum field
     const isEnum = isEnumField(table, column);
-    
+
     // For enum fields, don't add mode: 'insensitive'
     const operatorConfig = isTextBasedOperator(operator) && !isEnum
         ? { [operator]: filter.value, mode: 'insensitive' }
@@ -310,7 +371,15 @@ const buildOrderByClause = (sort: SortConfig, model: string) => {
     sortEntries.forEach(([field, direction]) => {
         const { table, column } = getTableAndColumn(field);
 
-        if (table === modelLower) {
+        if (column === 'name') {
+            if (table === modelLower) {
+                orderBy.push({ name: direction });
+            } else if (modelLower === 'order' && table === 'salesPerson') {
+                orderBy.push({ salesPerson: { name: direction } });
+            } else if (table === 'poc') {
+                orderBy.push({ poc: { name: direction } });
+            }
+        } else if (table === modelLower) {
             orderBy.push({ [column]: direction });
         } else {
             switch (modelLower) {

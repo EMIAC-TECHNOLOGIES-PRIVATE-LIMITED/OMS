@@ -1,4 +1,4 @@
-import React, { useEffect, useState, ChangeEvent } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   getAllPermissions,
@@ -24,8 +24,46 @@ import {
   SuspendUserResponse,
   RevokeUserResponse,
 } from '../../../../shared/src/types';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import { Loader2, ChevronsUpDown, Check } from 'lucide-react';
+
+// Shadcn UI Components
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 // Types for the roles returned by getAllRoles()
 interface RoleItem {
@@ -36,18 +74,26 @@ interface RoleItem {
   };
 }
 
+interface TeamMember {
+  id: number;
+  name: string;
+  role: {
+    id: number;
+    name: string;
+  };
+}
+
 const EditUser: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
+  const { toast } = useToast();
 
-  /**
-   * ---------------
-   *   State Setup
-   * ---------------
-   */
   const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
   const [allResources, setAllResources] = useState<Resource[]>([]);
+  const [allUsers, setAllUsers] = useState<TeamMember[]>([]);
   const [userDefaultPermissions, setUserDefaultPermissions] = useState<Permission[]>([]);
   const [userDefaultResources, setUserDefaultResources] = useState<Resource[]>([]);
+  const [currentUserAccess, setCurrentUserAccess] = useState<number[]>([]);
+  const [initialUserAccess, setInitialUserAccess] = useState<number[]>([]);
   const [currentOverrides, setCurrentOverrides] = useState<{
     permissionOverride: PermissionOverride[];
     resourceOverride: ResourceOverride[];
@@ -72,13 +118,9 @@ const EditUser: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [userAccessPopoverOpen, setUserAccessPopoverOpen] = useState<boolean>(false);
 
-  // Collapsible sections
-  const [expandedPermissions, setExpandedPermissions] = useState<{ [key: number]: boolean }>({});
-
-  // All roles for the dropdown, plus states for storing the user’s role
+  // All roles for the dropdown, plus states for storing the user's role
   const [allRoles, setAllRoles] = useState<RoleItem[]>([]);
   const [initialRoleId, setInitialRoleId] = useState<number | null>(null);
   const [currentRoleId, setCurrentRoleId] = useState<number | null>(null);
@@ -106,7 +148,6 @@ const EditUser: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch all roles for dropdown
         const rolesResponse: GetAllRolesResponse = await getAllRoles();
         if (rolesResponse.success) {
           setAllRoles(rolesResponse.data);
@@ -114,37 +155,36 @@ const EditUser: React.FC = () => {
           console.error(rolesResponse.message || 'Failed to fetch roles.');
         }
 
-        // Fetch all (global) permissions and resources
         const permissionsResponse: GetAllPermissionsResponse = await getAllPermissions();
         if (permissionsResponse.success) {
-          // Filter out permissions starting with underscore
           const permissions = permissionsResponse.data.permissions
-           
             .map((p) => ({ id: p.id, name: p.key }));
           setAllPermissions(permissions);
 
-          // Parse resources in Permission.Resource format
+          console.log('[EditUser] AllpermissionsResponse :  ', permissionsResponse.data);
+
           const resources = permissionsResponse.data.resources.map((r) => ({
             id: r.id,
-            table: r.key.split('.')[0].toLowerCase(), // e.g., "site" from "Site.id"
-            column: r.key.split('.')[1], // e.g., "id" from "Site.id"
+            table: r.key.split('.')[0].toLowerCase(),
+            column: r.key.split('.')[1],
           }));
           setAllResources(resources);
+          setAllUsers(permissionsResponse.data.team);
         } else {
           setError(permissionsResponse.message || 'Failed to fetch permissions.');
           return;
         }
 
-        // Fetch user-specific defaults & overrides
         const userPermissionsResponse: GetUserPermissionsResponse = await getUserPermissions(
           parseInt(userId)
         );
+
         if (userPermissionsResponse.success) {
-          // User’s default perms/resources
           const defaultPermissions = userPermissionsResponse.data.permissions
-            .filter((p) => !p.key.startsWith('_'))
             .map((p) => ({ id: p.id, name: p.key }));
           setUserDefaultPermissions(defaultPermissions);
+
+          console.log('[EditUser] userPermissionResponse :  ', userPermissionsResponse.data);
 
           const defaultResources = userPermissionsResponse.data.resources.map((r) => ({
             id: r.id,
@@ -153,7 +193,10 @@ const EditUser: React.FC = () => {
           }));
           setUserDefaultResources(defaultResources);
 
-          // The override arrays
+          // Set user access data
+          setCurrentUserAccess(userPermissionsResponse.data.userAccess);
+          setInitialUserAccess(userPermissionsResponse.data.userAccess);
+
           setInitialOverrides({
             permissionOverride: userPermissionsResponse.data.permissionOverrides,
             resourceOverride: userPermissionsResponse.data.resourceOverrides,
@@ -163,7 +206,6 @@ const EditUser: React.FC = () => {
             resourceOverride: userPermissionsResponse.data.resourceOverrides,
           });
 
-          // Store user’s role, name, and suspended status
           setInitialRoleId(userPermissionsResponse.data.roleId);
           setCurrentRoleId(userPermissionsResponse.data.roleId);
           setUserName(userPermissionsResponse.data.name);
@@ -183,7 +225,7 @@ const EditUser: React.FC = () => {
 
   /**
    * ----------------------------------------------------------------------------
-   *  Combine “default” + “override” -> finalPermissions/finalResources for render
+   *  Combine "default" + "override" -> finalPermissions/finalResources for render
    * ----------------------------------------------------------------------------
    */
   const computeFinalPermissionsAndResources = () => {
@@ -235,12 +277,14 @@ const EditUser: React.FC = () => {
   useEffect(() => {
     const overridesChanged =
       JSON.stringify(initialOverrides.permissionOverride) !==
-        JSON.stringify(currentOverrides.permissionOverride) ||
+      JSON.stringify(currentOverrides.permissionOverride) ||
       JSON.stringify(initialOverrides.resourceOverride) !==
-        JSON.stringify(currentOverrides.resourceOverride);
+      JSON.stringify(currentOverrides.resourceOverride);
     const roleChanged = currentRoleId !== initialRoleId;
-    setIsModified(overridesChanged || roleChanged);
-  }, [initialOverrides, currentOverrides, currentRoleId, initialRoleId]);
+    const userAccessChanged = JSON.stringify(initialUserAccess) !== JSON.stringify(currentUserAccess);
+
+    setIsModified(overridesChanged || roleChanged || userAccessChanged);
+  }, [initialOverrides, currentOverrides, currentRoleId, initialRoleId, initialUserAccess, currentUserAccess]);
 
   /**
    * ----------------------------------------------------------
@@ -257,12 +301,8 @@ const EditUser: React.FC = () => {
    *   Event Handlers: toggle permission/resources -> update overrides
    * ------------------------------------------------------------------
    */
-  const handlePermissionChange = (permissionId: number) => (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
+  const handlePermissionChange = (permissionId: number) => (checked: boolean) => {
     if (isSuspended) return;
-
-    const granted = e.target.checked;
 
     setCurrentOverrides((prev) => {
       const overrideExists = prev.permissionOverride.find(
@@ -271,17 +311,16 @@ const EditUser: React.FC = () => {
       let updatedPermissionOverrides: PermissionOverride[];
       if (overrideExists) {
         updatedPermissionOverrides = prev.permissionOverride.map((po) =>
-          po.permissionId === permissionId ? { ...po, granted } : po
+          po.permissionId === permissionId ? { ...po, granted: checked } : po
         );
       } else {
         updatedPermissionOverrides = [
           ...prev.permissionOverride,
-          { permissionId, granted },
+          { permissionId, granted: checked },
         ];
       }
 
-      // If permission is unchecked, uncheck related resources
-      if (!granted) {
+      if (!checked) {
         const relatedResources = allResources.filter(
           (resource) => resource.table === getPermissionNameById(permissionId).toLowerCase()
         );
@@ -311,12 +350,8 @@ const EditUser: React.FC = () => {
     });
   };
 
-  const handleResourceChange = (resourceId: number) => (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleResourceChange = (resourceId: number) => (checked: boolean) => {
     if (isSuspended) return;
-
-    const granted = e.target.checked;
 
     setCurrentOverrides((prev) => {
       const overrideExists = prev.resourceOverride.find(
@@ -325,12 +360,12 @@ const EditUser: React.FC = () => {
       let updatedResourceOverrides: ResourceOverride[];
       if (overrideExists) {
         updatedResourceOverrides = prev.resourceOverride.map((ro) =>
-          ro.resourceId === resourceId ? { ...ro, granted } : ro
+          ro.resourceId === resourceId ? { ...ro, granted: checked } : ro
         );
       } else {
         updatedResourceOverrides = [
           ...prev.resourceOverride,
-          { resourceId, granted },
+          { resourceId, granted: checked },
         ];
       }
       return {
@@ -340,27 +375,69 @@ const EditUser: React.FC = () => {
     });
   };
 
+  const handleSelectAllResources = (resources: Array<Resource & { granted: boolean }>) => (
+    checked: boolean
+  ) => {
+    if (isSuspended) return;
+
+    setCurrentOverrides((prev) => {
+      let updatedResourceOverrides = [...prev.resourceOverride];
+      resources.forEach((resource) => {
+        const resourceExists = updatedResourceOverrides.find(
+          (ro) => ro.resourceId === resource.id
+        );
+        if (resourceExists) {
+          updatedResourceOverrides = updatedResourceOverrides.map((ro) =>
+            ro.resourceId === resource.id ? { ...ro, granted: checked } : ro
+          );
+        } else {
+          updatedResourceOverrides.push({ resourceId: resource.id, granted: checked });
+        }
+      });
+      return {
+        ...prev,
+        resourceOverride: updatedResourceOverrides,
+      };
+    });
+  };
+
   /**
-   * -------------
-   *   Actions
-   * -------------
+   * ------------------------------------------------------------------
+   *   User Access Control Handlers
+   * ------------------------------------------------------------------
    */
-  // A) SAVE
+  const handleUserAccessChange = (userId: number) => {
+    if (isSuspended) return;
+
+    setCurrentUserAccess((prev) => {
+      // If user is already in the access list, remove them
+      if (prev.includes(userId)) {
+        return prev.filter(id => id !== userId);
+      }
+      // Otherwise add them to the access list
+      return [...prev, userId];
+    });
+  };
+
   const handleSave = async () => {
     if (!userId) {
-      setSaveError('User ID is missing.');
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'User ID is missing.',
+        duration: 5000,
+      });
       return;
     }
 
     try {
       setSaving(true);
-      setSaveError(null);
-      setSaveSuccess(null);
 
       const response: ManageUserAccessResponse = await manageUserAccess(
         parseInt(userId),
         currentOverrides.permissionOverride,
         currentOverrides.resourceOverride,
+        currentUserAccess,
         currentRoleId ? currentRoleId : undefined
       );
 
@@ -370,54 +447,67 @@ const EditUser: React.FC = () => {
           resourceOverride: currentOverrides.resourceOverride,
         });
         setInitialRoleId(currentRoleId);
+        setInitialUserAccess(currentUserAccess);
         setIsModified(false);
-        setSaveSuccess('User access updated successfully.');
+        toast({
+          title: 'Success',
+          description: 'User access updated successfully.',
+          duration: 3000,
+          className: 'border border-brand',
+        });
       } else {
-        setSaveError(response.message || 'Failed to update user access.');
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: response.message || 'Failed to update user access.',
+          duration: 5000,
+        });
       }
     } catch (err: any) {
-      setSaveError(err.message || 'An unexpected error occurred while saving.');
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'An unexpected error occurred while saving.',
+        duration: 5000,
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  // B) CANCEL
   const handleCancel = () => {
     setCurrentOverrides({
       permissionOverride: [...initialOverrides.permissionOverride],
       resourceOverride: [...initialOverrides.resourceOverride],
     });
     setCurrentRoleId(initialRoleId);
-    setSaveError(null);
-    setSaveSuccess(null);
+    setCurrentUserAccess([...initialUserAccess]);
     setIsModified(false);
   };
 
-  // C) RESET
   const handleReset = () => {
     if (isSuspended) return;
     setCurrentOverrides({
       permissionOverride: [],
       resourceOverride: [],
     });
+    setCurrentUserAccess([]);
   };
 
-  // D) Role change
-  const handleRoleChange = async (newRoleId: number) => {
+  const handleRoleChange = async (newRoleId: string) => {
     if (!userId) return;
 
+    const roleIdNum = Number(newRoleId);
     try {
       setCurrentOverrides({
         permissionOverride: [],
         resourceOverride: [],
       });
 
-      const rolePermsResponse: GetRolePermissionsResponse = await getRolePermissions(newRoleId);
+      const rolePermsResponse: GetRolePermissionsResponse = await getRolePermissions(roleIdNum);
       if (rolePermsResponse.success) {
         setUserDefaultPermissions(
           rolePermsResponse.data.permissions
-            .filter((p) => !p.key.startsWith('_'))
             .map((p) => ({ id: p.id, name: p.key }))
         );
         setUserDefaultResources(
@@ -431,15 +521,12 @@ const EditUser: React.FC = () => {
         console.error(rolePermsResponse.message || 'Failed to fetch role-based perms/resources');
       }
 
-      setCurrentRoleId(newRoleId);
+      setCurrentRoleId(roleIdNum);
     } catch (error: any) {
       console.error(error.message);
     }
   };
 
-  /**
-   * Suspend / Revoke handlers
-   */
   const handleSuspendClick = () => {
     setShowSuspendConfirm(true);
   };
@@ -450,12 +537,27 @@ const EditUser: React.FC = () => {
       const resp: SuspendUserResponse = await suspendUser(parseInt(userId));
       if (resp.success) {
         setIsSuspended(true);
-        setSaveSuccess('User has been suspended.');
+        toast({
+          title: 'Success',
+          description: 'User has been suspended.',
+          duration: 3000,
+          className: 'border border-brand',
+        });
       } else {
-        setSaveError(resp.message || 'Failed to suspend user.');
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: resp.message || 'Failed to suspend user.',
+          duration: 5000,
+        });
       }
     } catch (err: any) {
-      setSaveError(err.message || 'Error while suspending user.');
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'Error while suspending user.',
+        duration: 5000,
+      });
     }
   };
 
@@ -469,36 +571,48 @@ const EditUser: React.FC = () => {
       const resp: RevokeUserResponse = await revokeUser(parseInt(userId));
       if (resp.success) {
         setIsSuspended(false);
-        setSaveSuccess('User has been revoked (active).');
+        toast({
+          title: 'Success',
+          description: 'User has been revoked (active).',
+          duration: 3000,
+          className: 'border border-brand',
+        });
       } else {
-        setSaveError(resp.message || 'Failed to revoke user.');
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: resp.message || 'Failed to revoke user.',
+          duration: 5000,
+        });
       }
     } catch (err: any) {
-      setSaveError(err.message || 'Error while revoking user.');
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'Error while revoking user.',
+        duration: 5000,
+      });
     }
   };
 
-  const closeSuspendModal = () => setShowSuspendConfirm(false);
-  const closeRevokeModal = () => setShowRevokeConfirm(false);
+  // Filter out the current user from the list of all users
+  const filteredUsers = allUsers.filter(user => user.id !== parseInt(userId || '0'));
+  const selectedUserCount = currentUserAccess.length;
 
-  /**
-   * ---------------
-   *   UI Render
-   * ---------------
-   */
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <span className="text-gray-500">Loading...</span>
+        <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+        <span className="ml-2 text-gray-500">Loading user data...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-red-500">{error}</p>
-      </div>
+      <Alert variant="destructive">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
     );
   }
 
@@ -513,257 +627,294 @@ const EditUser: React.FC = () => {
   }));
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       {/* Confirmation Modal for Suspend */}
-      <AnimatePresence>
-        {showSuspendConfirm && (
-          <motion.div
-            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-white p-6 rounded shadow-lg max-w-md w-full"
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.8 }}
-            >
-              <h3 className="text-xl font-semibold mb-4 text-red-700">Suspend User</h3>
-              <p className="mb-4 text-gray-600">
-                Are you sure you want to suspend this user? They will lose all access.
-              </p>
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={closeSuspendModal}
-                  className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-gray-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmSuspend}
-                  className="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white"
-                >
-                  Suspend
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Dialog open={showSuspendConfirm} onOpenChange={setShowSuspendConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="">Suspend User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to suspend this user? They will lose all access.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSuspendConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmSuspend}>
+              Suspend
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Modal for Revoke */}
-      <AnimatePresence>
-        {showRevokeConfirm && (
-          <motion.div
-            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-white p-6 rounded shadow-lg max-w-md w-full"
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.8 }}
-            >
-              <h3 className="text-xl font-semibold mb-4 text-green-700">Revoke Suspension</h3>
-              <p className="mb-4 text-gray-600">
-                Are you sure you want to revoke the suspension? This user will be re-activated.
-              </p>
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={closeRevokeModal}
-                  className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-gray-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmRevoke}
-                  className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white"
-                >
-                  Revoke
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Dialog open={showRevokeConfirm} onOpenChange={setShowRevokeConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle >Revoke Suspension</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to revoke the suspension? This user will be re-activated.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRevokeConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="default" className="bg-green-600" onClick={confirmRevoke}>
+              Revoke
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Top Section with Title & Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h2 className="text-2xl font-semibold mb-4 sm:mb-0">{`Edit User Permissions : ${userName}`}</h2>
-
-        <div className="flex flex-wrap gap-3 items-center justify-end">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-2xl font-semibold">{`Edit User Permissions: ${userName}`}</h2>
+        <div className="flex flex-wrap gap-3 mt-4 sm:mt-0">
           {isSuspended ? (
-            <button
-              onClick={handleRevokeClick}
-              className="px-4 py-2 rounded-md font-medium transition-colors bg-green-600 text-white hover:bg-green-700"
-            >
+            <Button variant="default" className="bg-green-600" onClick={handleRevokeClick}>
               Revoke
-            </button>
+            </Button>
           ) : (
-            <button
-              onClick={handleSuspendClick}
-              className="px-4 py-2 rounded-md font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
-            >
+            <Button variant="destructive" onClick={handleSuspendClick}>
               Suspend
-            </button>
+            </Button>
           )}
 
-          <select
-            className="px-3 py-2 rounded-md border border-gray-300 text-gray-700"
-            value={currentRoleId ?? ''}
-            onChange={(e) => handleRoleChange(Number(e.target.value))}
+          <Select
+            value={currentRoleId?.toString() ?? ''}
+            onValueChange={handleRoleChange}
             disabled={isSuspended || saving}
           >
-            <option value="" disabled>
-              Select Role
-            </option>
-            {allRoles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Role" />
+            </SelectTrigger>
+            <SelectContent>
+              {allRoles.map((r) => (
+                <SelectItem key={r.id} value={r.id.toString()}>
+                  {r.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <button
+          {/* User Access Control Dropdown */}
+          {currentRoleId !== 2 && (
+            <Popover open={userAccessPopoverOpen} onOpenChange={setUserAccessPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="secondaryFlat"
+                  role="combobox"
+                  aria-expanded={userAccessPopoverOpen}
+                  className="w-[220px] flex h-10  items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus:ring-slate-300"
+                  disabled={isSuspended || saving}
+                >
+                  Access to {selectedUserCount} users
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0">
+                <Command>
+                  <CommandList>
+                    <CommandGroup>
+                      <ScrollArea className="h-64">
+                        {filteredUsers.map((user) => (
+                          <CommandItem
+                            key={user.id}
+                            value={user.id.toString()}
+                            onSelect={() => {
+                              handleUserAccessChange(user.id);
+                            }}
+                            className="flex items-center space-x-2"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                currentUserAccess.includes(user.id)
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            <div className="flex items-center justify-between w-full">
+                              <span>{user.name}</span>
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                {user.role.name}
+                              </Badge>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </ScrollArea>
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          )}
+
+          <Button
             onClick={handleSave}
             disabled={!isModified || saving}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              !isModified || saving
-                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+            variant={isModified && !saving ? 'brandOutline' : 'outline'}
+            className={isModified && !saving ? 'bg-green-100 hover:bg-green-200' : ''}
           >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save'
+            )}
+          </Button>
 
-          <button
+          <Button
             onClick={handleCancel}
+            className='bg-red-100 hover:bg-red-200'
             disabled={saving}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              saving
-                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                : 'bg-gray-500 text-white hover:bg-gray-600'
-            }`}
+            variant="destructiveOutline"
           >
             Cancel
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handleReset}
             disabled={saving || isSuspended}
-            className={`px-4 py-2 rounded-md font-medium transition-colors ${
-              saving || isSuspended
-                ? 'bg-gray-300 text-gray-700 cursor-not-allowed'
-                : 'bg-yellow-600 text-white hover:bg-yellow-700'
-            }`}
+            variant="outline"
+            className="bg-blue-100 hover:bg-blue-200"
           >
             Reset to Default
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Feedback Messages */}
-      {saveSuccess && (
-        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">{saveSuccess}</div>
-      )}
-      {saveError && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">{saveError}</div>
+      {/* User Access Section */}
+      {currentRoleId !== 2 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <h3 className="text-lg font-medium">User Data Access</h3>
+            <p className="text-sm text-gray-500">
+              Select users whose data this user can access
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {currentUserAccess.length > 0 ? (
+                filteredUsers
+                  .filter(user => currentUserAccess.includes(user.id))
+                  .map(user => (
+                    <Badge key={user.id} variant="secondary" className="flex items-center gap-1">
+                      {user.name}
+                      <button
+                        className="ml-1 rounded-full p-1 hover:bg-gray-200"
+                        onClick={() => handleUserAccessChange(user.id)}
+                        disabled={isSuspended}
+                      >
+                        <span className="sr-only">Remove</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </Badge>
+                  ))
+              ) : (
+                <p className="text-sm text-gray-500">No user data access granted</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Collapsible Permissions Sections */}
-      <div className="space-y-4">
+      <Accordion type="multiple" className="space-y-4">
         {permissionsWithResources.map(({ permission, resources }) => {
           const permissionGranted = permission.granted;
           const selectedCount = resources.filter((r) => r.granted).length;
           const totalCount = resources.length;
-          const isExpanded = expandedPermissions[permission.id] || false;
+          const allResourcesSelected = selectedCount === totalCount && totalCount > 0;
 
           return (
-            <div key={permission.id} className="bg-white shadow rounded p-4">
-              <button
-                type="button"
-                onClick={() =>
-                  setExpandedPermissions((prev) => ({
-                    ...prev,
-                    [permission.id]: !prev[permission.id],
-                  }))
-                }
-                className="w-full flex items-center justify-between"
-              >
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`permission-${permission.id}`}
-                    checked={permissionGranted}
-                    onChange={handlePermissionChange(permission.id)}
-                    disabled={isSuspended}
-                    className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                  />
-                  <label
-                    htmlFor={`permission-${permission.id}`}
-                    className="font-medium text-gray-700"
-                  >
-                    {permission.name.charAt(0).toUpperCase() + permission.name.slice(1)}
-                  </label>
-                  <span className="ml-2 text-sm text-gray-500">
-                    ({selectedCount} / {totalCount} selected)
-                  </span>
-                </div>
-                {isExpanded ? (
-                  <ChevronUpIcon className="h-5 w-5 text-gray-600" />
-                ) : (
-                  <ChevronDownIcon className="h-5 w-5 text-gray-600" />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    key="content"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden mt-4"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <AccordionItem value={`permission-${permission.id}`} key={permission.id}>
+              <Card>
+                <CardHeader>
+                  <AccordionTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`permission-${permission.id}`}
+                        checked={permissionGranted}
+                        onCheckedChange={handlePermissionChange(permission.id)}
+                        disabled={isSuspended}
+                        className="h-5 w-5 rounded border-gray-300"
+                      />
+                      <Label
+                        htmlFor={`permission-${permission.id}`}
+                        className="font-medium text-gray-700"
+                      >
+                        {permission.name.charAt(0).toUpperCase() + permission.name.slice(1)}
+                      </Label>
+                      <span className="text-sm text-gray-500">
+                        {totalCount > 0 && `${selectedCount}/${totalCount} selected`}
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                </CardHeader>
+                <AccordionContent>
+                  <CardContent>
+                    {resources.length > 0 && (
+                      <div className="mb-4 flex items-center space-x-2">
+                        <Checkbox
+                          id={`select-all-${permission.id}`}
+                          checked={allResourcesSelected}
+                          onCheckedChange={handleSelectAllResources(resources)}
+                          disabled={!permissionGranted || isSuspended}
+                          className="h-5 w-5 rounded border-gray-300"
+                        />
+                        <Label
+                          htmlFor={`select-all-${permission.id}`}
+                          className={
+                            !permissionGranted || isSuspended
+                              ? 'text-gray-400'
+                              : 'text-gray-700 font-medium'
+                          }
+                        >
+                          Select All
+                        </Label>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {resources.map((resource) => {
                         const resourceGranted = resource.granted;
                         return (
-                          <div key={resource.id} className="flex items-center">
-                            <input
-                              type="checkbox"
+                          <div key={resource.id} className="flex items-center space-x-2">
+                            <Checkbox
                               id={`resource-${resource.id}`}
-                              checked={resourceGranted}
-                              onChange={handleResourceChange(resource.id)}
-                              disabled={!permissionGranted || isSuspended}
-                              className={`mr-2 h-4 w-4 ${
-                                !permissionGranted || isSuspended
-                                  ? 'text-gray-300 border-gray-300 cursor-not-allowed'
-                                  : 'text-blue-600 border-gray-300 rounded'
-                              }`}
+                              checked={resourceGranted || resource.column === 'id'}
+                              onCheckedChange={handleResourceChange(resource.id)}
+                              disabled={!permissionGranted || isSuspended || resource.column === 'id'}
+                              className="h-5 w-5 rounded border-gray-300"
                             />
-                            <label
+                            <Label
                               htmlFor={`resource-${resource.id}`}
-                              className={`${!permissionGranted || isSuspended ? 'text-gray-400' : 'text-gray-700'}`}
+                              className={
+                                !permissionGranted || isSuspended
+                                  ? 'text-gray-400'
+                                  : 'text-gray-700'
+                              }
                             >
                               {resource.column.charAt(0).toUpperCase() +
                                 resource.column.slice(1)}
-                            </label>
+                            </Label>
                           </div>
                         );
                       })}
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                  </CardContent>
+                </AccordionContent>
+              </Card>
+            </AccordionItem>
           );
         })}
-      </div>
+      </Accordion>
     </div>
   );
 };

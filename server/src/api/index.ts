@@ -14,6 +14,7 @@ import bcrypt from 'bcrypt';
 import { prismaClient } from '../utils/prismaClient';
 import STATUS_CODES from '../constants/statusCodes';
 import { APIResponse } from '../utils/apiHandler';
+import logger from '../logger';
 
 
 const app = express();
@@ -22,73 +23,75 @@ app.use(cookieParser());
 
 
 // Special middleware for the bulk route to allow all origins temporarily
-const allowAllOrigins = (req: Request, res: Response, next: NextFunction) => {
-    res.header('Access-Control-Allow-Origin', '*'); // Allow all origins
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS'); // Define allowed methods
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200); // Handle preflight requests
-    }
-    next();
-};
+// const allowAllOrigins = (req: Request, res: Response, next: NextFunction) => {
+//     res.header('Access-Control-Allow-Origin', '*'); // Allow all origins
+//     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS'); // Define allowed methods
+//     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+//     if (req.method === 'OPTIONS') {
+//         return res.sendStatus(200); // Handle preflight requests
+//     }
+//     next();
+// };
 
-// Temporary bulk data route
-app.post('/api/temp/addUser', allowAllOrigins, async (req: Request, res: Response) => {
+// // Temporary bulk data route
+// app.post('/api/temp/addUser', allowAllOrigins, async (req: Request, res: Response) => {
 
-    const body = req.body;
+//     const body = req.body;
 
-    if (!body.name || !body.email || !body.password || !body.roleId) {
-        return res.status(STATUS_CODES.BAD_REQUEST).json(
-            new APIError(
-                STATUS_CODES.BAD_REQUEST,
-                "Missing required fields",
-                ["name, email, password, and roleId are required"],
-                false
-            ).toJSON()
-        );
-    }
+//     if (!body.name || !body.email || !body.password || !body.roleId) {
+//         return res.status(STATUS_CODES.BAD_REQUEST).json(
+//             new APIError(
+//                 STATUS_CODES.BAD_REQUEST,
+//                 "Missing required fields",
+//                 ["name, email, password, and roleId are required"],
+//                 false
+//             ).toJSON()
+//         );
+//     }
 
-    const saltRounds = 10;
-    try {
-        const salt = await bcrypt.genSalt(saltRounds);
-        const hashedPassword = await bcrypt.hash(body.password, salt);
+//     const saltRounds = 10;
+//     try {
+//         const salt = await bcrypt.genSalt(saltRounds);
+//         const hashedPassword = await bcrypt.hash(body.password, salt);
 
-        const newUser = await prismaClient.user.create({
-            data: {
-                id: body.id,
-                name: body.name,
-                email: body.email,
-                password: hashedPassword,
-                roleId: body.roleId,
-            },
-        });
+//         const newUser = await prismaClient.user.create({
+//             data: {
+//                 id: body.id,
+//                 name: body.name,
+//                 email: body.email,
+//                 password: hashedPassword,
+//                 roleId: body.roleId,
+//             },
+//         });
 
-        return res.status(STATUS_CODES.CREATED).json(
-            new APIResponse(
-                STATUS_CODES.CREATED,
-                "User created successfully",
-                {
-                    userId: newUser.id,
-                },
-                true
-            ).toJSON()
-        );
-    } catch (error) {
-        console.error("User creation failed:", error);
-        return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
-            new APIError(
-                STATUS_CODES.INTERNAL_SERVER_ERROR,
-                "User creation failed",
-                [error instanceof Error ? error.message : "Unknown error"],
-                false
-            ).toJSON()
-        );
-    }
-});
+//         return res.status(STATUS_CODES.CREATED).json(
+//             new APIResponse(
+//                 STATUS_CODES.CREATED,
+//                 "User created successfully",
+//                 {
+//                     userId: newUser.id,
+//                 },
+//                 true
+//             ).toJSON()
+//         );
+//     } catch (error) {
+//         console.error("User creation failed:", error);
+//         return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
+//             new APIError(
+//                 STATUS_CODES.INTERNAL_SERVER_ERROR,
+//                 "User creation failed",
+//                 [error instanceof Error ? error.message : "Unknown error"],
+//                 false
+//             ).toJSON()
+//         );
+//     }
+// });
 
 
 const allowedOrigins = [
     'http://localhost:3000',    // Local development
+    'http://localhost:3001',    // Local development
+    'https://localhost:3001',    // Local development
     'http://103.172.92.187',   // VM IP for deployment
     'https://oms.emiactech.com',
     'https://emiactech.com',
@@ -125,6 +128,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 const port = process.env.PORT || 3000;
 
 app.get('/api/v1/health', (req, res) => {
+    logger.info('Health Check');
     res.send('Perfect Health');
 })
 
@@ -133,6 +137,8 @@ app.use('/api/v1/data', dataRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/tools', toolsRouter);
 app.use('/api/v1/search', searchRouter);
+
+
 
 app.listen(3000, '0.0.0.0', () => {
     console.log(`Server Started at port : ${port}`);

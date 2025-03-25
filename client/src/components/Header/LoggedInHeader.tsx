@@ -24,12 +24,27 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { X, Upload } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { X, Upload, Info } from "lucide-react";
 import { toast } from '../../hooks/use-toast';
 
+// Updated interface to include severity
 interface IssueFormData {
   name: string;
   heading: string;
+  severity: string;
   description: string;
   screenshots: File[];
 }
@@ -40,6 +55,7 @@ function LoggedInHeader() {
   const [formData, setFormData] = useState<IssueFormData>({
     name: '',
     heading: '',
+    severity: '', // Added severity field with empty default
     description: '',
     screenshots: []
   });
@@ -106,12 +122,10 @@ function LoggedInHeader() {
   };
 
   const handleSubmitIssue = async () => {
-
-    console.log("Form data before submission : ", formData);
-
     const formDataToSend = new FormData();
     formDataToSend.append('name', auth.userInfo?.name || '');
     formDataToSend.append('heading', formData.heading);
+    formDataToSend.append('severity', formData.severity); // Append severity to form data
     formDataToSend.append('description', formData.description);
     formData.screenshots.forEach((file, index) =>
       formDataToSend.append(`screenshots[${index}]`, file)
@@ -142,7 +156,7 @@ function LoggedInHeader() {
 
       // Reset the form state
       setIsIssueDialogOpen(false);
-      setFormData({ name: '', heading: '', description: '', screenshots: [] });
+      setFormData({ name: '', heading: '', severity: '', description: '', screenshots: [] });
     } catch (error) {
       console.error('Error reporting issue:', error);
       toast({
@@ -196,9 +210,9 @@ function LoggedInHeader() {
                     to={`/${item.name.toLowerCase()}`}
                     className={({ isActive }) =>
                       `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive
-                        ? 'border-brand text-brand'
+                        ? 'border-brand  text-brand  '
                         : 'border-transparent text-neutral-700 hover:border-brand hover:text-brand'
-                      } transition-colors duration-300`
+                      } transition-colors duration-300 text-lg`
                     }
                   >
                     {item.name.charAt(0).toUpperCase() + item.name.slice(1)}
@@ -324,6 +338,55 @@ function LoggedInHeader() {
                 maxLength={100}
               />
             </div>
+            {/* New Severity Field with Tooltip */}
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="severity">Severity *</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-neutral-500 " />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs p-3">
+                      <p className="font-bold mb-1">Severity levels:</p>
+                      <ul className="text-sm space-y-1">
+                        <li><span className="font-bold">Low:</span> Can be resolved in the next scheduled update</li>
+                        <li><span className="font-bold">Moderate:</span> Should be resolved before the end of current work week</li>
+                        <li><span className="font-bold">High:</span> Requires immediate attention (same day or ASAP)</li>
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Select
+                value={formData.severity}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, severity: value }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select issue severity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                      Low
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="moderate">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                      Moderate
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="high">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                      High
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="description">Detailed Description *</Label>
               <Textarea
@@ -395,7 +458,7 @@ function LoggedInHeader() {
               <Button
                 onClick={handleSubmitIssue}
                 variant={'brand'}
-                disabled={!formData.heading || !formData.description}
+                disabled={!formData.heading || !formData.severity || !formData.description}
               >
                 Submit Issue
               </Button>

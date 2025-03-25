@@ -15,6 +15,8 @@ import {
     ManageUserAccessResponse,
     ManageRoleAccessRequest,
     ManageRoleAccessResponse,
+    createUserRequest
+    , createUserResponse
 } from '../../../../shared/src/types';
 
 export async function getAllRoles(): Promise<GetAllRolesResponse> {
@@ -79,6 +81,7 @@ export async function manageUserAccess(
     userId: ManageUserAccessRequest['userId'],
     permissionOverride: ManageUserAccessRequest['permissionOverride'],
     resourceOverride: ManageUserAccessRequest['resourceOverride'],
+    userAccess : number[],
     roleId?: number
 ): Promise<ManageUserAccessResponse> {
     return apiRequest<ManageUserAccessResponse>(
@@ -89,7 +92,8 @@ export async function manageUserAccess(
             userId,
             roleId,
             permissionOverride,
-            resourceOverride
+            resourceOverride, 
+            userAccess
         }
     );
 }
@@ -107,6 +111,25 @@ export async function manageRoleAccess(
             roleId,
             permissions,
             resources,
+        }
+    );
+}
+
+export async function createUser(
+    name: createUserRequest['name'],
+    email: createUserRequest['email'],
+    password: createUserRequest['password'],
+    roleId: createUserRequest['roleId']
+): Promise<createUserResponse> {
+    return apiRequest<createUserResponse>(
+        '/admin/manage/createuser',
+        'POST',
+        undefined,
+        {
+            name,
+            email,
+            password,
+            roleId
         }
     );
 }

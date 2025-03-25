@@ -3,14 +3,12 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
-import { SignupBody, signupSchema } from "../schemas/signupSchema";
 import { SigninBody, signinSchema } from "../schemas/signinSchema";
 import { getUserPermission } from "../utils/getPermissions";
 import STATUS_CODES from '../constants/statusCodes';
 import { APIError, APIResponse } from '../utils/apiHandler';
-import { SignUpResponse, SignInResponse, SignOutResponse, UserInfoResponse } from '../../../shared/src/types';
+import {  SignInResponse, UserInfoResponse } from '../../../shared/src/types';
 
-const saltRounds = 10;
 const jwtSecret = process.env.JWT_SECRET || 'random@123';
 const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || 'random@123';
 
@@ -25,106 +23,7 @@ interface AuthenticatedRequest extends Request {
         };
         permissions: any[];
     };
-}
-
-export async function signUpController(req: Request, res: Response): Promise<Response> {
-    const result = signupSchema.safeParse(req.body);
-
-    if (!result.success) {
-        return res.status(STATUS_CODES.BAD_REQUEST).json(
-            new APIError(
-                STATUS_CODES.BAD_REQUEST,
-                "Invalid input",
-                result.error.errors,
-                false
-            ).toJSON()
-        );
-    }
-
-    const body: SignupBody = result.data;
-
-    const userExist = await prismaClient.user.findUnique({
-        where: {
-            email: body.email,
-        },
-    });
-
-    if (userExist) {
-        return res.status(STATUS_CODES.CONFLICT).json(
-            new APIError(
-                STATUS_CODES.CONFLICT,
-                "Email ID already in use.",
-                [],
-                false
-            ).toJSON()
-        );
-    }
-
-    try {
-        const validRole = await prismaClient.role.findUnique({
-            where: {
-                id: body.roleId,
-            },
-        });
-
-        if (!validRole) {
-            return res.status(STATUS_CODES.BAD_REQUEST).json(
-                new APIError(
-                    STATUS_CODES.BAD_REQUEST,
-                    "Invalid roleId provided",
-                    [],
-                    false
-                ).toJSON()
-            );
-        }
-    } catch (error) {
-        console.error("Role validation failed:", error);
-        return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
-            new APIError(
-                STATUS_CODES.INTERNAL_SERVER_ERROR,
-                "Role validation failed",
-                [error instanceof Error ? error.message : "Unknown error"],
-                false
-            ).toJSON()
-        );
-    }
-
-    try {
-        const salt = await bcrypt.genSalt(saltRounds);
-        const hashedPassword = await bcrypt.hash(body.password, salt);
-
-        const newUser = await prismaClient.user.create({
-            data: {
-                name: body.name,
-                email: body.email,
-                password: hashedPassword,
-                roleId: body.roleId,
-            },
-        });
-
-        return res.status(STATUS_CODES.CREATED).json(
-            new APIResponse(
-                STATUS_CODES.CREATED,
-                "User created successfully",
-                {
-                    userId: newUser.id,
-                },
-                true
-            ).toJSON()
-        );
-    } catch (error) {
-        console.error("User creation failed:", error);
-        return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
-            new APIError(
-                STATUS_CODES.INTERNAL_SERVER_ERROR,
-                "User creation failed",
-                [error instanceof Error ? error.message : "Unknown error"],
-                false
-            ).toJSON()
-        );
-    }
-}
-
+} 
 export async function signInController(req: Request, res: Response): Promise<Response> {
     const result = signinSchema.safeParse(req.body);
 

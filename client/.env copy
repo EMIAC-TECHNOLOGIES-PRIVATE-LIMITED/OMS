@@ -1,4 +1,0 @@
-# VITE_API_URL=https://oms.emiactech.com/api/v1
-VITE_API_URL=http://localhost:3000/api/v1
-
-VITE_FEEDBACK_FLOW_URL=https://flo.outreachdeal.com/webhook/feedback

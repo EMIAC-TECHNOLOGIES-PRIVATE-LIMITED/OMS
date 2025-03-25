@@ -3,28 +3,38 @@ import { prismaClient } from '../utils/prismaClient';
 import { AuthRequest } from '../types/sitesDataTypes';
 import STATUS_CODES from '../constants/statusCodes';
 import { APIError, APIResponse } from '../utils/apiHandler';
-import { CreateViewResponse, GetFilteredDataResponse, GetViewDataResponse, UpdateViewResponse } from '@shared/types';
+import { CreateViewResponse, GetFilteredDataResponse, GetViewDataResponse } from '@shared/types';
 import { transformDates } from '../utils/dateTransformer';
 import { PrismaModelInfo } from '../utils/prismaModelInfo';
 import { secondaryQueryBuilder } from '../utils/queryBuilder';
 import { flattenData } from '../utils/flatData';
+import { columnDescriptions } from '../constants/columnDefinations';
+
 
 
 const modelInfo = new PrismaModelInfo();
 
 export const viewsController = {
     getView: async (req: AuthRequest, res: Response): Promise<Response> => {
-
-
         const page = parseInt(req.query.page as string, 10) || 1;
         const pageSize = parseInt(req.query.pageSize as string, 10) || 25;
+
+        if (pageSize > 100) {
+            return res
+                .status(STATUS_CODES.BAD_REQUEST)
+                .json(
+                    new APIError(
+                        STATUS_CODES.BAD_REQUEST,
+                        "Bad request: Page size cannot be greater than 100",
+                        [],
+                        false
+                    ).toJSON()
+                );
+        }
+
         const skip = (page - 1) * pageSize;
         const take = pageSize;
-
-
-
         const { view, permittedColumns, userViews, modelName } = req;
-
         if (!modelName || !view || !permittedColumns) {
 
             return res
@@ -39,13 +49,12 @@ export const viewsController = {
                 );
         }
 
-
         const query = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig);
         const query2 = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig, true);
 
-
         if (req.user?.role.name !== 'Admin') {
-            const accessIds = req.user?.userAccess.push(req.user?.userId);
+            const accessIds = [...(req.user?.userAccess || []), req.user?.userId];
+
             if (modelName === 'Client') {
                 query.where = {
                     pocId: {
@@ -57,7 +66,6 @@ export const viewsController = {
                         in: accessIds
                     }
                 };
-
             }
 
             if (modelName === 'Order') {
@@ -72,12 +80,10 @@ export const viewsController = {
                         in: accessIds
                     }
                 };
-
             }
         }
 
         try {
-
             const [data, filteredCount, totalCount] = await Promise.all([
                 (prismaClient as any)[modelName].findMany({
                     ...query,
@@ -90,8 +96,8 @@ export const viewsController = {
                 (prismaClient as any)[modelName].count(),
             ]);
 
-
             let columnTypes = modelInfo.getModelColumns(modelName);
+
             const availableColumnsType = Object.fromEntries(
                 Object.entries(columnTypes).filter(([key]) => permittedColumns.includes(key))
             );
@@ -102,10 +108,19 @@ export const viewsController = {
                 return acc;
             }, {} as Record<string, string>);
 
-
+            // console.log('[getView controller] : permitted columns are : ', permittedColumns)
+            // console.log('[getView controller] : columnTypes are : ', columnTypes)
+            // console.log('[getView controller] : available columns type are : ', availableColumnsType)
+            // console.log('[getView controller] : flat columns are : ', flatCols)
 
             const flatData = flattenData(data, modelName.toLowerCase(), flatCols);
 
+            const columnDefinations = Object.entries(columnDescriptions)
+                .filter(([key]) => key in flatCols)
+                .reduce((acc, [key, value]) => {
+                    acc[key] = value;
+                    return acc;
+                }, {} as Record<string, any>);
 
             const response = {
                 viewId: view.id,
@@ -116,6 +131,7 @@ export const viewsController = {
                 pageSize,
                 data: flatData,
                 availableColumnsType: flatCols,
+                columnDefinations,
                 appliedFilters: view.filterConfig,
                 views: userViews,
             } as GetViewDataResponse['data'];
@@ -126,6 +142,7 @@ export const viewsController = {
                 .status(STATUS_CODES.OK)
                 .json(new APIResponse(STATUS_CODES.OK, "Data fetched successfully", transformedResponse, true));
         } catch (error: any) {
+            console.error(error);
 
             return res
                 .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
@@ -141,16 +158,28 @@ export const viewsController = {
     },
 
     getData: async (req: AuthRequest, res: Response): Promise<Response> => {
-
         const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
         const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 10;
+
+        if (pageSize > 100) {
+            return res
+                .status(STATUS_CODES.BAD_REQUEST)
+                .json(
+                    new APIError(
+                        STATUS_CODES.BAD_REQUEST,
+                        "Bad request: Page size cannot be greater than 100",
+                        [],
+                        false
+                    ).toJSON()
+                );
+        }
 
         const skip = (page - 1) * pageSize;
         const take = pageSize;
 
         const { modelName, permittedColumns } = req;
-        // console.log('[getData controller] : req body for filter config recieved is : ', req.body)
         const filterConfig = req.body.appliedFilters;
+
 
         if (!modelName || !permittedColumns || !filterConfig) {
 
@@ -172,7 +201,7 @@ export const viewsController = {
         const query2 = secondaryQueryBuilder(modelName, permittedColumns, filterConfig, true);
 
         if (req.user?.role.name !== 'Admin') {
-            const accessIds = req.user?.userAccess.push(req.user?.userId);
+            const accessIds = [...(req.user?.userAccess || []), req.user?.userId];
             if (modelName === 'Client') {
                 query.where = {
                     pocId: {
@@ -203,8 +232,15 @@ export const viewsController = {
             }
         }
 
+        // const rawSQL = convertToSQL(modelName, query, {
+        //     limit: take,
+        //     offset: skip
+        // });
+        // const countSQL = convertToCountSQL(modelName, query);
 
         try {
+            // const data = await prismaClient.$queryRawUnsafe(rawSQL);
+            // const totalRecords = await prismaClient.$queryRawUnsafe(countSQL);
             const [data, totalRecords] = await Promise.all([
                 (prismaClient as any)[modelName].findMany({
                     ...query,
@@ -216,17 +252,6 @@ export const viewsController = {
                 }),
             ]);
 
-            // Reorder the columns in the data to match `permittedColumns`
-            const orderedData = data.map((row: Record<string, any>) => {
-                const orderedRow: Record<string, any> = {};
-                permittedColumns.forEach((col) => {
-                    if (col in row) {
-                        orderedRow[col] = row[col];
-                    }
-                });
-                return orderedRow;
-            });
-
             let columnTypes = modelInfo.getModelColumns(modelName);
             const availableColumnsType = Object.fromEntries(
                 Object.entries(columnTypes).filter(([key]) => permittedColumns.includes(key))
@@ -236,8 +261,10 @@ export const viewsController = {
                 acc[newKey] = availableColumnsType[key];
                 return acc;
             }, {} as Record<string, string>);
+          
             const flatData = flattenData(data, modelName.toLowerCase(), flatCols);
             const response = {
+        
                 filteredCount: totalRecords,
                 data: flatData,
             } as GetFilteredDataResponse['data'];
@@ -262,19 +289,16 @@ export const viewsController = {
         }
     },
 
-
     createView: async (req: AuthRequest, res: Response): Promise<Response> => {
         const { resource } = req.params;
         const userId = req.user?.userId!;
         const { viewName, filterConfig } = req.body;
         const { modelName } = req;
-
         if (!modelName) {
             return res
                 .status(STATUS_CODES.BAD_REQUEST)
                 .json(new APIError(STATUS_CODES.BAD_REQUEST, "Bad request: Model name missing", [], false).toJSON());
         }
-
 
         try {
             const newView = await prismaClient.view.create({
@@ -307,12 +331,8 @@ export const viewsController = {
         }
     },
 
-    // update the view. 
     updateView: async (req: AuthRequest, res: Response): Promise<Response> => {
-
-
         const { viewName, filterConfig, viewId } = req.body;;
-
         try {
             const updatedView = await prismaClient.view.update({
                 where: { id: parseInt(viewId, 10) },
@@ -321,7 +341,6 @@ export const viewsController = {
                     filterConfig
                 },
             });
-
             return res
                 .status(STATUS_CODES.OK)
                 .json(new APIResponse(STATUS_CODES.OK, "View updated successfully", {}, true));
@@ -332,7 +351,6 @@ export const viewsController = {
                 .json(new APIError(STATUS_CODES.INTERNAL_SERVER_ERROR, "Error updating view", [error], false).toJSON());
         }
     },
-
 
     deleteView: async (req: AuthRequest, res: Response): Promise<Response> => {
         const view = req.body

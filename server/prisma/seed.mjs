@@ -28,7 +28,7 @@ async function main() {
         "source": "Website",
         "clientClientName": "Emily Watson",
         "projects": "Social Media Campaigns",
-        "pocId": 3
+        "pocId": 2
       },
       {
         "name": "Zenith Tech",
@@ -40,7 +40,7 @@ async function main() {
         "source": "Cold Call",
         "clientClientName": "Michael Chang",
         "projects": "App Development",
-        "pocId": 1
+        "pocId": 2
       },
       {
         "name": "Skyline Digital",
@@ -52,7 +52,7 @@ async function main() {
         "source": "Social Media",
         "clientClientName": "Sophia Martinez",
         "projects": "SEO Optimization",
-        "pocId": 4
+        "pocId": 2
       },
       {
         "name": "Greenfield Enterprises",
@@ -64,7 +64,7 @@ async function main() {
         "source": "Advertisement",
         "clientClientName": "Rajesh Kumar",
         "projects": "Content Marketing",
-        "pocId": 5
+        "pocId": 2
       },
       {
         "name": "NextGen Solutions",
@@ -88,7 +88,7 @@ async function main() {
         "source": "LinkedIn",
         "clientClientName": "Samuel Green",
         "projects": "Market Analysis",
-        "pocId": 1
+        "pocId": 2
       },
       {
         "name": "Urban Dynamics",
@@ -100,7 +100,7 @@ async function main() {
         "source": "Search Engine",
         "clientClientName": "Arjun Mehta",
         "projects": "Branding Strategy",
-        "pocId": 3
+        "pocId": 2
       },
       {
         "name": "Vortex Technologies",
@@ -112,7 +112,7 @@ async function main() {
         "source": "Social Media",
         "clientClientName": "Laura Benson",
         "projects": "Cloud Solutions",
-        "pocId": 4
+        "pocId": 2
       },
       {
         "name": "Fusion Innovations",
@@ -124,7 +124,7 @@ async function main() {
         "source": "Website",
         "clientClientName": "Kunal Desai",
         "projects": "E-commerce Setup",
-        "pocId": 5
+        "pocId": 2
       }
     ]
   ];
@@ -1670,8 +1670,8 @@ async function main() {
 
   ]
 
-    await prisma.order.createMany({
-      data: data4[0].map((client) => ({
+    await prisma.client.createMany({
+      data: data[0].map((client) => ({
         ...client,
       }))
     });

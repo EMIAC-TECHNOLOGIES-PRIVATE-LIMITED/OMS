@@ -25,12 +25,18 @@ interface LocationState {
   message?: string;
 }
 
+interface LoginFormProps {
+  onLogin: (email: string, password: string) => void;
+  error: string | null;
+}
+
 // Separate login form component to handle state changes
-const LoginForm = React.memo(({ onLogin, error }: { onLogin: (email: string, password: string) => void, error: string | null }) => {
+const LoginForm = React.memo(({ onLogin, error }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = () => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent default form submission behavior
     onLogin(email, password);
   };
 
@@ -45,45 +51,47 @@ const LoginForm = React.memo(({ onLogin, error }: { onLogin: (email: string, pas
           Welcome Back
         </h2>
 
-        <div className="mb-4">
-          <label className="block text-gray-600 font-medium mb-1">
-            Email
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-          />
-        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-gray-600 font-medium mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+            />
+          </div>
 
-        <div className="mb-4">
-          <label className="block text-gray-600 font-medium mb-1">
-            Password
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-          />
-        </div>
+          <div className="mb-4">
+            <label className="block text-gray-600 font-medium mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+            />
+          </div>
 
-        {error && (
-          <p className="text-red-500 text-sm mb-4 text-center">
-            {error}
-          </p>
-        )}
+          {error && (
+            <p className="text-red-500 text-sm mb-4 text-center">
+              {error}
+            </p>
+          )}
 
-        <Button
-          onClick={handleSubmit}
-          variant="brand"
-          className="w-full"
-        >
-          Login
-        </Button>
+          <Button
+            type="submit" // Change to type="submit" for form submission
+            variant="brand"
+            className="w-full"
+          >
+            Login
+          </Button>
+        </form>
 
         <div className="mt-6 text-center">
           Forgot Password?

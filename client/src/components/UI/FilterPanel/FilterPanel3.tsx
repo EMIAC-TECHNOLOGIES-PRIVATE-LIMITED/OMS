@@ -26,9 +26,11 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from '@/components/ui/label';
 import { Switch } from "@/components/ui/switch";
 import debounce from 'lodash.debounce';
+import { useRecoilState } from 'recoil';
+import { filterPanelLocalFiltersAtom, filterPanelOpenStateAtom } from '@/store/atoms/atoms';
 
 interface FilterPanelProps {
     filterConfig: FilterConfig;
@@ -56,15 +58,11 @@ const formatHeader = (name: string, resource: string): string => {
     return `${parentField.charAt(0).toUpperCase() + parentField.slice(1)} ${childField.charAt(0).toUpperCase() + childField.slice(1)}`;
 };
 
-const DatePickerWithPresets = ({
-    value,
-    onChange,
-    disabled
-}: {
+const DatePickerWithPresets: React.FC<{
     value?: Date;
     onChange: (date: Date | undefined) => void;
     disabled?: boolean;
-}) => {
+}> = ({ value, onChange, disabled }) => {
     const [date, setDate] = useState<Date | undefined>(value);
 
     return (
@@ -103,32 +101,27 @@ const DatePickerWithPresets = ({
     );
 };
 
-const ColumnSelectionPopover = ({
-    filter,
-    index,
-    availableColumnTypes,
-    handleFilterChange,
-    resource,
-    filterConfig
-}: {
+const ColumnSelectionPopover: React.FC<{
     filter: LocalFilter;
     index: number;
     availableColumnTypes: availableColumnsTypes;
     handleFilterChange: (index: number, field: keyof LocalFilter, value: any) => void;
     resource: string;
     filterConfig: FilterConfig;
-}) => {
+}> = ({ filter, index, availableColumnTypes, handleFilterChange, resource, filterConfig }) => {
     const [open, setOpen] = useState(false);
     const filteredColumns = useMemo(() => {
         return Object.entries(availableColumnTypes).reduce((acc, [key, value]) => {
             const [, childField] = key.split('.');
-            if (childField !== 'id' &&
+            if (
+                childField !== 'id' &&
                 childField !== 'siteId' &&
                 childField !== 'salesPersonId' &&
                 childField !== 'clientId' &&
                 childField !== 'pocId' &&
                 childField !== 'vendorId' &&
-                !filterConfig.columns?.includes(key)) {
+                !(filterConfig.columns?.includes(key) ?? false)
+            ) {
                 acc[key] = value;
             }
             return acc;
@@ -177,19 +170,13 @@ const ColumnSelectionPopover = ({
     );
 };
 
-const OperatorSelectionPopover = ({
-    filter,
-    index,
-    operators,
-    handleFilterChange,
-    disabled
-}: {
+const OperatorSelectionPopover: React.FC<{
     filter: LocalFilter;
     index: number;
     operators: { value: string; label: string }[];
     handleFilterChange: (index: number, field: keyof LocalFilter, value: any) => void;
     disabled: boolean;
-}) => {
+}> = ({ filter, index, operators, handleFilterChange, disabled }) => {
     const [open, setOpen] = useState(false);
 
     return (
@@ -233,17 +220,12 @@ const OperatorSelectionPopover = ({
     );
 };
 
-const ValueSelectionPopover = ({
-    columnType,
-    value,
-    onChange,
-    disabled
-}: {
+const ValueSelectionPopover: React.FC<{
     columnType: string;
     value: any;
     onChange: (value: any) => void;
     disabled: boolean;
-}) => {
+}> = ({ columnType, value, onChange, disabled }) => {
     const [open, setOpen] = useState(false);
 
     const getOptions = useCallback(() => {
@@ -327,41 +309,53 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     onFilterChange,
     resource
 }) => {
-    const [localFilters, setLocalFilters] = useState<LocalFilter[]>(() => {
-        if (filterConfig.filters && filterConfig.filters.length > 0) {
-            return filterConfig.filters.map(filter => ({
-                ...filter,
-                isComplete: true
-            }));
+    const [localFilters, setLocalFilters] = useRecoilState(filterPanelLocalFiltersAtom);
+    const [isInitialMount, setIsInitialMount] = useState(true);
+
+    // Initial sync of filterConfig.filters into localFilters
+    useEffect(() => {
+        if (isInitialMount) {
+            console.log('[FilterPanel] Initial mount - filterConfig:', filterConfig);
+            const initialFilters = filterConfig.filters?.length ?? 0 > 0
+                ? filterConfig.filters!.map(filter => ({
+                    ...filter,
+                    isComplete: true
+                }))
+                : [{ isComplete: false }];
+            setLocalFilters(initialFilters);
+            setIsInitialMount(false);
         }
-        return [{ isComplete: false }];
-    });
+    }, [filterConfig, isInitialMount, setLocalFilters]);
+
+    // Sync filterConfig changes without overwriting incomplete filters
+    useEffect(() => {
+        if (!isInitialMount) {
+            console.log('[FilterPanel] Syncing filterConfig - filterConfig:', filterConfig, 'current localFilters:', localFilters);
+            setLocalFilters(prev => {
+                const configFilters = filterConfig.filters?.map(f => ({ ...f, isComplete: true })) ?? [];
+                const incompleteFilters = prev.filter(f => !f.isComplete);
+                // Merge complete filters from filterConfig with existing incomplete filters
+                const mergedFilters = [
+                    ...configFilters,
+                    ...incompleteFilters.filter(f => !configFilters.some(cf => cf.column === f.column))
+                ];
+                return mergedFilters.length > 0 ? mergedFilters : [{ isComplete: false }];
+            });
+        }
+    }, [filterConfig, isInitialMount, setLocalFilters]);
 
     const [localConnector, setLocalConnector] = useState<'AND' | 'OR'>(
         filterConfig.connector || 'AND'
     );
-    const [isOpen, setIsOpen] = useState(false);
+    const [filterPanelOpenState, setFilterPanelOpenState] = useRecoilState(filterPanelOpenStateAtom);
     const [numberOfCompleteFilters, setNumberOfCompleteFilters] = useState(
-        filterConfig.filters?.length || 0
+        filterConfig.filters?.length ?? 0
     );
 
     useEffect(() => {
-        if (filterConfig.filters && filterConfig.filters.length > 0) {
-            setNumberOfCompleteFilters(filterConfig.filters.length);
-            if (isOpen) {
-                setLocalFilters(filterConfig.filters.map(filter => ({
-                    ...filter,
-                    isComplete: true
-                })));
-                setLocalConnector(filterConfig.connector || 'AND');
-            }
-        } else {
-            setNumberOfCompleteFilters(0);
-            if (isOpen) {
-                setLocalFilters([{ isComplete: false }]);
-            }
-        }
-    }, [filterConfig, isOpen]);
+        console.log('[FilterPanel] Open state changed - openState:', filterPanelOpenState, 'filterConfig:', filterConfig);
+        setNumberOfCompleteFilters(filterConfig.filters?.length ?? 0);
+    }, [filterConfig, filterPanelOpenState]);
 
     const getInputTypeForColumn = useCallback((columnType: string): React.HTMLInputTypeAttribute => {
         switch (columnType) {
@@ -382,7 +376,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     }, []);
 
     const getOperatorsByType = useCallback((type: string): { value: string; label: string }[] => {
-
         const baseOperators = (() => {
             switch (type) {
                 case 'String':
@@ -392,7 +385,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                         { value: 'startsWith', label: 'Starts With' },
                         { value: 'endsWith', label: 'Ends With' },
                         { value: 'equals', label: 'Equals' },
-
                     ];
                 case 'Int':
                 case 'Int?':
@@ -402,7 +394,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                         { value: 'gt', label: 'Greater Than' },
                         { value: 'lt', label: 'Less Than' },
                         { value: 'equals', label: 'Equals' },
-
                     ];
                 case 'Boolean':
                 case 'Boolean?':
@@ -413,8 +404,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                         { value: 'equals', label: 'Equals' },
                         { value: 'gt', label: 'After' },
                         { value: 'lt', label: 'Before' },
-                        {value: 'lte', label: 'On or Before'},
-                        {value: 'gte', label: 'On or After'}
+                        { value: 'lte', label: 'On or Before' },
+                        { value: 'gte', label: 'On or After' }
                     ];
                 default:
                     const enumMatch = type.match(/^Enum\((.+?)\)\??$/);
@@ -447,6 +438,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             })),
             connector: completeFilters.length > 1 ? (connector || localConnector) : 'AND'
         };
+        console.log('[FilterPanel] Updating global filter state:', newFilterConfig);
         onFilterChange(newFilterConfig);
     }, [filterConfig, localConnector, onFilterChange]);
 
@@ -470,7 +462,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             const newFilters = [...prev];
             let processedValue = value;
 
-            // Handle column change
+            console.log('[FilterPanel] handleFilterChange - index:', index, 'field:', field, 'value:', value);
+
             if (field === 'column' && newFilters[index].isComplete) {
                 const previousColumnType = newFilters[index].column
                     ? availableColumnTypes[newFilters[index].column]
@@ -493,7 +486,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 }
             }
 
-            // Handle empty value
             if (field === 'value' && value === '') {
                 newFilters[index] = {
                     ...newFilters[index],
@@ -503,7 +495,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 return newFilters;
             }
 
-            // Handle operator change for null operators
             if (field === 'operator' && (value === 'isNull' || value === 'isNotNull')) {
                 newFilters[index] = {
                     ...newFilters[index],
@@ -515,7 +506,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 return newFilters;
             }
 
-            // Handle value changes for different types
             if (field === 'value' && newFilters[index].column) {
                 const columnType = availableColumnTypes[newFilters[index].column];
                 if (columnType === 'DateTime' || columnType === 'DateTime?') {
@@ -534,7 +524,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 }
             }
 
-            // Update the filter
             newFilters[index] = {
                 ...newFilters[index],
                 [field]: processedValue,
@@ -543,11 +532,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                     : !!(newFilters[index].column && newFilters[index].operator && newFilters[index].value !== undefined)
             };
 
-            // If filter is complete, update global state
             if (newFilters[index].isComplete) {
                 debouncedUpdateGlobalState(newFilters);
             }
 
+            console.log('[FilterPanel] Updated localFilters:', newFilters);
             return newFilters;
         });
     }, [availableColumnTypes, debouncedUpdateGlobalState]);
@@ -580,14 +569,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     }, []);
 
     const handlePanelOpenChange = useCallback((open: boolean) => {
-        setIsOpen(open);
+        console.log('[FilterPanel] Panel open state changed to:', open, 'current localFilters:', localFilters);
+        setFilterPanelOpenState(open);
         if (!open) {
             setLocalFilters(prev => {
                 const completeFilters = prev.filter(f => f.isComplete);
                 return completeFilters.length > 0 ? completeFilters : [{ isComplete: false }];
             });
         }
-    }, []);
+    }, [setFilterPanelOpenState]);
 
     const renderFilterItem = useCallback((filter: LocalFilter, index: number) => {
         const columnType = filter.column ? availableColumnTypes[filter.column] : undefined;
@@ -615,7 +605,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                         disabled={!filter.column}
                     />
 
-                    {!isNullOperator && columnType === 'DateTime' || columnType === 'DateTime?' ? (
+                    {!isNullOperator && (columnType === 'DateTime' || columnType === 'DateTime?') ? (
                         <DatePickerWithPresets
                             value={filter.value ? new Date(filter.value as string) : undefined}
                             onChange={(date) => handleFilterChange(index, 'value', date)}
@@ -633,8 +623,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                             type={inputType}
                             placeholder="Enter value"
                             className="w-[200px]"
-                            value={filter.value?.toString() || ''}
-                            onChange={(e) => {
+                            value={filter.value?.toString() ?? ''}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 const value = inputType === 'number'
                                     ? (e.target.value === '' ? '' : Number(e.target.value))
                                     : e.target.value;
@@ -657,9 +647,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         );
     }, [availableColumnTypes, getOperatorsByType, getInputTypeForColumn, handleFilterChange, handleRemoveFilter, resource, filterConfig]);
 
+    console.log('[FilterPanel] Rendering with localFilters:', localFilters);
+
     return (
         <div className="relative">
-            <Popover onOpenChange={handlePanelOpenChange}>
+            <Popover onOpenChange={handlePanelOpenChange} open={filterPanelOpenState}>
                 <PopoverTrigger asChild>
                     <Button
                         variant="secondaryFlat"
