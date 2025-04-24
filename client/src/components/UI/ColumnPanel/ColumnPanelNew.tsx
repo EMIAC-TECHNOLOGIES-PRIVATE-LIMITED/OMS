@@ -59,11 +59,11 @@ const ColumnPanel: React.FC<ColumnPanelProps> = ({
   const sanitizeFilterConfig = (columns: string[]) => {
     const updatedFilterConfig = { ...filterConfig };
 
-    // remove the filters and sorting that is present in the columns that are not selected
-    updatedFilterConfig.filters = updatedFilterConfig.filters?.filter((f) => !columns.includes(f.column));
-    updatedFilterConfig.sort = updatedFilterConfig.sort?.filter((s) =>
-      Object.keys(s).some(key => !columns.includes(key))
-    );
+    // // remove the filters and sorting that is present in the columns that are not selected
+    // updatedFilterConfig.filters = updatedFilterConfig.filters?.filter((f) => !columns.includes(f.column));
+    // updatedFilterConfig.sort = updatedFilterConfig.sort?.filter((s) =>
+    //   Object.keys(s).some(key => !columns.includes(key))
+    // );
     updatedFilterConfig.columns = columns;
 
     return updatedFilterConfig;

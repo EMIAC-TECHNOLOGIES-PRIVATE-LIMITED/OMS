@@ -1,4 +1,8 @@
 import { FilterConfig } from "@shared/types";
+import { PrismaModelInfo } from '../utils/prismaModelInfo';
+
+const modelInfo = new PrismaModelInfo();
+
 
 export type QueryObject = {
     select?: any;
@@ -25,7 +29,6 @@ const shouldProcessResource = (model: string, resourceTable: string): boolean =>
     return validTables[modelLower]?.includes(resourceLower) || false;
 };
 
-// Define enum fields for each model
 const enumFields: { [key: string]: string[] } = {
     site: [
         'siteClassification',
@@ -39,7 +42,21 @@ const enumFields: { [key: string]: string[] } = {
     ],
     vendor: ['VendorCategory'],
     client: [],
-    order: ['orderStatus', 'orderStatus', 'vendorInvoiceStatus', 'vendorInvoiceStatus']
+    order: ['orderStatus', 'vendorInvoiceStatus', 'vendorPaymentStatus', 'clientPaymentStatus'],
+};
+
+const isStringType = (value: any): boolean => {
+    return typeof value === 'string';
+};
+
+const isDateType = (value: any): boolean => {
+    if (value instanceof Date) return true;
+    if (typeof value === 'string') {
+        const date = new Date(value);
+        return !isNaN(date.getTime()) && 
+            /^\d{4}-\d{2}-\d{2}([T ].*)?$/.test(value);
+    }
+    return false;
 };
 
 const isEnumField = (model: string, field: string): boolean => {
@@ -48,7 +65,7 @@ const isEnumField = (model: string, field: string): boolean => {
 };
 
 const isTextBasedOperator = (operator: string): boolean => {
-    return ['equals', 'contains', 'startsWith', 'endsWith'].includes(operator);
+    return ['contains', 'startsWith', 'endsWith'].includes(operator);
 };
 
 export const primaryQueryBuilder = (model: string, resources: string[]): QueryObject => {
@@ -77,8 +94,17 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                             id: true,
                         }
                     },
-                    vendor: { select: {} }
-
+                    vendor: {
+                        select: {
+                            id: true,
+                        }
+                    },
+                    categories: {
+                        select: {
+                            id: true,
+                            category: true
+                        }
+                    }
                 },
                 where: {},
                 orderBy: {},
@@ -87,10 +113,24 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
         case 'order':
             baseQuery = {
                 select: {
-                    client: { select: {} },
+                    client: {
+                        select: {
+                            id: true,
+                        }
+                    },
                     site: {
                         select: {
-                            vendor: { select: {} }
+                            vendor: {
+                                select: {
+                                    id: true,
+                                }
+                            },
+                            categories: {
+                                select: {
+                                    id: true,
+                                    category: true
+                                }
+                            }
                         }
                     },
                     salesPerson: {
@@ -239,11 +279,10 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
     const modelLower = model.toLowerCase();
 
     if (column === 'name') {
-        const condition = isTextBasedOperator(operator)
+        const condition = (isTextBasedOperator(operator) || (operator === 'equals' && isStringType(filter.value)) && !isDateType(filter.value))
             ? { name: { [operator]: filter.value, mode: 'insensitive' } }
             : { name: { [operator]: filter.value } };
-        
-        // Check if we're filtering on the model's own name column
+
         if (table === modelLower) {
             return { name: condition.name };
         } else if (modelLower === 'order' && table === 'salesPerson') {
@@ -253,13 +292,33 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
         }
     }
 
+    if (column === 'categories') {
+        const idArray = filter.value.map((cat: any) => cat.id);
+        const condition = {
+            categories: {
+                some: {
+                    id: {
+                        in: idArray,
+                    }
+                }
+            }
+        };
+
+        if (table === modelLower) {
+            return condition;
+        } else if (modelLower === 'order' && table === 'site') {
+            return { site: condition };
+        } else if (modelLower === 'site' && table === 'vendor') {
+            return { vendor: condition };
+        }
+    }
+
     if (operator === 'isNull') {
         const condition = { [column]: null };
-        // Handle nested conditions based on table
+
         if (table === modelLower) {
             return condition;
         } else {
-            // Build nested structure based on model and table
             switch (modelLower) {
                 case 'site':
                     return table === 'vendor' ? { vendor: condition } : {};
@@ -276,11 +335,9 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
 
     if (operator === 'isNotNull') {
         const condition = { NOT: { [column]: null } };
-        // Handle nested conditions based on table
         if (table === modelLower) {
             return condition;
         } else {
-            // Build nested structure based on model and table
             switch (modelLower) {
                 case 'site':
                     return table === 'vendor' ? { vendor: condition } : {};
@@ -295,7 +352,6 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
         }
     }
 
-
     if (operator === 'between' && Array.isArray(filter.value)) {
         return {
             [table === modelLower ? column : table]: {
@@ -305,11 +361,24 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
         };
     }
 
-    // Check if the field is an enum field
-    const isEnum = isEnumField(table, column);
+    if (operator === 'hasSome' && Array.isArray(filter.value)) {
+        return {
+            [table === modelLower ? column : table]: {
+                hasSome: filter.value,
+            },
+        };
+    }
 
-    // For enum fields, don't add mode: 'insensitive'
-    const operatorConfig = isTextBasedOperator(operator) && !isEnum
+    if (operator === 'isEmpty') {
+        return {
+            [table === modelLower ? column : table]: {
+                isEmpty: true,
+            },
+        };
+    }
+
+    const isEnum = isEnumField(table, column);
+    const operatorConfig = (isTextBasedOperator(operator) || (operator === 'equals' && isStringType(filter.value) && !isEnum && !isDateType(filter.value)))
         ? { [operator]: filter.value, mode: 'insensitive' }
         : { [operator]: filter.value };
 
@@ -414,11 +483,13 @@ const buildOrderByClause = (sort: SortConfig, model: string) => {
     return orderBy;
 };
 
+
 export const secondaryQueryBuilder = (
     model: string,
     resources: string[],
     filterConfig: FilterConfig,
-    forCount: boolean = false
+    forCount: boolean = false,
+    globalFilter?: string
 ) => {
     let query = primaryQueryBuilder(model, resources);
 
@@ -426,9 +497,43 @@ export const secondaryQueryBuilder = (
         query.select = excludeColumnsFromSelect(query.select, filterConfig.columns, model);
     }
 
+    // Initialize where conditions array
+    let whereConditions: any[] = [];
+
+    // Handle existing filters
     if (filterConfig.filters && filterConfig.filters.length > 0) {
-        const whereConditions = filterConfig.filters.map(filter => buildWhereCondition(filter, model));
-        query.where = { [filterConfig.connector || 'AND']: whereConditions };
+        whereConditions = filterConfig.filters.map(filter => buildWhereCondition(filter, model));
+    }
+
+    // Handle global filter
+    if (globalFilter && globalFilter.trim() !== '') {
+        const columnTypes = modelInfo.getModelColumns(model);
+        const stringColumns = resources.filter(resource => {
+            const { table, column } = getTableAndColumn(resource);
+            // Check if resource is valid and column is a string type
+            return (
+                shouldProcessResource(model, table) &&
+                (columnTypes[resource] === 'String' || columnTypes[resource] === 'String?') &&
+                !isEnumField(table, column) &&
+                !['id', 'categories'].includes(column)
+            );
+        });
+
+        if (stringColumns.length > 0) {
+            const globalFilterConditions = stringColumns.map(column =>
+                buildWhereCondition(
+                    { column, operator: 'contains', value: globalFilter },
+                    model
+                )
+            );
+            const globalFilterClause = { OR: globalFilterConditions };
+            whereConditions.push(globalFilterClause);
+        }
+    }
+
+    // Combine all conditions with AND connector
+    if (whereConditions.length > 0) {
+        query.where = { AND: whereConditions };
     }
 
     if (filterConfig.sort) {

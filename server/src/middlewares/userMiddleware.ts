@@ -35,7 +35,7 @@ const populateUserData = async (
     req.user = {
         name: decoded.name,
         email: decoded.email,
-        userId: decoded.userId,
+        userId: decoded.userId, 
         role: decoded.role,
         permissions: userPermissions,
     };

@@ -5,14 +5,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ClipboardCopy, AlertCircle, Search } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { vendorChecker } from "@/utils/apiService/toolsAPI";
-import type { VendorCheckerResponse } from "../../../../../../../shared/src/types";
 
 interface VendorInfo {
   vendorId: number;
   vendorName: string;
-  vendorPhone: string;
-  vendorEmail: string;
-  vendorCountry: string | null;
+  vendorPhone: string | null;
+  vendorEmail: string | null;
+  costPrice: number;
+  noOfOrders: number;
+  latestOrderDate: Date | null;
+}
+
+interface VendorCheckerResponse {
+  status: number;
+  message: string;
+  success: boolean;
+  data: {
+    domainsFound: Record<string, VendorInfo[]>;
+    domainsNotFound: string[];
+  };
 }
 
 interface DomainVendors {
@@ -26,7 +37,6 @@ function VendorLookupTool() {
   const [loading, setLoading] = useState<boolean>(false);
   const [showResults, setShowResults] = useState<boolean>(false);
   const resultRef = useRef<HTMLDivElement>(null);
-
 
   useEffect(() => {
     if (showResults && resultRef.current) {
@@ -44,13 +54,7 @@ function VendorLookupTool() {
     try {
       const response: VendorCheckerResponse = await vendorChecker(domainArray);
       if (response.success && response.data) {
-        const mappedVendors = Object.fromEntries(
-          Object.entries(response.data.domainsFound.vendors).map(([domain, vendors]) => [
-            domain,
-            vendors.map(vendor => ({ ...vendor, vendorCountry: null }))
-          ])
-        );
-        setDomainVendors(mappedVendors);
+        setDomainVendors(response.data.domainsFound);
         setDomainsNotFound(response.data.domainsNotFound);
         setShowResults(true);
       } else {
@@ -91,7 +95,7 @@ function VendorLookupTool() {
               Enter Domains
             </label>
             <Textarea
-              placeholder="e.g. example.com&#10;domain.com&#10;website.com"
+              placeholder="e.g. example.com\ndomain.com\nwebsite.com"
               value={enteredText}
               onChange={(e) => setEnteredText(e.target.value)}
               className="min-h-[200px] resize-none transition-all duration-200 focus:ring-2 focus:ring-brand/20"
@@ -115,10 +119,11 @@ function VendorLookupTool() {
             </Button>
             <Button
               variant="brand"
-              className={`flex-1 transition-all duration-200 ${enteredText.length === 0
-                ? "cursor-not-allowed bg-slate-400 hover:bg-slate-400"
-                : "hover:scale-[1.02] active:scale-[0.98]"
-                }`}
+              className={`flex-1 transition-all duration-200 ${
+                enteredText.length === 0
+                  ? "cursor-not-allowed bg-slate-400 hover:bg-slate-400"
+                  : "hover:scale-[1.02] active:scale-[0.98]"
+              }`}
               onClick={checkVendors}
             >
               <Search className="h-4 w-4 mr-2" />
@@ -129,8 +134,7 @@ function VendorLookupTool() {
 
         {/* Results Section */}
         {showResults && (
-          <div className="space-y-8 mt-8"
-            ref={resultRef}>
+          <div className="space-y-8 mt-8" ref={resultRef}>
             {/* Domains Found Section */}
             {Object.keys(domainVendors).length > 0 && (
               <div className="space-y-6">
@@ -148,7 +152,9 @@ function VendorLookupTool() {
                           <TableHead>Vendor Name</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Phone</TableHead>
-                          <TableHead>Country</TableHead>
+                          <TableHead>Cost Price</TableHead>
+                          <TableHead>No. of Orders</TableHead>
+                          <TableHead>Latest Order</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -157,10 +163,14 @@ function VendorLookupTool() {
                             <TableCell className="font-medium">
                               {vendor.vendorName}
                             </TableCell>
-                            <TableCell>{vendor.vendorEmail}</TableCell>
-                            <TableCell>{vendor.vendorPhone}</TableCell>
+                            <TableCell>{vendor.vendorEmail || '-'}</TableCell>
+                            <TableCell>{vendor.vendorPhone || '-'}</TableCell>
+                            <TableCell>${vendor.costPrice.toFixed(2)}</TableCell>
+                            <TableCell>{vendor.noOfOrders}</TableCell>
                             <TableCell>
-                              {vendor.vendorCountry || 'N/A'}
+                              {vendor.latestOrderDate
+                                ? new Date(vendor.latestOrderDate).toLocaleDateString()
+                                : 'No orders'}
                             </TableCell>
                           </TableRow>
                         ))}

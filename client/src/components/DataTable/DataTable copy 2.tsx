@@ -1,6 +1,6 @@
 // import { AllCommunityModule, ModuleRegistry, themeQuartz, CellKeyDownEvent, IRowNode, RowSelectedEvent, Column } from "ag-grid-community";
-// import { AgGridReact } from "ag-grid-react";
-// import { ColDef, ICellRendererParams, ICellEditorParams } from "ag-grid-community";
+// import { AgGridReact, CustomCellRendererProps, CustomTooltipProps } from "ag-grid-react";
+// import { ColDef, ICellRendererParams } from "ag-grid-community";
 // import "ag-grid-community/styles/ag-theme-quartz.css";
 // import TableSkeleton from "./Skeleton";
 // import EnumBadge, { getEnumValues, EnumBadgeProps } from "../../utils/EnumUtil/EnumUtil";
@@ -9,10 +9,10 @@
 // import { authAtom, showFabAtom } from "@/store/atoms/atoms";
 // import { useRecoilState, useRecoilValue } from "recoil";
 // import NoDataTable from "./NoData";
-// import { useEffect, useMemo, useState, useRef, forwardRef, useImperativeHandle } from "react";
+// import React, { useEffect, useMemo, useState, useRef } from "react";
 // import { Fab, Action } from 'react-tiny-fab';
 // import 'react-tiny-fab/dist/styles.css';
-
+// import { LargeTextEditor, DateEditor } from "./CustomEditors";
 // import {
 //   AlertDialog,
 //   AlertDialogAction,
@@ -25,109 +25,17 @@
 // } from "../../components/ui/alert-dialog"
 // import { FilePlus, Plus } from "lucide-react";
 // import CreateSheet from "./CreateSheet2";
+// import { CustomHeaderWithContextMenu } from "./CustomHeader";
+// import { FilterConfig } from "../../../../shared/src/types";
 
 // ModuleRegistry.registerModules([AllCommunityModule]);
-
-// // Define columns that should use the large text editor
-// const LARGE_TEXT_COLUMNS = ['niche', 'notes', 'comments', 'details'];
-
-// // Define columns that may contain hyperlinks
-// const LINK_COLUMNS = ['website', 'url', 'link'];
-
-// // Define columns that should use Indian number formatting
-// const INDIAN_NUMBER_COLUMNS = ['ahrefTraffic', 'price', 'total', 'balance'];
-
-// // Function to check if a string is a valid URL
-// const isValidUrl = (str: string): boolean => {
-//   try {
-//     new URL(str);
-//     return true;
-//   } catch {
-//     return false;
-//   }
-// };
-
-// // Function to format number in Indian system
-// const formatIndianNumber = (num: number): string => {
-//   const numStr = num.toString();
-//   if (numStr.length <= 3) return numStr;
-  
-//   let lastThree = numStr.substring(numStr.length - 3);
-//   const remaining = numStr.substring(0, numStr.length - 3);
-//   if (remaining) {
-//     lastThree = ',' + lastThree;
-//   }
-//   return remaining.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
-// };
-
-// // Custom tooltip component for hyperlinks
-// const HyperlinkTooltip = (props: any) => {
-//   if (isValidUrl(props.value)) {
-//     return (
-//       <div style={{ backgroundColor: '#fff', padding: '5px', borderRadius: '3px' }}>
-//         <a 
-//           href={props.value} 
-//           target="_blank" 
-//           rel="noopener noreferrer"
-//           style={{ color: '#007b3c', textDecoration: 'underline' }}
-//         >
-//           {props.value}
-//         </a>
-//       </div>
-//     );
-//   }
-//   return props.value?.toString() || '';
-// };
-
-// // Updated Large text editor component
-// interface LargeTextEditorProps extends ICellEditorParams {
-//   value: string;
-// }
-
-// const LargeTextEditor = forwardRef((props: LargeTextEditorProps, ref) => {
-//   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-//   const initialValue = props.value;
-
-//   useEffect(() => {
-//     // Focus the textarea when the editor is mounted
-//     textAreaRef.current?.focus();
-//   }, []);
-
-//   useImperativeHandle(ref, () => ({
-//     getValue() {
-//       return textAreaRef.current?.value ?? initialValue;
-//     },
-    
-//     isCancelBeforeStart() {
-//       return false;
-//     },
-    
-//     isCancelAfterEnd() {
-//       const currentValue = textAreaRef.current?.value;
-//       return currentValue === initialValue;
-//     }
-//   }));
-
-//   return (
-//     <textarea
-//       ref={textAreaRef}
-//       defaultValue={initialValue}
-//       className="w-full h-24 p-2 resize-both"
-//       style={{
-//         border: '1px solid #ccc',
-//         borderRadius: '4px',
-//         minHeight: '100px',
-//         backgroundColor: '#fff'
-//       }}
-//     />
-//   );
-// });
-
-// LargeTextEditor.displayName = 'LargeTextEditor';
 
 // interface DataGridProps {
 //   data: Record<string, any>[];
 //   availableColumnTypes: {
+//     [key: string]: string;
+//   };
+//   columnDescriptions?: {
 //     [key: string]: string;
 //   };
 //   loading?: boolean;
@@ -139,6 +47,8 @@
 //   setTotalCount: (value: number) => void;
 //   filteredCount: number | null;
 //   refreshRecords: (addedRecords: number) => void;
+//   filterConfig: FilterConfig;
+//   handleFilterChange: (value: FilterConfig) => void;
 // }
 
 // interface RowNumberCellRendererParams extends ICellRendererParams {
@@ -147,15 +57,30 @@
 //   isHeader: boolean;
 // }
 
+// const hyperLinkToolTipColumns = ['site.website', 'client.website', 'order.publishURL', 'order.indexedScreenShotLink'];
+// const formatNumberColumns = ['site.ahrefTraffic', 'site.domainAuthority', 'site.pageAuthority', 'site.spamScore', 'site.costPrice', 'site.sellingPrice', 'site.semrushTraffic', 'site.semrushOrganicTraffic', 'site.domainRating', 'site.adultPrice', 'site.casinoAdultPrice', 'site.cbdPrice', 'site.linkInsertionCost', 'site.semrushFirstCountryTraffic', 'site.semrushSecondCountryTraffic', 'site.semrushThirdCountryTraffic', 'site.semrushFourthCountryTraffic', 'site.semrushFifthCountryTraffic', 'site.similarwebTraffic', 'site.bannerImagePrice', 'site.numberOfLinks', 'order.clientContentCost', 'order.clientProposedAmount', 'order.clientReceivedAmount', 'order.vendorPaymentAmount', 'order.costPriceWithGST'];
+// const largeTextEditorColumns = ['site.contentCategories', 'site.websiteRemark', 'site.disclaimer', 'client.projects', 'order.orderRemark', 'order.mainRemark', 'order.clientPaymentRemark'];
+
 // const RowNumberCellRenderer: React.FC<RowNumberCellRendererParams> = (params) => {
 //   const [isHovered, setIsHovered] = useState<boolean>(false);
 //   const isHeader = params.isHeader;
+//   const [headerChecked, setHeaderChecked] = useState<boolean>(false);
+
+//   useEffect(() => {
+//     if (isHeader && params.api) {
+//       const allDisplayedRowCount = params.api.getDisplayedRowCount();
+//       const selectedRowCount = params.api.getSelectedRows().length;
+//       setHeaderChecked(selectedRowCount > 0 && selectedRowCount === allDisplayedRowCount);
+//     }
+//   }, [isHeader, params.api?.getSelectedRows().length, params.api?.getDisplayedRowCount()]);
+
 
 //   if (isHeader) {
 //     const handleHeaderCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-//       const checked = event.target.checked;
-//       params.api.forEachNode((node: any) => node.setSelected(checked));
+//       setHeaderChecked(event.target.checked)
+//       params.api.forEachNode((node: any) => node.setSelected(event.target.checked));
 //       params.api.refreshCells({ force: true });
+
 //     };
 
 //     return (
@@ -168,7 +93,7 @@
 //         <input
 //           type="checkbox"
 //           onChange={handleHeaderCheckboxChange}
-//           checked={params.api.getSelectedRows().length === params.api.getDisplayedRowCount()}
+//           checked={headerChecked}
 //           className="h-4 w-4 cursor-pointer"
 //         />
 //       </div>
@@ -189,9 +114,40 @@
 //       className="h-full w-full flex items-center justify-center cursor-pointer relative -m-2 p-2"
 //       onMouseEnter={() => setIsHovered(true)}
 //       onMouseLeave={() => setIsHovered(false)}
-//       onClick={() => {
+//       onClick={(e) => {
+//         const isShiftPressed = e.shiftKey;
+
 //         if (params.node) {
-//           params.node.setSelected(!isSelected);
+//           if (isShiftPressed) {
+//             let lastSelectedIndex = -1;
+//             let foundSelectedNode = false;
+
+//             params.api.forEachNode((node: IRowNode) => {
+//               if (node.isSelected() && node.rowIndex !== undefined && node.rowIndex !== null && node.rowIndex < (params.node?.rowIndex ?? -1)) {
+//                 lastSelectedIndex = Math.max(lastSelectedIndex, node.rowIndex);
+//                 foundSelectedNode = true;
+//               }
+//             });
+
+//             if (foundSelectedNode && lastSelectedIndex >= 0) {
+//               const startIndex = lastSelectedIndex;
+//               const endIndex = params.node.rowIndex ?? 0;
+
+//               params.api.forEachNode((node: IRowNode) => {
+//                 if (node.rowIndex !== null &&
+//                   node.rowIndex >= startIndex &&
+//                   node.rowIndex <= endIndex) {
+//                   node.setSelected(true);
+//                 }
+//               });
+
+//               params.api.refreshCells({ force: true });
+//             } else {
+//               params.node.setSelected(!isSelected);
+//             }
+//           } else {
+//             params.node.setSelected(!isSelected);
+//           }
 //         }
 //       }}
 //     >
@@ -215,9 +171,42 @@
 //   );
 // };
 
+// const HyperlinkTooltip = (props: CustomTooltipProps) => {
+//   const ensureAbsoluteUrl = (url: string): string => {
+//     if (url && typeof url === 'string') {
+//       if (!url.match(/^https?:\/\//i)) {
+//         return `https://${url}`;
+//       }
+//     }
+//     return url;
+//   };
+//   const handleClick = () => {
+//     const { hideTooltipCallback } = props;
+//     if (hideTooltipCallback) {
+//       hideTooltipCallback();
+//     }
+//   };
+
+//   const absoluteUrl = ensureAbsoluteUrl(props.value);
+
+//   return (
+//     <div className="bg-white/95 text-brand underline backdrop-blur-sm shadow-lg border border-gray-100 px-4 py-3 rounded-lg">
+//       <a
+//         href={absoluteUrl}
+//         target="_blank"
+//         rel="noopener noreferrer"
+//         onClick={handleClick}
+//       >
+//         {props.value}
+//       </a>
+//     </div>
+//   );
+// };
+
 // const DataGrid: React.FC<DataGridProps> = ({
 //   data,
 //   availableColumnTypes,
+//   columnDescriptions,
 //   loading,
 //   resource,
 //   filteredColumns,
@@ -226,7 +215,9 @@
 //   totalCount,
 //   setTotalCount,
 //   filteredCount,
-//   refreshRecords
+//   refreshRecords,
+//   filterConfig,
+//   handleFilterChange
 // }) => {
 //   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
 //   const [selectedRowsForDelete, setSelectedRowsForDelete] = useState<any[]>([]);
@@ -236,10 +227,11 @@
 //   const gridRef = useRef<any>(null);
 //   const auth = useRecoilValue(authAtom);
 //   const { toast } = useToast();
+//   const lastSelectedRef = useRef<number | null>(null);
 
 //   useEffect(() => {
 //     setShowFab(!isDeleteDialogOpen)
-//   }, [isDeleteDialogOpen]);
+//   }, [isDeleteDialogOpen])
 
 //   const gridTheme = themeQuartz.withParams({
 //     accentColor: 'green',
@@ -261,8 +253,9 @@
 //   };
 
 //   const hasCreatePermission = useMemo(() =>
-//     auth.userInfo.permissions.some((p) => p.name === `_create_${resource}`)
-//     , [auth.userInfo.permissions, resource]);
+//     auth.userInfo.permissions.some((p) => p.name === `_create_${resource}`),
+//     [auth.userInfo.permissions, resource]
+//   );
 
 //   const onCellKeyDown = async (params: CellKeyDownEvent) => {
 //     const event = params.event as KeyboardEvent;
@@ -273,7 +266,7 @@
 //       if (selectedRows && selectedRows.length > 0) {
 //         const visibleColumns = api.getAllDisplayedColumns();
 //         const headers = visibleColumns
-//           .map((col: Column) => col.getColDef().headerName || col.getColId())
+//           .map(col => col.getColDef().headerName || col.getColId())
 //           .join('\t');
 
 //         const rowData = selectedRows.map((row: Record<string, any>) =>
@@ -342,6 +335,10 @@
 //         force: true,
 //         columns: ['rowNumberSelect']
 //       });
+
+//       if (event.node && event.node.isSelected() && event.node.rowIndex !== undefined) {
+//         lastSelectedRef.current = event.node.rowIndex;
+//       }
 //     }
 //   };
 
@@ -394,170 +391,127 @@
 //       if (childField === 'id' || childField === 'siteId' || childField === 'salesPersonId' || childField === 'clientId' || childField === 'pocId' || childField === 'vendorId') {
 //         return;
 //       }
-//       const isEditable = (parentField === resource && childField !== 'id' && auth.userInfo.permissions.some((permission: any) => permission.name === `_update_${resource}`));
+//       const isEditable = (parentField === resource && childField !== 'id' && key !== 'order.orderNumber' && auth.userInfo.permissions.some((permission: any) => permission.name === `_update_${resource}`));
 //       const columnType = availableColumnTypes[key];
 
-//       const valueSetter = (params: any) => {
-//         const oldValue = params.data[key];
-//         let newValue = params.newValue;
-
-//         // Handle Indian Number columns
-//         if (INDIAN_NUMBER_COLUMNS.includes(childField) && typeof newValue === 'string') {
-//           // Convert string number with commas to actual number
-//           newValue = Number(newValue.replace(/,/g, ''));
-//           if (isNaN(newValue)) {
-//             return false;
-//           }
-//         }
-
-//         // Handle DateTime fields
-//         if (columnType === 'DateTime?' || columnType === 'DateTime') {
-//           if (!newValue && columnType === 'DateTime?') {
-//             newValue = null;
-//           } else {
-//             const dateValue = new Date(newValue);
-//             if (isNaN(dateValue.getTime())) {
-//               return false;
-//             }
-//             newValue = dateValue.toISOString();
-//           }
-//         }
-
-//         // If value hasn't changed, don't trigger update
-//         if (oldValue === newValue) {
-//           return false;
-//         }
-
-//         const updatedData = { ...params.data };
-//         updatedData[key] = newValue;
-
-//         const allEditableFieldsData: Record<string, any> = {};
-//         Object.keys(updatedData).forEach(fieldKey => {
-//           const [fieldParent] = fieldKey.split('.');
-//           if (fieldParent === resource) {
-//             allEditableFieldsData[fieldKey] = updatedData[fieldKey];
-//           }
-//         });
-
-//         setProcessing(true);
-//         updateData(resource, allEditableFieldsData)
-//           .then(response => {
-//             if (!response.success) {
-//               Object.keys(allEditableFieldsData).forEach(fieldKey => {
-//                 params.data[fieldKey] = oldValue;
-//               });
-//               params.api.refreshCells({ force: true });
-//             }
-//           })
-//           .catch(error => {
-//             toast({
-//               variant: 'destructive',
-//               title: 'Error',
-//               description: 'Failed to update data',
-//               duration: 5000,
-//             });
-//             console.error('Error updating data:', error);
-//             Object.keys(allEditableFieldsData).forEach(fieldKey => {
-//               params.data[fieldKey] = oldValue;
-//             });
-//             params.api.refreshCells({ force: true });
-//           })
-//           .finally(() => {
-//             setProcessing(false);
-//           });
-
-//         Object.keys(allEditableFieldsData).forEach(fieldKey => {
-//           params.data[fieldKey] = updatedData[fieldKey];
-//         });
-//         return true;
-//       };
-
 //       const colDef: ColDef = {
+//         headerClass: 'font-bold cursor-pointer',
 //         headerName: parentField === resource
 //           ? capitalizeFirstLetter(childField)
 //           : `${capitalizeFirstLetter(parentField)} ${capitalizeFirstLetter(childField)}`,
 //         field: key,
+//         headerComponent: CustomHeaderWithContextMenu,
+//         headerComponentParams: {
+//           filterConfig,
+//           handleFilterChange,
+//           columnDescription: columnDescriptions ? columnDescriptions[key] : key,
+//         },
 //         valueGetter: (params) => {
 //           if (params.data[key] === null) {
 //             return '';
 //           }
-
-//           if (columnType === 'DateTime?' || columnType === 'DateTime') {
-//             return new Date(params.data[key]).toLocaleDateString();
-//           }
-
-//           if (INDIAN_NUMBER_COLUMNS.includes(childField) && typeof params.data[key] === 'number') {
-//             return formatIndianNumber(params.data[key]);
-//           }
-
 //           return params.data[key];
 //         },
 //         tooltipValueGetter: (params) => {
 //           if (params.value === null || params.value === undefined) {
 //             return '';
 //           }
-
 //           if (columnType === 'DateTime?' || columnType === 'DateTime') {
 //             const formattedDate = new Date(params.value).toLocaleDateString();
 //             const originalValue = params.value;
 //             return `${formattedDate}\nOriginal: ${originalValue}`;
 //           }
-
 //           return params.value.toString();
 //         },
-//         tooltipComponent: LINK_COLUMNS.includes(childField) ? HyperlinkTooltip : undefined,
-//         tooltipComponentParams: {
-//           color: '#333',
-//           backgroundColor: '#fff',
-//         },
+//         tooltipComponent: hyperLinkToolTipColumns.includes(key) ? HyperlinkTooltip : undefined,
 //         cellDataType: (() => {
 //           if (!columnType) return 'string';
-
 //           if (columnType === 'Int?' || columnType === 'Int') {
 //             return 'number';
 //           }
-
 //           if (columnType === 'Boolean?' || columnType === 'Boolean') {
 //             return 'boolean';
 //           }
-
 //           if (columnType === 'DateTime?' || columnType === 'DateTime') {
 //             return 'date';
 //           }
-
 //           return 'string';
 //         })(),
-//         editable: isEditable,
-//         valueSetter: isEditable ? valueSetter : undefined,
+//         ...(isEditable && {
+//           valueSetter: (params) => {
+//             const oldValue = params.data[key];
+//             const newValue = params.newValue;
+//             if (oldValue === newValue) {
+//               return false;
+//             }
+//             const updatedData = { ...params.data };
+//             updatedData[key] = newValue;
+//             const allEditableFieldsData: Record<string, any> = {};
+//             Object.keys(updatedData).forEach(fieldKey => {
+//               const [fieldParent] = fieldKey.split('.');
+//               if (fieldParent === resource) {
+//                 allEditableFieldsData[fieldKey] = updatedData[fieldKey];
+//               }
+//             });
+//             setProcessing(true);
+//             updateData(resource, allEditableFieldsData)
+//               .then(response => {
+//                 if (!response.success) {
+//                   Object.keys(allEditableFieldsData).forEach(fieldKey => {
+//                     params.data[fieldKey] = oldValue;
+//                   });
+//                   params.api.refreshCells({ force: true });
+//                 }
+//               })
+//               .catch(error => {
+//                 toast({
+//                   variant: 'destructive',
+//                   title: 'Error',
+//                   description: 'Failed to update data',
+//                   duration: 5000,
+//                 });
+//                 console.error('Error updating data:', error);
+//                 Object.keys(allEditableFieldsData).forEach(fieldKey => {
+//                   params.data[fieldKey] = oldValue;
+//                 });
+//                 params.api.refreshCells({ force: true });
+//               })
+//               .finally(() => {
+//                 setProcessing(false);
+//               });
+//             Object.keys(allEditableFieldsData).forEach(fieldKey => {
+//               params.data[fieldKey] = updatedData[fieldKey];
+//             });
+//             return true;
+//           }
+//         }),
 //         cellEditor: (() => {
 //           if (!columnType) return 'agTextCellEditor';
-
-//           if (LARGE_TEXT_COLUMNS.includes(childField)) {
-//             return LargeTextEditor;
-//           }
-
 //           if (columnType === 'Int?' || columnType === 'Int') {
 //             return 'agNumberCellEditor';
 //           }
-
 //           if (columnType === 'Boolean?' || columnType === 'Boolean') {
 //             return 'agCheckboxCellEditor';
 //           }
-
 //           if (columnType === 'DateTime?' || columnType === 'DateTime') {
-//             return 'agDateCellEditor';
+//             return DateEditor;
 //           }
-
 //           const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
 //           if (enumMatch) {
 //             return 'agSelectCellEditor';
 //           }
-
+//           if (largeTextEditorColumns.includes(key)) {
+//             return LargeTextEditor;
+//           }
 //           return 'agTextCellEditor';
+//         })(),
+//         cellEditorPopup: (() => {
+//           if (!columnType) return true;
+
+//           return columnType === 'DateTime?' || columnType === 'DateTime' || largeTextEditorColumns.includes(key);
 //         })(),
 //         cellEditorParams: (() => {
 //           if (!columnType) return undefined;
-
 //           const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
 //           if (enumMatch) {
 //             const enumName = enumMatch[1];
@@ -573,6 +527,7 @@
 //         minWidth: getTextWidth((key), 'bold 12px Arial') + 20,
 //         initialWidth: getTextWidth((key), 'bold 12px Arial') + 20,
 //         resizable: true,
+//         editable: isEditable,
 //         cellStyle: filteredColumns.includes(key) ? { backgroundColor: '#ddebfc' } : sortedColumns.includes(key) ? { backgroundColor: '#e1fbe9' } : {},
 //         ...(columnType === 'Boolean?' || columnType === 'Boolean'
 //           ? {
@@ -581,27 +536,35 @@
 //               disabled: !isEditable,
 //             }
 //           }
-//           : {
-//             cellRenderer: (params: any) => {
-//               if (!columnType) return params.value;
-
-//               const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
-//               if (enumMatch) {
-//                 const enumName = enumMatch[1];
-//                 const value = params.data[key];
-
-//                 return <EnumBadge enum={enumName as EnumBadgeProps['enum']} value={value} />;
+//           : formatNumberColumns.includes(key)
+//             ? {
+//               cellRenderer: (params: CustomCellRendererProps) => {
+//                 return new Intl.NumberFormat('en-IN').format(params.value);
 //               }
-
-//               return params.value;
 //             }
-//           }
+//             : (columnType === 'DateTime?' || columnType === 'DateTime')
+//               ? {
+//                 cellRenderer: (params: CustomCellRendererProps) => {
+//                   if (!params.value) return '';
+//                   return new Date(params.data[key]).toLocaleDateString();
+//                 }
+//               }
+//               : {
+//                 cellRenderer: (params: CustomCellRendererProps) => {
+//                   if (!columnType) return params.value;
+//                   const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
+//                   if (enumMatch) {
+//                     const enumName = enumMatch[1];
+//                     const value = params.data[key];
+//                     return <EnumBadge enum={enumName as EnumBadgeProps['enum']} value={value} />;
+//                   }
+//                   return params.value;
+//                 }
+//               }
 //         )
 //       };
-
 //       columnDefs.push(colDef);
 //     });
-
 //     return columnDefs;
 //   };
 
@@ -609,6 +572,7 @@
 //     sortable: false,
 //     resizable: true,
 //     flex: 1,
+//     cellClass: 'border-[1px] border-slate-200'
 //   };
 
 //   const capitalizeFirstLetter = (string: string): string => {
@@ -618,7 +582,6 @@
 //   const getTextWidth = (text: string, font: string = '14px Arial'): number => {
 //     const canvas: HTMLCanvasElement = document.createElement('canvas');
 //     const context = canvas.getContext('2d');
-
 //     if (!context) {
 //       throw new Error('Failed to get canvas context');
 //     }
@@ -649,17 +612,14 @@
 //               This action cannot be undone. It will permanently delete {selectedRowsForDelete.length} record(s).
 //             </AlertDialogDescription>
 //           </AlertDialogHeader>
-
 //           <AlertDialogFooter>
 //             <AlertDialogCancel>Cancel</AlertDialogCancel>
 //             <AlertDialogAction
 //               className="bg-white border border-brand text-brand font-bold hover:bg-brand-light/20 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out"
 //               onClick={async () => {
 //                 setProcessing(true);
-
 //                 const idsToDelete = selectedRowsForDelete.map(row => Number(row[`${resource}.id`]));
 //                 const deleteResponse = await deleteData(resource, idsToDelete);
-
 //                 if (deleteResponse.success) {
 //                   setShowFab(false);
 //                   setTimeout(() => setShowFab(true), 3500);
@@ -668,12 +628,9 @@
 //                     description: `${selectedRowsForDelete.length} record(s) deleted successfully`,
 //                     duration: 3000,
 //                   });
-
 //                   const selectedNodes = gridApi.getSelectedNodes();
 //                   gridApi.applyTransaction({ remove: selectedNodes.map((node: { data: any }) => node.data) });
-
 //                   setTotalCount(totalCount - selectedRowsForDelete.length);
-
 //                 } else {
 //                   setShowFab(false);
 //                   setTimeout(() => setShowFab(true), 3500);
@@ -710,6 +667,12 @@
 //           onRowSelected={onRowSelected}
 //           onGridReady={onGridReady}
 //           enableBrowserTooltips={false}
+//           components={{
+//             largeTextEditor: LargeTextEditor,
+//             dateEditor: DateEditor,
+//             HyperlinkTooltip: HyperlinkTooltip,
+//             CustomHeaderWithContextMenu: CustomHeaderWithContextMenu
+//           }}
 //           tooltipShowDelay={500}
 //           tooltipHideDelay={1000}
 //           tooltipInteraction={true}

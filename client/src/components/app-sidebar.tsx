@@ -77,7 +77,7 @@ export function AppSidebar({
   };
 
   return (
-    <Sidebar {...props} className="p-0">
+    <Sidebar {...props} className="p-0 h-[93vh] border-2 ">
       <SidebarHeader className="p-0">
         <TooltipProvider>
           <Tooltip>
@@ -147,9 +147,10 @@ export function AppSidebar({
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel
+                            className="bg-white border border-black t font-bold  rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out">Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            className="bg-white border border-brand text-brand font-bold hover:bg-brand-light/20 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out"
+                            className="bg-white border border-red-800 text-red-800 font-bold hover:bg-red-100 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out"
                             onClick={() => handleConfirmDelete(view)}
                           >
                             Confirm

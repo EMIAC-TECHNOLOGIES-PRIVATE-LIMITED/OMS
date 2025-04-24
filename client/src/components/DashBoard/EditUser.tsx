@@ -8,6 +8,7 @@ import {
   getRolePermissions,
   suspendUser,
   revokeUser,
+  updatePassword,
 } from '../../utils/apiService/adminAPI';
 import {
   Permission,
@@ -53,6 +54,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import {
   Command,
@@ -93,6 +95,7 @@ const EditUser: React.FC = () => {
   const [userDefaultPermissions, setUserDefaultPermissions] = useState<Permission[]>([]);
   const [userDefaultResources, setUserDefaultResources] = useState<Resource[]>([]);
   const [currentUserAccess, setCurrentUserAccess] = useState<number[]>([]);
+  
   const [initialUserAccess, setInitialUserAccess] = useState<number[]>([]);
   const [currentOverrides, setCurrentOverrides] = useState<{
     permissionOverride: PermissionOverride[];
@@ -130,6 +133,10 @@ const EditUser: React.FC = () => {
   const [isSuspended, setIsSuspended] = useState<boolean>(false);
   const [showSuspendConfirm, setShowSuspendConfirm] = useState<boolean>(false);
   const [showRevokeConfirm, setShowRevokeConfirm] = useState<boolean>(false);
+  const [showChangePassword, setShowChangePassword] = useState<boolean>(false);
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   /**
    * ---------------
@@ -383,6 +390,11 @@ const EditUser: React.FC = () => {
     setCurrentOverrides((prev) => {
       let updatedResourceOverrides = [...prev.resourceOverride];
       resources.forEach((resource) => {
+        // Skip updating 'id' resources when unchecking all
+        if (!checked && resource.column === 'id') {
+          return;
+        }
+
         const resourceExists = updatedResourceOverrides.find(
           (ro) => ro.resourceId === resource.id
         );
@@ -595,6 +607,69 @@ const EditUser: React.FC = () => {
     }
   };
 
+  const validatePassword = (): boolean => {
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters long');
+      return false;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return false;
+    }
+    setPasswordError(null);
+    return true;
+  };
+
+  const handlePasswordChange = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (!userId) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'User ID is missing.',
+        duration: 5000,
+      });
+      return;
+    }
+
+    if (!validatePassword()) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const response = await updatePassword(parseInt(userId), newPassword);
+      
+      if (response.success) {
+        setShowChangePassword(false);
+        setNewPassword('');
+        setConfirmPassword('');
+        toast({
+          title: 'Success',
+          description: 'Password updated successfully.',
+          duration: 3000,
+          className: 'border border-brand',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: response.message || 'Failed to update password.',
+          duration: 5000,
+        });
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'An unexpected error occurred while updating password.',
+        duration: 5000,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Filter out the current user from the list of all users
   const filteredUsers = allUsers.filter(user => user.id !== parseInt(userId || '0'));
   const selectedUserCount = currentUserAccess.length;
@@ -668,6 +743,80 @@ const EditUser: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Change Password Modal */}
+      <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
+              Enter and confirm the new password for this user. Password must be at least 8 characters long.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="password" className="block mb-2">
+                New Password
+              </Label>
+              <Input
+                type="password"
+                id="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full"
+                placeholder="Enter new password"
+                disabled={saving}
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirmPassword" className="block mb-2">
+                Confirm Password
+              </Label>
+              <Input
+                type="password"
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full"
+                placeholder="Confirm new password"
+                disabled={saving}
+              />
+            </div>
+            {passwordError && (
+              <Alert variant="destructive">
+                <AlertDescription>{passwordError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowChangePassword(false);
+                setNewPassword('');
+                setConfirmPassword('');
+                setPasswordError(null);
+              }}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePasswordChange}
+              disabled={saving || !newPassword || !confirmPassword}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Changing...
+                </>
+              ) : (
+                'Change Password'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Top Section with Title & Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-semibold">{`Edit User Permissions: ${userName}`}</h2>
@@ -681,6 +830,13 @@ const EditUser: React.FC = () => {
               Suspend
             </Button>
           )}
+          <Button 
+            variant="outline" 
+            onClick={() => setShowChangePassword(true)}
+            disabled={saving || isSuspended}
+          >
+            Change Password
+          </Button>
 
           <Select
             value={currentRoleId?.toString() ?? ''}

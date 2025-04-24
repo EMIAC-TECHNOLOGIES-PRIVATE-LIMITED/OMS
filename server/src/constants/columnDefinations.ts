@@ -84,6 +84,7 @@ export const columnDescriptions = {
   "client.updatedAt": "Last update date of client record",
   "client.pocId": "Point of contact ID for client",
   "order.id": "Unique identifier for the order",
+  "order.orderNumber" : "Order number",
   "order.orderDate": "Date when order was placed",
   "order.orderStatus": "Current status of the order",
   "order.vendorAssignedDate": "Date when vendor was assigned",

@@ -211,7 +211,7 @@ function Unauthorized() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 2, duration: 1 }}
       >
-        <p>&copy; {new Date().getFullYear()} Your App Name. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} EMIAC Technologies. All rights reserved..</p>
       </motion.div>
     </div>
   );

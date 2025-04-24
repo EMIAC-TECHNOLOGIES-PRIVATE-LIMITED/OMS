@@ -10,8 +10,6 @@ import { secondaryQueryBuilder } from '../utils/queryBuilder';
 import { flattenData } from '../utils/flatData';
 import { columnDescriptions } from '../constants/columnDefinations';
 
-
-
 const modelInfo = new PrismaModelInfo();
 
 export const viewsController = {
@@ -51,18 +49,29 @@ export const viewsController = {
 
         const query = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig);
         const query2 = secondaryQueryBuilder(modelName, permittedColumns, view.filterConfig, true);
+        const query3 = {
+            where: {}
+        }
+
 
         if (req.user?.role.name !== 'Admin') {
             const accessIds = [...(req.user?.userAccess || []), req.user?.userId];
-
             if (modelName === 'Client') {
                 query.where = {
+                    ...query.where,
                     pocId: {
                         in: accessIds
                     }
                 };
                 query2.where = {
                     pocId: {
+                        ...query2.where,
+                        in: accessIds
+                    }
+                };
+                query3.where = {
+                    pocId: {
+                        ...query3.where,
                         in: accessIds
                     }
                 };
@@ -70,12 +79,20 @@ export const viewsController = {
 
             if (modelName === 'Order') {
                 query.where = {
+                    ...query.where,
                     salesPersonId:
                     {
                         in: accessIds
                     }
                 };
                 query2.where = {
+                    ...query2.where,
+                    salesPersonId: {
+                        in: accessIds
+                    }
+                };
+                query3.where = {
+                    ...query3.where,
                     salesPersonId: {
                         in: accessIds
                     }
@@ -93,7 +110,9 @@ export const viewsController = {
                 (prismaClient as any)[modelName].count({
                     ...query2,
                 }),
-                (prismaClient as any)[modelName].count(),
+                (prismaClient as any)[modelName].count({
+                    ...query3,
+                }),
             ]);
 
             let columnTypes = modelInfo.getModelColumns(modelName);
@@ -102,11 +121,47 @@ export const viewsController = {
                 Object.entries(columnTypes).filter(([key]) => permittedColumns.includes(key))
             );
 
+
+            if ('Site.categories' in availableColumnsType) {
+
+
+                // Get the value of Site.categories
+                const categoriesValue = availableColumnsType['Site.categories'];
+
+                // Create a new object with the desired order
+                const reorderedObject: Record<string, string> = {};
+
+                // Get all entries
+                const entries = Object.entries(availableColumnsType);
+
+                // Counter to track position
+                let counter = 0;
+
+                // Add entries to the new object, but skip Site.categories
+                for (const [key, value] of entries) {
+                    if (key === 'Site.categories') continue;
+
+                    reorderedObject[key] = value;
+
+                    // After adding the second key, insert Site.categories
+                    if (counter === 2) {
+                        reorderedObject['Site.categories'] = categoriesValue;
+                    }
+
+                    counter++;
+                }
+
+                // Replace the original object with our reordered one
+                Object.keys(availableColumnsType).forEach(key => delete availableColumnsType[key]);
+                Object.assign(availableColumnsType, reorderedObject);
+            }
+
             const flatCols = Object.keys(availableColumnsType).reduce((acc, key) => {
                 const newKey = key.charAt(0).toLowerCase() + key.slice(1);
                 acc[newKey] = availableColumnsType[key];
                 return acc;
             }, {} as Record<string, string>);
+
 
             // console.log('[getView controller] : permitted columns are : ', permittedColumns)
             // console.log('[getView controller] : columnTypes are : ', columnTypes)
@@ -134,9 +189,34 @@ export const viewsController = {
                 columnDefinations,
                 appliedFilters: view.filterConfig,
                 views: userViews,
+                columnOrder: view.columnOrder,
             } as GetViewDataResponse['data'];
 
             const transformedResponse = transformDates(response);
+
+
+            const order = req.view?.columnOrder || [];
+
+            if (transformedResponse.data && Array.isArray(transformedResponse.data) && transformedResponse.data.length > 0) {
+                transformedResponse.data = transformedResponse.data.map(item => {
+                    const reorderedItem: Record<string, any> = {};
+
+                    Object.keys(item).forEach(key => {
+                        if (!order.includes(key)) {
+                            reorderedItem[key] = item[key];
+                        }
+                    });
+
+                    order.forEach((key: string) => {
+                        if (Object.prototype.hasOwnProperty.call(item, key)) {
+                            reorderedItem[key] = item[key];
+                        }
+                    });
+
+                    return reorderedItem;
+                });
+            }
+
 
             return res
                 .status(STATUS_CODES.OK)
@@ -179,10 +259,10 @@ export const viewsController = {
 
         const { modelName, permittedColumns } = req;
         const filterConfig = req.body.appliedFilters;
+        const globalFilterString = req.body.globalFilterString ? req.body.globalFilterString : '';
 
 
         if (!modelName || !permittedColumns || !filterConfig) {
-
             return res
                 .status(STATUS_CODES.BAD_REQUEST)
                 .json(
@@ -195,35 +275,52 @@ export const viewsController = {
                 );
         }
 
-        const query = secondaryQueryBuilder(modelName, permittedColumns, filterConfig);
-        // console.log('[getData controller] : query from secondary query builder is  : ', query)
 
-        const query2 = secondaryQueryBuilder(modelName, permittedColumns, filterConfig, true);
+        const query = secondaryQueryBuilder(modelName, permittedColumns, filterConfig, false, globalFilterString);
+        const query2 = secondaryQueryBuilder(modelName, permittedColumns, filterConfig, true, globalFilterString);
+        const query3 = {
+            where: {}
+        }
 
         if (req.user?.role.name !== 'Admin') {
             const accessIds = [...(req.user?.userAccess || []), req.user?.userId];
             if (modelName === 'Client') {
                 query.where = {
+                    ...query.where,
                     pocId: {
                         in: accessIds
                     }
                 };
                 query2.where = {
+                    ...query2.where,
                     pocId: {
                         in: accessIds
                     }
                 };
-
+                query3.where = {
+                    ...query3.where,
+                    pocId: {
+                        in: accessIds
+                    }
+                };
             }
 
             if (modelName === 'Order') {
                 query.where = {
+                    ...query.where,
                     salesPersonId:
                     {
                         in: accessIds
                     }
                 };
                 query2.where = {
+                    ...query2.where,
+                    salesPersonId: {
+                        in: accessIds
+                    }
+                };
+                query3.where = {
+                    ...query3.where,
                     salesPersonId: {
                         in: accessIds
                     }
@@ -231,17 +328,10 @@ export const viewsController = {
 
             }
         }
-
-        // const rawSQL = convertToSQL(modelName, query, {
-        //     limit: take,
-        //     offset: skip
-        // });
-        // const countSQL = convertToCountSQL(modelName, query);
+      
 
         try {
-            // const data = await prismaClient.$queryRawUnsafe(rawSQL);
-            // const totalRecords = await prismaClient.$queryRawUnsafe(countSQL);
-            const [data, totalRecords] = await Promise.all([
+                const [data, totalRecords] = await Promise.all([
                 (prismaClient as any)[modelName].findMany({
                     ...query,
                     skip,
@@ -256,21 +346,77 @@ export const viewsController = {
             const availableColumnsType = Object.fromEntries(
                 Object.entries(columnTypes).filter(([key]) => permittedColumns.includes(key))
             );
+
+            if ('Site.categories' in availableColumnsType) {
+
+
+                // Get the value of Site.categories
+                const categoriesValue = availableColumnsType['Site.categories'];
+
+                // Create a new object with the desired order
+                const reorderedObject: Record<string, string> = {};
+
+                // Get all entries
+                const entries = Object.entries(availableColumnsType);
+
+                // Counter to track position
+                let counter = 0;
+
+                // Add entries to the new object, but skip Site.categories
+                for (const [key, value] of entries) {
+                    if (key === 'Site.categories') continue;
+
+                    reorderedObject[key] = value;
+
+                    // After adding the second key, insert Site.categories
+                    if (counter === 2) {
+                        reorderedObject['Site.categories'] = categoriesValue;
+                    }
+
+                    counter++;
+                }
+
+                // Replace the original object with our reordered one
+                Object.keys(availableColumnsType).forEach(key => delete availableColumnsType[key]);
+                Object.assign(availableColumnsType, reorderedObject);
+            }
+
             const flatCols = Object.keys(availableColumnsType).reduce((acc, key) => {
                 const newKey = key.charAt(0).toLowerCase() + key.slice(1);
                 acc[newKey] = availableColumnsType[key];
                 return acc;
             }, {} as Record<string, string>);
-          
+
             const flatData = flattenData(data, modelName.toLowerCase(), flatCols);
             const response = {
-        
+
                 filteredCount: totalRecords,
                 data: flatData,
             } as GetFilteredDataResponse['data'];
 
             const transformedResponse = transformDates(response);
+            // @ts-ignore
+            const order = req.body.columnOrder || [];
 
+
+            if (transformedResponse.data && Array.isArray(transformedResponse.data) && transformedResponse.data.length > 0) {
+                transformedResponse.data = transformedResponse.data.map(item => {
+                    const reorderedItem: Record<string, any> = {};
+
+                    Object.keys(item).forEach(key => {
+                        if (!order.includes(key)) {
+                            reorderedItem[key] = item[key];
+                        }
+                    });
+                    order.forEach((key : string) => {
+                        if (Object.prototype.hasOwnProperty.call(item, key)) {
+                            reorderedItem[key] = item[key];
+                        }
+                    });
+
+                    return reorderedItem;
+                });
+            }
             return res
                 .status(STATUS_CODES.OK)
                 .json(new APIResponse(STATUS_CODES.OK, "Data fetched successfully", transformedResponse, true));
@@ -306,7 +452,8 @@ export const viewsController = {
                     userId,
                     tableId: resource,
                     viewName,
-                    filterConfig: filterConfig || {}
+                    filterConfig: filterConfig || {},
+                    columnOrder : req.body.columnOrder || [],
                 },
             });
 
@@ -338,7 +485,7 @@ export const viewsController = {
                 where: { id: parseInt(viewId, 10) },
                 data: {
                     viewName,
-                    filterConfig
+                    filterConfig,
                 },
             });
             return res
@@ -352,10 +499,29 @@ export const viewsController = {
         }
     },
 
+    updateColumnOrder : async (req: AuthRequest, res: Response): Promise<Response> => {
+        const { columnOrder, viewId } = req.body;
+        try {
+            const updatedView = await prismaClient.view.update({
+                where: { id: parseInt(viewId, 10) },
+                data: {
+                    columnOrder,
+                },
+            });
+            return res
+                .status(STATUS_CODES.OK)
+                .json(new APIResponse(STATUS_CODES.OK, "Column order updated successfully", {}, true));
+        } catch (error) {
+            console.error(error);
+            return res
+                .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
+                .json(new APIError(STATUS_CODES.INTERNAL_SERVER_ERROR, "Error updating column order", [error], false).toJSON());
+        }
+    },
+
     deleteView: async (req: AuthRequest, res: Response): Promise<Response> => {
         const view = req.body
-        console.log('[delete view controller] : called with body, ', req.body)
-        console.log('[delete view controller] : called with view id, ', view.viewId)
+
 
         try {
             await prismaClient.view.delete({

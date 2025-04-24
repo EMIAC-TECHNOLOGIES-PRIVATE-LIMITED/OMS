@@ -72,6 +72,7 @@ export class PrismaModelInfo {
 
                 // Add poc.name field
                 columns['Poc.name'] = 'String';
+
                 break;
             }
             case 'vendor': {
@@ -95,6 +96,7 @@ export class PrismaModelInfo {
 
                 // Add poc.name field
                 columns['Poc.name'] = 'String';
+                columns['Site.categories'] = 'JSON[]';
                 break;
             }
             case 'order': {
@@ -119,6 +121,7 @@ export class PrismaModelInfo {
 
                 // Add salesPerson.name field
                 columns['SalesPerson.name'] = 'String';
+                columns['Site.categories'] = 'JSON[]';
                 break;
             }
             default: {

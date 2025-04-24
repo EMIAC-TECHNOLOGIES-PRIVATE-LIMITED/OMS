@@ -35,6 +35,7 @@ export async function generateAccessToken(req: any, res: Response): Promise<bool
             where: { id: decoded.userId },
             include: {
                 role: true
+                
             }
         });
 
@@ -72,8 +73,6 @@ export async function generateAccessToken(req: any, res: Response): Promise<bool
             sameSite: 'none',
             maxAge: 15 * 60 * 1000,
         });
-
-        // console.log(`New access token generated for user: ${user.name}, Token: ${newAccessToken}`);
 
         return true;
     } catch (error) {

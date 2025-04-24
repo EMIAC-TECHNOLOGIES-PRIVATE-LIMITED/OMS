@@ -9,12 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ChevronDown, X } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Loader2, X } from 'lucide-react';
 import { Command, CommandList, CommandItem, CommandEmpty } from '@/components/ui/command';
 import { getSuggestions } from '@/utils/apiService/typeAheadAPI';
 import EnumBadge, { EnumBadgeProps, getEnumValues } from '@/utils/EnumUtil/EnumUtil';
@@ -22,6 +17,7 @@ import debounce from 'lodash.debounce';
 import { createData } from '@/utils/apiService/dataAPI';
 import {
   ICellRendererParams,
+  ICellEditorParams,
 } from 'ag-grid-community';
 import { useSetRecoilState } from 'recoil';
 import { showFabAtom } from '@/store/atoms/atoms';
@@ -99,13 +95,22 @@ const lookupFields = {
   site: ['vendor.name']
 };
 
-// Updated AutoCompleteEditor with fixed positioning
-const AutoCompleteEditor = (props: any) => {
+// Updated AutoCompleteEditor integrated with AG Grid
+interface AutoCompleteEditorParams extends ICellEditorParams {
+  route: string;
+  searchColumn: string;
+  onDataSelected: (data: any, node: any) => void;
+}
+
+const AutoCompleteEditor: React.FC<AutoCompleteEditorParams> = (props) => {
   const [value, setValue] = useState(props.value || '');
   const [suggestions, setSuggestions] = useState<AutoCompleteData[]>([]);
-  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isPopupOpen, setIsPopupOpen] = useState(true); // Control popup visibility
 
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  // Debounced fetch for suggestions
   const fetchSuggestions = useCallback(
     debounce(async (input: string) => {
       if (input.length < 2) {
@@ -115,163 +120,122 @@ const AutoCompleteEditor = (props: any) => {
       }
       setLoading(true);
       try {
-        const data = await getSuggestions(
-          props.route,
-          props.searchColumn,
-          input,
-          { timeout: 5000 }
-        );
+        const data = await getSuggestions(props.route, props.searchColumn, input, { timeout: 5000 });
         setSuggestions(data);
-        setOpen(true);
       } catch (error) {
         console.error('Error fetching suggestions:', error);
       } finally {
         setLoading(false);
       }
     }, 300),
-    []
+    [props.route, props.searchColumn]
   );
 
+  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       fetchSuggestions.cancel();
     };
   }, [fetchSuggestions]);
 
+  // Focus the input when the editor is attached
+  useEffect(() => {
+    inputRef.current?.focus();
+    fetchSuggestions(value); // Fetch initial suggestions if value exists
+  }, []);
+
+  // Handle selection of an option
   const handleSelect = (selected: AutoCompleteData) => {
-    props.onDataSelected(selected, props.node);
     const fullKey = `${props.route}.${props.searchColumn}`;
-    setValue(selected[fullKey]);
-    setOpen(false);
+
+    // First, update the related fields via onDataSelected
+    props.onDataSelected(selected, props.node);
+
+    // Then, finish the editing بند
     props.stopEditing();
-    // Force update after editing
+
+    // Finally, explicitly set the value in the lookup field
     props.node.setDataValue(fullKey, selected[fullKey]);
-    console.log('Forced setDataValue:', selected[fullKey]);
+
+    // Update local state (though this may not be necessary after stopEditing)
+    setValue(selected[fullKey]);
+    setIsPopupOpen(false);
   };
 
+  // Show popup when user is typing and input length >= 2 characters
+  const shouldShowPopup = isPopupOpen && value.length >= 2;
+
   return (
-    <div style={{
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      width: '100%',
-      height: '100%',
-    }}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div className="w-full h-full flex items-center bg-white">
-            <input
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                fetchSuggestions(e.target.value);
-              }}
-              className="w-full h-full border-none outline-none px-2 text-sm"
-              autoFocus
-            />
-            {loading && (
-              <Loader2 className="absolute right-2 h-4 w-4 animate-spin text-gray-400" />
-            )}
-          </div>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[300px] p-0 border border-gray-200 shadow-lg"
-          align="start"
-          sideOffset={5}
-          style={{ zIndex: 9999 }}
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+      }}
+    >
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          fetchSuggestions(e.target.value);
+          setIsPopupOpen(true); // Reopen popup on input change
+        }}
+        className="w-full h-full border-none outline-none px-2 text-sm"
+        style={{ boxSizing: 'border-box' }}
+      />
+      {loading && (
+        <Loader2 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+      )}
+      {shouldShowPopup && (
+        <div
+          className="ag-custom-component-popup"
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            width: '300px',
+            maxHeight: '200px',
+            overflowY: 'auto',
+            background: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: '4px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            zIndex: 9999,
+          }}
         >
           <Command>
             <CommandList>
-              {suggestions.length === 0 && !loading && (
+              {suggestions.length === 0 && !loading ? (
                 <CommandEmpty>No results found.</CommandEmpty>
+              ) : (
+                suggestions.map((suggestion) => {
+                  const fullKey = `${props.route}.${props.searchColumn}`;
+                  return (
+                    <CommandItem
+                      key={suggestion[`${props.route}.id`]}
+                      onSelect={() => handleSelect(suggestion)}
+                      className="cursor-pointer hover:bg-blue-50 text-sm py-2 px-2"
+                    >
+                      {suggestion[fullKey]}
+                    </CommandItem>
+                  );
+                })
               )}
-              {suggestions.map((suggestion) => {
-                const fullKey = `${props.route}.${props.searchColumn}`;
-                return (
-                  <CommandItem
-                    key={suggestion[`${props.route}.id`]}
-                    onSelect={() => handleSelect(suggestion)}
-                    className="cursor-pointer hover:bg-blue-50 text-sm py-2"
-                  >
-                    {suggestion[fullKey]}
-                  </CommandItem>
-                );
-              })}
             </CommandList>
           </Command>
-        </PopoverContent>
-      </Popover>
+        </div>
+      )}
     </div>
   );
 };
 
-// Updated EnumEditor with fixed positioning
-const EnumEditor = (props: any) => {
-  const [value, setValue] = useState(props.value || '');
-  const [open, setOpen] = useState(false);
-  const enumValues = props.enumValues || [];
-
-  const handleSelect = (selected: string) => {
-    setValue(selected);
-    setOpen(false);
-    props.stopEditing();
-    // Update the cell value
-    props.node.setDataValue(props.column.getColId(), selected);
-  };
-
-  return (
-    <div style={{
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      width: '100%',
-      height: '100%',
-    }}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div className="relative w-full h-full flex items-center">
-            <input
-              value={value}
-              readOnly
-              className="w-full h-full border-none outline-none px-2 py-1 text-sm cursor-pointer"
-              onClick={(e) => {
-                e.preventDefault();
-                setOpen(true);
-              }}
-              autoFocus
-            />
-            <ChevronDown className="absolute right-2 h-4 w-4 text-gray-500" />
-          </div>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[200px] p-0 border border-gray-200 shadow-lg"
-          align="start"
-          sideOffset={5}
-          style={{ zIndex: 9999 }}
-        >
-          <Command>
-            <CommandList>
-              {enumValues.length === 0 && (
-                <CommandEmpty>No options available.</CommandEmpty>
-              )}
-              {enumValues.map((enumValue: string) => (
-                <CommandItem
-                  key={enumValue}
-                  onSelect={() => handleSelect(enumValue)}
-                  className="cursor-pointer hover:bg-blue-50 text-sm py-2"
-                >
-                  <EnumBadge
-                    enum={props.enumName}
-                    value={enumValue}
-                  />
-                </CommandItem>
-              ))}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
+// Attach AG Grid required methods
+(AutoCompleteEditor as any).getValue = function () {
+  return this.getValue();
+};
+(AutoCompleteEditor as any).isPopup = function () {
+  return true;
 };
 
 // Main Component
@@ -289,11 +253,13 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
   const setShowFab = useSetRecoilState(showFabAtom);
 
   const filteredColumns = useMemo(() => {
-    return Object.entries(availableColumnTypes).reduce<Record<string, string>>(
+    // Step 1: Create the initial filtered columns object
+    let columns = Object.entries(availableColumnTypes).reduce<Record<string, string>>(
       (acc, [key, value]) => {
-        const [table, childField] = key.split('.');
-        console.log('Table:', table, 'ChildField:', childField);
+        const [, childField] = key.split('.');
+
         if ((
+          key !== 'poc.name' && key !== 'order.orderNumber' &&
           ![
             'id',
             'siteId',
@@ -303,7 +269,7 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
             'vendorId',
             'createdAt',
             'updatedAt',
-          ].includes(childField)) || (table === 'Poc')
+          ].includes(childField))
         ) {
           acc[key] = value;
         }
@@ -311,7 +277,45 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
       },
       {}
     );
-  }, [availableColumnTypes]);
+
+    // Step 2: Reorder columns if resource is 'order'
+    if (resource === 'order') {
+      const priorityColumns = [
+        'order.orderDate',
+        'client.name',
+        'client.email',
+        'client.contactedFrom',
+        'order.invoiceNumber',
+        'order.orderRemark',
+        'order.mainRemark',
+        'site.website',
+        'order.clientProposedAmount',
+      ];
+
+      // Get all keys from filtered columns
+      const allKeys = Object.keys(columns);
+
+      // Filter priority columns that exist in filteredColumns
+      const validPriorityColumns = priorityColumns.filter((col) => allKeys.includes(col));
+
+      // Get remaining columns in their original order
+      const remainingColumns = allKeys.filter((col) => !validPriorityColumns.includes(col));
+
+      // Combine priority columns and remaining columns
+      const orderedKeys = [...validPriorityColumns, ...remainingColumns];
+
+      // Create a new object with keys in the desired order
+      const orderedColumns: Record<string, string> = {};
+      orderedKeys.forEach((key) => {
+        orderedColumns[key] = columns[key];
+      });
+
+      return orderedColumns;
+    }
+
+    // Return original filtered columns for other resources
+    return columns;
+  }, [availableColumnTypes, resource]);
 
   const removeRowColDef = useMemo(() => ({
     headerName: '',
@@ -347,12 +351,12 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
       const [table] = key.split('.');
       const isRelatedTable = table !== resource;
       const isLookupField = lookupFields[resource as keyof typeof lookupFields]?.includes(key) ?? false;
-      const isRequired = !type.endsWith('?') || isLookupField;
+      const isRequired = key !== 'site.categories' && (!type.endsWith('?') || isLookupField);
 
       const colDef: any = {
         field: key,
         headerName: `${formatHeader(key, resource)}${isRequired ? ' *' : ''}`,
-        editable: !isRelatedTable || isLookupField,
+        editable: (!isRelatedTable || isLookupField) && key !== 'site.categories',
         minWidth: 180,
         flex: 1,
         suppressMovable: true,
@@ -388,11 +392,9 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
       const enumMatch = type.match(/^Enum\((.+?)\)\??$/);
       if (enumMatch) {
         const enumName = enumMatch[1];
-        // Replace the existing enum editor with our custom EnumEditor
-        colDef.cellEditor = EnumEditor;
+        colDef.cellEditor = 'agSelectCellEditor';
         colDef.cellEditorParams = {
-          enumValues: type.endsWith('?') ? [null, ...getEnumValues(enumName)] : getEnumValues(enumName),
-          enumName: enumName
+          values: type.endsWith('?') ? [null, ...getEnumValues(enumName)] : getEnumValues(enumName),
         };
         colDef.cellRenderer = (params: ICellRendererParams) => {
           return params.value ? <EnumBadge enum={enumName as EnumBadgeProps['enum']} value={params.value} /> : '';
@@ -419,19 +421,15 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
           route: table,
           searchColumn: key.split('.')[1],
           onDataSelected: (data: AutoCompleteData, node: any) => {
-            console.log('Selected data from API:', data);
             const updatedData = { ...node.data };
             updatedData[`${table}.id`] = data[`${table}.id`];
             const lookupField = `${table}.${key.split('.')[1]}`;
-            console.log('lookupField:', lookupField);
-            console.log('data[lookupField]:', data[lookupField]);
             updatedData[lookupField] = data[lookupField];
             Object.entries(data).forEach(([field, val]) => {
               if (field !== `${table}.id` && field !== lookupField && availableColumnTypes[field]) {
                 updatedData[field] = val;
               }
             });
-            console.log('Updated row data:', updatedData);
             node.setData(updatedData);
           },
         };
@@ -461,7 +459,7 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
 
       Object.entries(filteredColumns).forEach(([key, type]) => {
         const [table] = key.split('.');
-        const isRequired = !type.endsWith('?');
+        const isRequired = key !== 'site.categories' && !type.endsWith('?');
         const isLookupField = lookupFields[table as keyof typeof lookupFields]?.includes(key) ?? false;
 
         if (
@@ -478,10 +476,10 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
 
     if (!isValid) {
       setShowFab(false);
-      setTimeout(() => {
-        setShowFab(true)
-      }, 3500)
-      toast({
+setTimeout(() => {
+  setShowFab(true);
+}, 3500);
+toast({
         variant: 'destructive',
         title: 'Validation Error',
         description: 'Please fill all required fields marked with *',
@@ -522,7 +520,6 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
       return;
     }
 
-
     const formattedData = nonEmptyRows.map((row) => {
       const payload: Record<string, any> = {};
       Object.entries(row).forEach(([key, value]) => {
@@ -543,11 +540,21 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
         setTimeout(() => {
           setShowFab(true)
         }, 3500)
-        toast({
-          title: 'Success',
-          description: 'Records created successfully',
-          duration: 3000,
-        });
+        if (resource === 'order') {
+          toast({
+            title: 'Success',
+            //@ts-ignore
+            description: `Order added successfully with Order Number: ${result.data.orderNumber}`,
+            duration: 3000,
+          });
+        }
+        else {
+          toast({
+            title: 'Success',
+            description: 'Records created successfully',
+            duration: 3000,
+          });
+        }
         setRowData([{}]);
         onClose();
         onSubmit(formattedData.length);
@@ -592,10 +599,8 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
             singleClickEdit={true}
             onGridReady={(params) => {
               params.api.sizeColumnsToFit();
-
             }}
             onCellValueChanged={(params) => {
-              console.log('Column:', params.column.getId(), 'Params.data:', params.data);
               const newData = [...rowData];
               newData[params.node.rowIndex!] = { ...params.data };
               if (
@@ -607,10 +612,8 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
               ) {
                 newData.push({});
               }
-              console.log('New rowData:', newData);
               setRowData(newData);
             }}
-            popupParent={document.body}
           />
         </div>
         <div className="p-6 flex justify-between items-center bg-gray-50 border-t border-gray-200">

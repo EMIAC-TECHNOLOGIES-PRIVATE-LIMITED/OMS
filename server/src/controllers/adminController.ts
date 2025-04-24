@@ -415,4 +415,27 @@ export async function createUser(req: Request, res: Response): Promise<Response<
 
 }
 
+export async function updatePassword(req: Request, res : Response) : Promise<Response> {
+    const { userId, password } = req.body;
+
+    if (!userId || typeof userId !== 'number') {
+        return res.status(400).json(new APIError(400, 'Invalid user ID provided', [], false).toJSON());
+    }
+
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        await prismaClient.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword },
+        });
+
+        return res.status(200).json(new APIResponse(200, 'Password updated successfully', {}, true).toJSON());
+    } catch (error) {
+        console.error('Error updating password:', error);
+        return res.status(500).json(new APIError(500, 'Internal server error', [error instanceof Error ? error.message : 'Unknown error'], false).toJSON());
+    }
+}
+
 

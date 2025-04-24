@@ -30,100 +30,21 @@ services:
     volumes:
       - ./grafana-provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
-      
+
+  vault:
+    image: hashicorp/vault:latest
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=myroot
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - vault_data:/vault/file
+
 volumes:
   loki_data:
   grafana_data:
   server_data:
-
-
-
-
-
-
-
-
-
-# services:
-#   client:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile.client
-#     ports:
-#       - "3001:80"
-  
-#   server:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile.server
-#     ports:
-#       - "3000:3000"
-#     env_file:
-#       - ./server/.env
-  
-#   loki:
-#     image: grafana/loki:2.9.10
-#     ports:
-#       - "3100:3100"
-#     volumes:
-#       - loki_data:/loki 
-#     command: -config.file=/etc/loki/local-config.yaml
-    
-#   grafana:
-#     image: grafana/grafana:latest
-#     ports:
-#       - "4000:3000"
-#     environment:
-#       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
-#       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-#       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-adminpassword}
-#     volumes:
-#       - ./grafana-provisioning:/etc/grafana/provisioning
-#       - grafana_data:/var/lib/grafana
-      
-# volumes:
-#   loki_data:
-#   grafana_data:
-#   server_data:
-
-
-
-
-
-
-
-
-
-# services:
-#   client:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile.client
-#     ports:
-#       - "3001:80"
-
-#   server:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile.server
-#     ports:
-#       - "3000:3000"
-#     env_file:
-#       - ./server/.env
-#     volumes:
-#       - ./server/logs:/logs 
-
-#   loki:
-#     image: grafana/loki:2.9.10
-#     ports:
-#       - "3100:3100"
-#   grafana:
-#     image: grafana/grafana:latest
-#     ports:
-#       - "4000:3000"
-#     environment:
-#       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
-#       - GF_AUTH_ANONYMOUS_ENABLED=true
-#       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-#     volumes:
-#       - ./grafana-provisioning:/etc/grafana/provisioning
+  vault_data:  # Added for Vault persistence

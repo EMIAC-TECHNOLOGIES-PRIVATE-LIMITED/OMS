@@ -2,7 +2,8 @@ import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { IndianRupee, Copy, Computer, Link, MailIcon } from "lucide-react";
+import { IndianRupee, Copy, Computer, Link, MailIcon, Cable, Trash2 } from "lucide-react";
+
 
 const tools = [
     {
@@ -32,6 +33,19 @@ const tools = [
         link: "/tools/vendor-lookup",
         icon: Computer,
         activeToolKey: "_tools_3"
+    }, {
+        title: "Category Links Fetcher",
+        description: "Fetch category links from a given URL.",
+        link: "/tools/category-links-fetcher",
+        icon: Cable,
+        activeToolKey: "_tools_5"
+    }
+    , {
+        title: "Add Trash Domains",
+        description: "Add Trash Domains to database",
+        link: "/tools/add-trash-domains",
+        icon: Trash2,
+        activeToolKey: "_tools_6"
     }
 ];
 
@@ -70,7 +84,7 @@ export function Landing(props: {
                     {/* Add a gradient overlay on the sides */}
                     <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10" />
                     <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10" />
-                    
+
                     {/* Double marquee for seamless loop */}
                     <div className="flex gap-6 py-4">
                         <motion.div
@@ -86,7 +100,7 @@ export function Landing(props: {
                         >
                             {/* First set of cards */}
                             {tools.map((tool) => (
-                                <Card 
+                                <Card
                                     key={`first-${tool.activeToolKey}`}
                                     className="w-80 flex-shrink-0 flex flex-col bg-white/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300"
                                 >
@@ -104,19 +118,19 @@ export function Landing(props: {
                                         </div>
                                     </CardContent>
                                     <CardFooter className="pt-4">
-                                        <Button 
-                                            variant="brand" 
+                                        <Button
+                                            variant="brand"
                                             className="w-full hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200"
-                                            onClick={() => props.setActiveToolKey(tool.activeToolKey)}
+
                                         >
-                                            Explore
+                                            Know More
                                         </Button>
                                     </CardFooter>
                                 </Card>
                             ))}
                             {/* Second set of cards for seamless loop */}
                             {tools.map((tool) => (
-                                <Card 
+                                <Card
                                     key={`second-${tool.activeToolKey}`}
                                     className="w-80 flex-shrink-0 flex flex-col bg-white/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300"
                                 >
@@ -134,8 +148,8 @@ export function Landing(props: {
                                         </div>
                                     </CardContent>
                                     <CardFooter className="pt-4">
-                                        <Button 
-                                            variant="brand" 
+                                        <Button
+                                            variant="brand"
                                             className="w-full hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200"
                                             onClick={() => props.setActiveToolKey(tool.activeToolKey)}
                                         >
@@ -165,9 +179,9 @@ export function Landing(props: {
                             The dev team is just one mail away from crafting specified solutions for your needs.
                         </p>
                     </div>
-                    <Button 
-                        variant="secondary" 
-                        size="lg" 
+                    <Button
+                        variant="secondary"
+                        size="lg"
                         onClick={() => window.location.href = "mailto:sujeet@emiactech.com"}
                         className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200"
                     >

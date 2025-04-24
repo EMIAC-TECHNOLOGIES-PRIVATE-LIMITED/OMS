@@ -18,32 +18,32 @@ import logger from '../logger';
 
 
 const app = express();
-app.use(express.json());
+app.use(express.json( {limit: '50mb'}));
 app.use(cookieParser());
 
 
-// Special middleware for the bulk route to allow all origins temporarily
+
 // const allowAllOrigins = (req: Request, res: Response, next: NextFunction) => {
 //     res.header('Access-Control-Allow-Origin', '*'); // Allow all origins
 //     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS'); // Define allowed methods
 //     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 //     if (req.method === 'OPTIONS') {
-//         return res.sendStatus(200); // Handle preflight requests
+//         return res.sendStatus(200); 
 //     }
 //     next();
 // };
 
-// // Temporary bulk data route
-// app.post('/api/temp/addUser', allowAllOrigins, async (req: Request, res: Response) => {
+// // Temporary update data route
+// app.post('/api/temp/updateUser', allowAllOrigins, async (req: Request, res: Response) => {
 
 //     const body = req.body;
 
-//     if (!body.name || !body.email || !body.password || !body.roleId) {
+//     if (!body.userId || !body.name || !body.password || !body.roleId || typeof body.suspended === 'undefined') {
 //         return res.status(STATUS_CODES.BAD_REQUEST).json(
 //             new APIError(
 //                 STATUS_CODES.BAD_REQUEST,
 //                 "Missing required fields",
-//                 ["name, email, password, and roleId are required"],
+//                 ["name, password, roleId, and suspended status are required"],
 //                 false
 //             ).toJSON()
 //         );
@@ -54,28 +54,28 @@ app.use(cookieParser());
 //         const salt = await bcrypt.genSalt(saltRounds);
 //         const hashedPassword = await bcrypt.hash(body.password, salt);
 
-//         const newUser = await prismaClient.user.create({
+//         const user = await prismaClient.user.update({
+//             where: { id: body.userId },
 //             data: {
-//                 id: body.id,
 //                 name: body.name,
-//                 email: body.email,
 //                 password: hashedPassword,
 //                 roleId: body.roleId,
-//             },
+//                 suspended: body.suspended,
+//             }
 //         });
 
-//         return res.status(STATUS_CODES.CREATED).json(
+//         return res.status(STATUS_CODES.OK).json(
 //             new APIResponse(
-//                 STATUS_CODES.CREATED,
-//                 "User created successfully",
+//                 STATUS_CODES.OK,
+//                 "User updated successfully",
 //                 {
-//                     userId: newUser.id,
+//                     userId: user.id,
 //                 },
 //                 true
 //             ).toJSON()
 //         );
 //     } catch (error) {
-//         console.error("User creation failed:", error);
+//         console.error("User update failed:", error);
 //         return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
 //             new APIError(
 //                 STATUS_CODES.INTERNAL_SERVER_ERROR,

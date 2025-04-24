@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { FilterConfig } from '../../../../../shared/src/types';
 import { availableColumnsTypes } from '../../../types';
-import { ListFilter, PlusIcon, TrashIcon, ChevronsUpDown, Check, Calendar } from 'lucide-react';
+import { ListFilter, PlusIcon, TrashIcon, ChevronsUpDown, Check, Calendar, X } from 'lucide-react';
 import { getEnumValues } from "../../../utils/EnumUtil/EnumUtil";
 import {
     Popover,
@@ -31,6 +31,9 @@ import { Switch } from "@/components/ui/switch";
 import debounce from 'lodash.debounce';
 import { useRecoilState } from 'recoil';
 import { filterPanelLocalFiltersAtom, filterPanelOpenStateAtom } from '@/store/atoms/atoms';
+import { Badge } from '@/components/ui/badge';
+import { SiteCategory } from '@/types/adminTable';
+import { getSiteCategories } from '@/utils/apiService/typeAheadAPI';
 
 interface FilterPanelProps {
     filterConfig: FilterConfig;
@@ -114,13 +117,14 @@ const ColumnSelectionPopover: React.FC<{
         return Object.entries(availableColumnTypes).reduce((acc, [key, value]) => {
             const [, childField] = key.split('.');
             if (
-                childField !== 'id' &&
+                key !== 'site.id' &&
+                key !== 'vendor.id' &&
+                key !== 'client.id' &&
                 childField !== 'siteId' &&
                 childField !== 'salesPersonId' &&
                 childField !== 'clientId' &&
                 childField !== 'pocId' &&
-                childField !== 'vendorId' &&
-                !(filterConfig.columns?.includes(key) ?? false)
+                childField !== 'vendorId'
             ) {
                 acc[key] = value;
             }
@@ -315,7 +319,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     // Initial sync of filterConfig.filters into localFilters
     useEffect(() => {
         if (isInitialMount) {
-            console.log('[FilterPanel] Initial mount - filterConfig:', filterConfig);
             const initialFilters = filterConfig.filters?.length ?? 0 > 0
                 ? filterConfig.filters!.map(filter => ({
                     ...filter,
@@ -330,7 +333,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     // Sync filterConfig changes without overwriting incomplete filters
     useEffect(() => {
         if (!isInitialMount) {
-            console.log('[FilterPanel] Syncing filterConfig - filterConfig:', filterConfig, 'current localFilters:', localFilters);
             setLocalFilters(prev => {
                 const configFilters = filterConfig.filters?.map(f => ({ ...f, isComplete: true })) ?? [];
                 const incompleteFilters = prev.filter(f => !f.isComplete);
@@ -353,7 +355,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     );
 
     useEffect(() => {
-        console.log('[FilterPanel] Open state changed - openState:', filterPanelOpenState, 'filterConfig:', filterConfig);
         setNumberOfCompleteFilters(filterConfig.filters?.length ?? 0);
     }, [filterConfig, filterPanelOpenState]);
 
@@ -407,6 +408,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                         { value: 'lte', label: 'On or Before' },
                         { value: 'gte', label: 'On or After' }
                     ];
+                case 'JSON[]':
+                    return [
+                        { value: 'some', label: 'Contains' }
+
+                    ]
                 default:
                     const enumMatch = type.match(/^Enum\((.+?)\)\??$/);
                     if (enumMatch) {
@@ -438,7 +444,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             })),
             connector: completeFilters.length > 1 ? (connector || localConnector) : 'AND'
         };
-        console.log('[FilterPanel] Updating global filter state:', newFilterConfig);
+
         onFilterChange(newFilterConfig);
     }, [filterConfig, localConnector, onFilterChange]);
 
@@ -461,8 +467,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         setLocalFilters(prev => {
             const newFilters = [...prev];
             let processedValue = value;
-
-            console.log('[FilterPanel] handleFilterChange - index:', index, 'field:', field, 'value:', value);
 
             if (field === 'column' && newFilters[index].isComplete) {
                 const previousColumnType = newFilters[index].column
@@ -492,6 +496,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                     value: undefined,
                     isComplete: false
                 };
+                debouncedUpdateGlobalState(newFilters);
                 return newFilters;
             }
 
@@ -536,7 +541,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 debouncedUpdateGlobalState(newFilters);
             }
 
-            console.log('[FilterPanel] Updated localFilters:', newFilters);
             return newFilters;
         });
     }, [availableColumnTypes, debouncedUpdateGlobalState]);
@@ -556,6 +560,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             if (newFilters.length === 0) {
                 newFilters.push({ isComplete: false });
             }
+            const completeFilters = newFilters.filter(f => f.isComplete);
+
+            if (completeFilters.length <= 1) {
+                setLocalConnector('AND');
+            }
             updateGlobalFilterState(newFilters);
             return newFilters;
         });
@@ -569,9 +578,18 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     }, []);
 
     const handlePanelOpenChange = useCallback((open: boolean) => {
-        console.log('[FilterPanel] Panel open state changed to:', open, 'current localFilters:', localFilters);
         setFilterPanelOpenState(open);
-        if (!open) {
+        if (open) {
+            setLocalFilters(prev => {
+                // Filter out completely empty filters (no column, operator, or value)
+                const cleanedFilters = prev.filter(filter => {
+                    return filter.isComplete || filter.column || filter.operator || filter.value !== undefined;
+                });
+                // If no filters remain after cleaning, ensure at least one empty filter exists
+                return cleanedFilters.length > 0 ? cleanedFilters : [{ isComplete: false }];
+                return cleanedFilters.length > 0 ? cleanedFilters : [{ isComplete: false }];
+            });
+        } else {
             setLocalFilters(prev => {
                 const completeFilters = prev.filter(f => f.isComplete);
                 return completeFilters.length > 0 ? completeFilters : [{ isComplete: false }];
@@ -605,7 +623,13 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                         disabled={!filter.column}
                     />
 
-                    {!isNullOperator && (columnType === 'DateTime' || columnType === 'DateTime?') ? (
+                    {!isNullOperator && columnType === 'JSON[]' ? (
+                        <ArrayValueSelection
+                            value={Array.isArray(filter.value) ? filter.value as SiteCategory[] : undefined}
+                            onChange={(value) => handleFilterChange(index, 'value', value)}
+                            disabled={!filter.column || !filter.operator}
+                        />
+                    ) : !isNullOperator && (columnType === 'DateTime' || columnType === 'DateTime?') ? (
                         <DatePickerWithPresets
                             value={filter.value ? new Date(filter.value as string) : undefined}
                             onChange={(date) => handleFilterChange(index, 'value', date)}
@@ -646,8 +670,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             </div>
         );
     }, [availableColumnTypes, getOperatorsByType, getInputTypeForColumn, handleFilterChange, handleRemoveFilter, resource, filterConfig]);
-
-    console.log('[FilterPanel] Rendering with localFilters:', localFilters);
 
     return (
         <div className="relative">
@@ -704,5 +726,137 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         </div>
     );
 };
+
+interface ArrayValueSelectionProps {
+    value: SiteCategory[] | undefined;
+    onChange: (value: SiteCategory[] | undefined) => void;
+    disabled: boolean;
+}
+
+export const ArrayValueSelection: React.FC<ArrayValueSelectionProps> = ({
+    value = [],
+    onChange,
+    disabled,
+}) => {
+    const [search, setSearch] = useState("");
+    const [open, setOpen] = useState(false);
+    const [suggestions, setSuggestions] = useState<SiteCategory[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const selectedCategories = value || [];
+
+    // Debounced fetch function for category suggestions
+    const fetchCategories = useCallback(
+        debounce(async (input: string) => {
+            if (input.length < 2) {
+                setSuggestions([]);
+                setLoading(false);
+                return;
+            }
+            setLoading(true);
+            try {
+                const data = await getSiteCategories(input);
+                setSuggestions(data);
+            } catch (error) {
+                console.error("Error fetching categories:", error);
+                setSuggestions([]);
+            } finally {
+                setLoading(false);
+            }
+        }, 300),
+        []
+    );
+
+    // Fetch suggestions when search changes
+    useEffect(() => {
+        if (open) {
+            fetchCategories(search);
+        }
+    }, [search, open, fetchCategories]);
+
+    const addCategory = (category: SiteCategory) => {
+        if (!selectedCategories.some((cat) => cat.id === category.id)) {
+            const newSelection = [...selectedCategories, category];
+            onChange(newSelection);
+            setSearch("");
+        }
+    };
+
+    const removeCategory = (id: number) => {
+        const newSelection = selectedCategories.filter((cat) => cat.id !== id);
+        onChange(newSelection.length > 0 ? newSelection : undefined);
+    };
+
+    const filteredSuggestions = suggestions.filter(
+        (category) => !selectedCategories.some((cat) => cat.id === category.id)
+    );
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="secondaryFlat"
+                    className="w-[200px] justify-between"
+                    disabled={disabled}
+                >
+                    {selectedCategories.length > 0
+                        ? `${selectedCategories.length} selected`
+                        : "Select categories"}
+                    <ChevronsUpDown className="opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0">
+                <div className="p-3 flex flex-col">
+                    <Input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search categories..."
+                        className="mb-2"
+                        disabled={disabled}
+                        onFocus={() => setOpen(true)}
+                    />
+                    <div className="flex flex-wrap gap-1 mb-2 max-h-32 overflow-y-auto">
+                        {selectedCategories.map((category) => (
+                            <Badge
+                                key={category.id}
+                                className="bg-brand/20 text-brand border border-brand/30 flex items-center gap-1"
+                            >
+                                {category.category}
+                                {!disabled && (
+                                    <X
+                                        size={14}
+                                        className="cursor-pointer hover:text-red-600"
+                                        onClick={() => removeCategory(category.id)}
+                                    />
+                                )}
+                            </Badge>
+                        ))}
+                    </div>
+                    {open && (
+                        <div className="border border-gray-100 rounded-md max-h-40 overflow-y-auto">
+                            {loading ? (
+                                <div className="px-3 py-2 text-sm text-gray-500">Loading...</div>
+                            ) : filteredSuggestions.length > 0 ? (
+                                filteredSuggestions.map((category) => (
+                                    <div
+                                        key={category.id}
+                                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                        onClick={() => addCategory(category)}
+                                    >
+                                        {category.category}
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="px-3 py-2 text-sm text-gray-500">
+                                    {search ? "No categories found" : "Type to search categories"}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
 
 export default FilterPanel;

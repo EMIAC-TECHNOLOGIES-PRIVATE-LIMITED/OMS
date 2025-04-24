@@ -248,12 +248,15 @@ export interface GetViewDataResponse {
             id: number;
             viewName: string;
         }>;
+        columnOrder: string[];
     };
     success: boolean;
 }
 
 export interface GetFilteredDataRequest {
     appliedFilters: FilterConfig;
+    globalFilterString: String;
+    columnOrder: string[];
     page: number;
     pageSize: number;
 }
@@ -273,6 +276,7 @@ export interface GetFilteredDataResponse {
 export interface CreateViewRequest {
     viewName: string;
     filterConfig: FilterConfig;
+    columnOrder: string[];
 }
 
 export interface CreateViewResponse {
@@ -292,6 +296,7 @@ export interface UpdateViewRequest {
     viewId: number;
     viewName: string;
     appliedFilters: FilterConfig;
+    columnOrder: string[];
 }
 
 export interface UpdateViewResponse {
@@ -367,6 +372,7 @@ export interface View {
 
     tableId: string;
     filterConfig: FilterConfig;
+    columnOrder: string[];
 
     createdAt: Date;
     updatedAt: Date;
@@ -411,6 +417,8 @@ export interface WebsiteCheckerResponse {
     data: {
         duplicates: string[];
         newDomains: string[];
+        trashSites: string[];
+        blacklistSites: string[];
     };
 }
 
@@ -441,20 +449,84 @@ export interface VendorCheckerResponse {
     message: string;
     success: boolean;
     data: {
-        domainsFound: {
-            vendors: {
-                [key: string]: Array<{
-                    vendorId: number;
-                    vendorName: string;
-                    vendorPhone: string;
-                    vendorEmail: string;
-
-                }>;
-            };
-        },
+        domainsFound: Record<string, Array<{
+            vendorId: number;
+            vendorName: string;
+            vendorPhone: string | null;
+            vendorEmail: string | null;
+            costPrice: number;
+            noOfOrders: number;
+            latestOrderDate: Date | null;
+        }>>;
         domainsNotFound: string[];
     };
 }
 
+export interface categoryLinksResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data: {
+        data: Array<{
+            website: string;
+            category: string;
+            categoryLink: string;
+        }>;
+    }
+}
 
+export interface nicheDomainsResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data: {
+        niches: Array<{
+            niche: string;
+            count: number;
+        }>;
+    }
+}
 
+export interface getDispatchedDomainsResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data: {
+        dispatchedDomains: Array<{
+            domain: string;
+            costPrice: number;
+            client: string;
+            poc: string;
+            project: string;
+            dispatchDate: Date;
+        }>;
+        previousDispatchedDomains: Array<{
+            domain: string;
+            costPrice: number;
+            client: string;
+            poc: string;
+            project: string;
+            dispatchDate: Date;
+        }>;
+
+        freshDomeains: string[];
+    };
+}
+
+export interface addDispatchedDomainsRequest {
+    domains: Array<{
+        domain: string;
+        costPrice: number;
+        client: string;
+        poc: string;
+        project: string;
+
+    }>;
+}
+
+export interface addDispatchedDomainsResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data: {}
+}

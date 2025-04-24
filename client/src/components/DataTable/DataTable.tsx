@@ -1,18 +1,19 @@
-import { AllCommunityModule, ModuleRegistry, themeQuartz, CellKeyDownEvent, IRowNode, RowSelectedEvent, Column } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry, themeQuartz, IRowNode, RowSelectedEvent, Column, DragStoppedEvent, GridReadyEvent } from "ag-grid-community";
 import { AgGridReact, CustomCellRendererProps, CustomTooltipProps } from "ag-grid-react";
 import { ColDef, ICellRendererParams } from "ag-grid-community";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import TableSkeleton from "./Skeleton";
 import EnumBadge, { getEnumValues, EnumBadgeProps } from "../../utils/EnumUtil/EnumUtil";
-import { deleteData, updateData } from "@/utils/apiService/dataAPI";
+import { deleteData, updateColumnOrder, updateData } from "@/utils/apiService/dataAPI";
 import { useToast } from "@/hooks/use-toast";
 import { authAtom, showFabAtom } from "@/store/atoms/atoms";
 import { useRecoilState, useRecoilValue } from "recoil";
 import NoDataTable from "./NoData";
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { Fab, Action } from 'react-tiny-fab';
 import 'react-tiny-fab/dist/styles.css';
-import { LargeTextEditor, DateEditor } from "./CustomEditors";
+import { LargeTextEditor, DateEditor, CategoryCellEditor } from "./CustomEditors";
+import { CategoryCellRenderer } from "./CustomCells";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,10 +24,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog"
-import { FilePlus, Plus } from "lucide-react";
+import { FilePlus, Plus, Pencil } from "lucide-react";
 import CreateSheet from "./CreateSheet2";
+import UpdateOrderSiteSheet from "./UpdateOrderSiteSheet";
 import { CustomHeaderWithContextMenu } from "./CustomHeader";
 import { FilterConfig } from "../../../../shared/src/types";
+import CategoryTooltip from "./CustomTooltips";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -49,6 +52,20 @@ interface DataGridProps {
   refreshRecords: (addedRecords: number) => void;
   filterConfig: FilterConfig;
   handleFilterChange: (value: FilterConfig) => void;
+  setColumnOrder: (value: string[]) => void;
+  viewId: number | null;
+  viewName: string;
+}
+
+interface EditChange {
+  type: 'edit';
+  timestamp: number;
+  data: {
+    rowId: string | number;
+    columnKey: string;
+    oldValue: any;
+    newValue: any;
+  };
 }
 
 interface RowNumberCellRendererParams extends ICellRendererParams {
@@ -57,9 +74,9 @@ interface RowNumberCellRendererParams extends ICellRendererParams {
   isHeader: boolean;
 }
 
-const hyperLinkToolTipColumns = ['site.website', 'Client.website', 'Order.publishURL', 'Order.indexedScreenShotLink'];
-const formatNumberColumns = ['site.ahrefTraffic', 'Site.domainAuthority', 'Site.pageAuthority', 'Site.spamScore', 'Site.costPrice', 'Site.sellingPrice', 'Site.semrushTraffic', 'Site.semrushOrganicTraffic', 'Site.domainRating', 'Site.adultPrice', 'Site.casinoAdultPrice', 'Site.cbdPrice', 'Site.linkInsertionCost', 'Site.semrushFirstCountryTraffic', 'Site.semrushSecondCountryTraffic', 'Site.semrushThirdCountryTraffic', 'Site.semrushFourthCountryTraffic', 'Site.semrushFifthCountryTraffic', 'Site.similarwebTraffic', 'Site.bannerImagePrice', 'Site.numberOfLinks', 'Order.clientContentCost', 'Order.clientProposedAmount', 'Order.clientReceivedAmount', 'Order.vendorPaymentAmount', 'Order.costPriceWithGST'];
-const largeTextEditorColumns = ['site.contentCategories', 'Site.websiteRemark', 'Site.disclaimer', 'Client.projects', 'Order.orderRemark', 'Order.mainRemark', 'Order.clientPaymentRemark'];
+const hyperLinkToolTipColumns = ['site.website', 'client.website', 'order.publishURL', 'order.indexedScreenShotLink'];
+const formatNumberColumns = ['site.ahrefTraffic', 'site.domainAuthority', 'site.pageAuthority', 'site.spamScore', 'site.costPrice', 'site.sellingPrice', 'site.semrushTraffic', 'site.semrushOrganicTraffic', 'site.domainRating', 'site.adultPrice', 'site.casinoAdultPrice', 'site.cbdPrice', 'site.linkInsertionCost', 'site.semrushFirstCountryTraffic', 'site.semrushSecondCountryTraffic', 'site.semrushThirdCountryTraffic', 'site.semrushFourthCountryTraffic', 'site.semrushFifthCountryTraffic', 'site.similarwebTraffic', 'site.bannerImagePrice', 'site.numberOfLinks', 'order.clientContentCost', 'order.clientProposedAmount', 'order.clientReceivedAmount', 'order.vendorPaymentAmount', 'order.costPriceWithGST'];
+const largeTextEditorColumns = ['site.contentCategories', 'site.websiteRemark', 'site.disclaimer', 'client.projects', 'order.orderRemark', 'order.mainRemark', 'order.clientPaymentRemark'];
 
 const RowNumberCellRenderer: React.FC<RowNumberCellRendererParams> = (params) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -171,6 +188,45 @@ const RowNumberCellRenderer: React.FC<RowNumberCellRendererParams> = (params) =>
   );
 };
 
+// New OrderNumberCellRenderer for "Add Replacement" button
+const OrderNumberCellRenderer: React.FC<ICellRendererParams> = (params) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isUpdateSheetOpen, setIsUpdateSheetOpen] = useState(false);
+  const auth = useRecoilValue(authAtom);
+  const hasUpdatePermission = auth.userInfo.permissions.some((p: any) => p.name === '_update_order');
+
+  if (!hasUpdatePermission) {
+    return <span>{params.value}</span>;
+  }
+
+  return (
+    <div
+      className="h-full w-full text-sm flex items-center justify-start relative "
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <span className={`transition-all duration-100 ease-in-out ${isHovered ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+        {params.value}
+      </span>
+      {isHovered && (
+        <button
+          className="absolute flex items-center gap-1 text-sm text-brand bg-white border border-brand rounded-md px-2 py-1 hover:bg-brand-light/20 transition-all duration-200"
+          onClick={() => setIsUpdateSheetOpen(true)}
+        >
+          <Pencil size={16} />
+          Add Replacement
+        </button>
+      )}
+      <UpdateOrderSiteSheet
+        isOpen={isUpdateSheetOpen}
+        onClose={() => setIsUpdateSheetOpen(false)}
+        rowData={params.data}
+        availableColumnTypes={params.context.availableColumnTypes}
+      />
+    </div>
+  );
+};
+
 const HyperlinkTooltip = (props: CustomTooltipProps) => {
   const ensureAbsoluteUrl = (url: string): string => {
     if (url && typeof url === 'string') {
@@ -217,8 +273,12 @@ const DataGrid: React.FC<DataGridProps> = ({
   filteredCount,
   refreshRecords,
   filterConfig,
-  handleFilterChange
+  handleFilterChange,
+  setColumnOrder,
+  viewId,
+  viewName
 }) => {
+  const [, setUndoStack] = useState<EditChange[]>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [selectedRowsForDelete, setSelectedRowsForDelete] = useState<any[]>([]);
   const [gridApi, setGridApi] = useState<any>(null);
@@ -229,6 +289,64 @@ const DataGrid: React.FC<DataGridProps> = ({
   const { toast } = useToast();
   const lastSelectedRef = useRef<number | null>(null);
 
+  const pushToUndoStack = (change: EditChange) => {
+    setUndoStack((prev) => {
+      const newStack = [...prev, change];
+      if (newStack.length > 5) newStack.shift();
+      return newStack;
+    });
+  };
+
+  const undo = () => {
+    setUndoStack((prevUndoStack) => {
+      if (prevUndoStack.length === 0) {
+        return prevUndoStack;
+      }
+
+      const lastChange = prevUndoStack[prevUndoStack.length - 1];
+
+      const rowIdStr = lastChange.data.rowId.toString();
+      const rowNode = gridApi.getRowNode(rowIdStr);
+      if (!rowNode) {
+        console.error(`❌ UNDO: Row node with ID ${rowIdStr} not found`);
+        toast({ variant: 'destructive', title: 'Undo Failed', description: 'Row not found in grid.' });
+        return prevUndoStack;
+      }
+
+      // Revert the cell value locally
+      const { columnKey, oldValue } = lastChange.data;
+      rowNode.setDataValue(columnKey, oldValue);
+
+      // Sync with server
+      setProcessing(true);
+      const idField = `${resource}.id`;
+      updateData(resource, { [idField]: lastChange.data.rowId, [columnKey]: oldValue })
+        .then((response) => {
+          if (!response.success) {
+            console.error(`❌ UNDO: Server rejected revert operation`);
+            rowNode.setDataValue(columnKey, lastChange.data.newValue);
+            gridApi.refreshCells({ force: true, rowNodes: [rowNode], columns: [columnKey] });
+            toast({ variant: 'destructive', title: 'Undo Failed', description: 'Server rejected revert' });
+
+            setUndoStack((prev) => [...prev, lastChange]); // Restore on failure
+          } else {
+          }
+        })
+        .catch((error) => {
+          console.error(`❌ UNDO: Server error during update:`, error);
+          rowNode.setDataValue(columnKey, lastChange.data.newValue);
+          gridApi.refreshCells({ force: true, rowNodes: [rowNode], columns: [columnKey] });
+          toast({ variant: 'destructive', title: 'Undo Failed', description: 'Server error' });
+
+          setUndoStack((prev) => [...prev, lastChange]);
+        })
+        .finally(() => {
+          setProcessing(false);
+        });
+
+      return prevUndoStack.slice(0, -1);
+    });
+  };
   useEffect(() => {
     setShowFab(!isDeleteDialogOpen)
   }, [isDeleteDialogOpen])
@@ -257,78 +375,237 @@ const DataGrid: React.FC<DataGridProps> = ({
     [auth.userInfo.permissions, resource]
   );
 
-  const onCellKeyDown = async (params: CellKeyDownEvent) => {
-    const event = params.event as KeyboardEvent;
-    if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
-      const api = params.api;
-      const selectedRows = api.getSelectedRows();
 
-      if (selectedRows && selectedRows.length > 0) {
-        const visibleColumns = api.getAllDisplayedColumns();
-        const headers = visibleColumns
-          .map(col => col.getColDef().headerName || col.getColId())
-          .join('\t');
+  // useEffect(() => {
+  //   const handleKeyDown = (event: KeyboardEvent) => {
+  //     if (!gridApi) return;
 
-        const rowData = selectedRows.map((row: Record<string, any>) =>
-          visibleColumns
-            .map((col: Column) => row[col.getColId()] ?? '')
-            .join('\t')
-        ).join('\n');
+  //     if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+  //       event.preventDefault();
+  //       const selectedRows: Record<string, any>[] = gridApi.getSelectedRows();
+  //       if (selectedRows && selectedRows.length > 0) {
+  //         if (resource !== 'site') return;
+  //         const visibleColumns: Column[] = gridApi.getAllDisplayedColumns();
+  //         const safeColumnIds: string[] = visibleColumns
+  //           .map((col: Column) => col.getColId())
+  //           .filter(
+  //             (id: string) =>
+  //               !id.includes('password') &&
+  //               !id.includes('secret') &&
+  //               !id.includes('token') &&
+  //               id !== 'rowNumberSelect'
+  //           );
 
-        navigator.clipboard.writeText(`${headers}\n${rowData}`);
-        showCopiedToast(selectedRows.length);
-      }
-    }
+  //         const headers: string = safeColumnIds
+  //           .map((colId: string) => {
+  //             const col = visibleColumns.find((c: Column) => c.getColId() === colId);
+  //             return col ? (col.getColDef().headerName || colId) : colId;
+  //           })
+  //           .join('\t');
 
-    if (event.key === 'Delete' && auth.userInfo.permissions.some((permission: any) => permission.name === `_delete_${resource}`)) {
-      const api = params.api;
-      const selectedRows = api.getSelectedRows();
+  //         const rowData: string = selectedRows
+  //           .map((row: Record<string, any>) => {
+  //             return safeColumnIds
+  //               .map((colId: string) => {
+  //                 let value: any = row[colId];
+  //                 if (typeof value === 'object' && value !== null) return '';
+  //                 return value !== null && value !== undefined
+  //                   ? String(value).replace(/[\t\n\r:]/g, ' ')
+  //                   : '';
+  //               })
+  //               .join('\t');
+  //           })
+  //           .join('\n');
 
-      if (selectedRows && selectedRows.length > 0) {
-        setSelectedRowsForDelete(selectedRows);
-        setGridApi(api);
-        setIsDeleteDialogOpen(true);
-      }
-    }
-  };
+  //         const clipboardContent: string = `${headers}\n${rowData}`;
+  //         navigator.clipboard.writeText(clipboardContent);
+  //         showCopiedToast(selectedRows.length);
+  //       }
+  //       else {
+  //         // Single-cell copying logic
+  //         const focusedCell = gridApi.getFocusedCell();
+  //         if (focusedCell) {
+  //           const { rowIndex, column } = focusedCell;
+  //           const rowNode = gridApi.getDisplayedRowAtIndex(rowIndex);
+  //           if (rowNode && rowNode.data) {
+  //             const colId = column.getColId();
+  //             const colDef = gridApi.getColumnDef(colId);
+  //             let value;
+
+  //             // Use valueGetter if defined, otherwise access data directly
+  //             if (colDef?.valueGetter) {
+  //               value = colDef.valueGetter({
+  //                 data: rowNode.data,
+  //                 node: rowNode,
+  //                 column,
+  //                 api: gridApi,
+  //                 context: gridApi.context,
+  //                 colDef,
+  //               });
+  //             } else {
+  //               value = rowNode.data[colId];
+  //             }
+
+  //             const formattedValue =
+  //               value !== null && value !== undefined ? String(value) : '';
+  //             navigator.clipboard.writeText(formattedValue).then(() => {
+  //               setShowFab(false);
+  //               setTimeout(() => setShowFab(true), 2000);
+  //               toast({
+  //                 variant: 'default',
+  //                 title: 'Copied',
+  //                 description: 'Cell content copied to clipboard',
+  //                 duration: 1500,
+  //               });
+  //             });
+  //           }
+  //         }
+  //       }
+  //     }
+
+
+  //     if (
+  //       event.key === 'Delete' &&
+  //       auth.userInfo.permissions.some((permission: any) => permission.name === `_delete_${resource}`)
+  //     ) {
+  //       const selectedRows = gridApi.getSelectedRows();
+  //       if (selectedRows && selectedRows.length > 0) {
+  //         setSelectedRowsForDelete(selectedRows);
+  //         setGridApi(gridApi);
+  //         setIsDeleteDialogOpen(true);
+  //       }
+  //     }
+
+
+  //     if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+  //       event.preventDefault(); // Prevent browser undo
+  //       undo();
+  //     }
+  //   };
+
+  //   document.addEventListener('keydown', handleKeyDown);
+  //   return () => document.removeEventListener('keydown', handleKeyDown);
+  // }, [gridApi, auth.userInfo.permissions, resource]); 
+
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (gridApi) {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
-          const selectedRows = gridApi.getSelectedRows();
-          if (selectedRows && selectedRows.length > 0) {
-            const visibleColumns = gridApi.getAllDisplayedColumns();
-            const headers = visibleColumns
-              .map((col: Column) => col.getColDef().headerName || col.getColId())
-              .join('\t');
-
-            const rowData = selectedRows.map((row: Record<string, any>) =>
-              visibleColumns
-                .map((col: Column) => row[col.getColId()] ?? '')
-                .join('\t')
-            ).join('\n');
-
-            navigator.clipboard.writeText(`${headers}\n${rowData}`);
-            showCopiedToast(selectedRows.length);
-          }
-        }
-
-        if (event.key === 'Delete' && auth.userInfo.permissions.some((permission: any) => permission.name === `_delete_${resource}`)) {
-          const selectedRows = gridApi.getSelectedRows();
-          if (selectedRows && selectedRows.length > 0) {
-            setSelectedRowsForDelete(selectedRows);
-            setGridApi(gridApi);
-            setIsDeleteDialogOpen(true);
+      if (!gridApi) return;
+  
+      if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+        event.preventDefault();
+        const selectedRows: Record<string, any>[] = gridApi.getSelectedRows();
+        if (selectedRows && selectedRows.length > 0) {
+          if (resource !== 'site') return;
+          const visibleColumns: Column[] = gridApi.getAllDisplayedColumns();
+          const safeColumnIds: string[] = visibleColumns
+            .map((col: Column) => col.getColId())
+            .filter(
+              (id: string) =>
+                !id.includes('password') &&
+                !id.includes('secret') &&
+                !id.includes('token') &&
+                id !== 'rowNumberSelect'
+            );
+  
+          const headers: string = safeColumnIds
+            .map((colId: string) => {
+              const col = visibleColumns.find((c: Column) => c.getColId() === colId);
+              return col ? (col.getColDef().headerName || colId) : colId;
+            })
+            .join('\t');
+  
+          const rowData: string = selectedRows
+            .map((row: Record<string, any>) => {
+              return safeColumnIds
+                .map((colId: string) => {
+                  let value: any = row[colId];
+                  const colDef = gridApi.getColumnDef(colId);
+                  // Format DateTime columns as YYYY-MM-DD
+                  if (colDef?.cellDataType === 'date' && value) {
+                    return new Date(value).toLocaleDateString('en-CA');
+                  }
+                  if (typeof value === 'object' && value !== null) return '';
+                  return value !== null && value !== undefined
+                    ? String(value).replace(/[\t\n\r:]/g, ' ')
+                    : '';
+                })
+                .join('\t');
+            })
+            .join('\n');
+  
+          const clipboardContent: string = `${headers}\n${rowData}`;
+          navigator.clipboard.writeText(clipboardContent);
+          showCopiedToast(selectedRows.length);
+        } else {
+          // Single-cell copying logic
+          const focusedCell = gridApi.getFocusedCell();
+          if (focusedCell) {
+            const { rowIndex, column } = focusedCell;
+            const rowNode = gridApi.getDisplayedRowAtIndex(rowIndex);
+            if (rowNode && rowNode.data) {
+              const colId = column.getColId();
+              const colDef = gridApi.getColumnDef(colId);
+              let value;
+  
+              // Use valueGetter if defined, otherwise access data directly
+              if (colDef?.valueGetter) {
+                value = colDef.valueGetter({
+                  data: rowNode.data,
+                  node: rowNode,
+                  column,
+                  api: gridApi,
+                  context: gridApi.context,
+                  colDef,
+                });
+              } else {
+                value = rowNode.data[colId];
+              }
+  
+              // Format DateTime columns as YYYY-MM-DD
+              const formattedValue =
+                colDef?.cellDataType === 'date' && value
+                  ? new Date(value).toLocaleDateString('en-CA')
+                  : value !== null && value !== undefined
+                  ? String(value)
+                  : '';
+              navigator.clipboard.writeText(formattedValue).then(() => {
+                setShowFab(false);
+                setTimeout(() => setShowFab(true), 2000);
+                toast({
+                  variant: 'default',
+                  title: 'Copied',
+                  description: 'Cell content copied to clipboard',
+                  duration: 1500,
+                });
+              });
+            }
           }
         }
       }
+  
+      if (
+        event.key === 'Delete' &&
+        auth.userInfo.permissions.some((permission: any) => permission.name === `_delete_${resource}`)
+      ) {
+        const selectedRows = gridApi.getSelectedRows();
+        if (selectedRows && selectedRows.length > 0) {
+          setSelectedRowsForDelete(selectedRows);
+          setGridApi(gridApi);
+          setIsDeleteDialogOpen(true);
+        }
+      }
+  
+      if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+        event.preventDefault(); // Prevent browser undo
+        undo();
+      }
     };
-
+  
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [gridApi, auth.userInfo.permissions, resource]);
-
+  
   const onRowSelected = (event: RowSelectedEvent) => {
     if (event.api) {
       event.api.refreshCells({
@@ -342,10 +619,28 @@ const DataGrid: React.FC<DataGridProps> = ({
     }
   };
 
-  const onGridReady = (params: any) => {
+  const onGridReady = (params: GridReadyEvent) => {
     setGridApi(params.api);
     gridRef.current = params;
   };
+
+  const onDragStopped = useCallback(async (params: DragStoppedEvent) => {
+    if (params.api) {
+      const columns = params.api.getAllGridColumns();
+
+      // For database storage, we'll use this format
+      const columnOrder = columns.map(col => col.getColId());
+      setColumnOrder(columnOrder);
+
+      if (viewName !== 'grid' && viewId) {
+        await updateColumnOrder(resource, columnOrder, viewId);
+      }
+
+    } else {
+      console.warn('GridApi not available in onDragStopped');
+
+    }
+  }, [setColumnOrder, resource, viewName, viewId, updateColumnOrder]);
 
   const showCopiedToast = (rows: number) => {
     setShowFab(false);
@@ -387,12 +682,125 @@ const DataGrid: React.FC<DataGridProps> = ({
 
     const firstRow = data && data.length > 0 ? data[0] : {};
     Object.keys(firstRow).forEach((key) => {
+
+
       const [parentField, childField] = key.split('.');
-      if (childField === 'id' || childField === 'siteId' || childField === 'salesPersonId' || childField === 'clientId' || childField === 'pocId' || childField === 'vendorId') {
+      if (key === 'site.id' || key === 'vendor.id' || key === 'client.id' || childField === 'siteId' || childField === 'salesPersonId' || childField === 'clientId' || childField === 'pocId' || childField === 'vendorId' || key === 'poc.id' || key === 'salesPerson.id') {
         return;
       }
-      const isEditable = (parentField === resource && childField !== 'id' && auth.userInfo.permissions.some((permission: any) => permission.name === `_update_${resource}`));
+      const isEditable = (parentField === resource && childField !== 'updatedAt' && childField !== 'createdAt' && childField !== 'id' && key !== 'order.orderNumber' && auth.userInfo.permissions.some((permission: any) => permission.name === `_update_${resource}`));
       const columnType = availableColumnTypes[key];
+
+      if (key === 'site.categories') {
+        const isEditable = auth.userInfo.permissions.some(
+          (permission: any) => permission.name === `_update_${resource}`
+        );
+
+        const colDef: ColDef = {
+          headerClass: 'font-bold cursor-pointer',
+          headerName: parentField === resource
+            ? capitalizeFirstLetter(childField)
+            : `${capitalizeFirstLetter(parentField)} ${capitalizeFirstLetter(childField)}`,
+          field: key,
+          headerComponent: CustomHeaderWithContextMenu,
+          headerComponentParams: {
+            filterConfig,
+            handleFilterChange,
+            columnDescription: columnDescriptions ? columnDescriptions[key] : key,
+          },
+          flex: 1,
+          minWidth: 350,
+          resizable: true,
+          editable: isEditable,
+          cellStyle: filteredColumns.includes(key)
+            ? { backgroundColor: '#ddebfc' }
+            : sortedColumns.includes(key)
+              ? { backgroundColor: '#e1fbe9' }
+              : {},
+          cellRenderer: 'categoryCellRenderer',
+          cellEditor: 'categoryCellEditor',
+          cellEditorPopup: true,
+          cellEditorPopupPosition: 'over',
+          tooltipComponent: 'categoryTooltip',
+          tooltipValueGetter: (params) => {
+            return params.data['site.categories'];
+          },
+          valueGetter: (params) => params.data['site.category'],
+          valueSetter: (params) => {
+            const oldValue = params.data[key];
+            const newValue = params.newValue;
+
+            // If the value hasn't changed, no update needed
+            if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
+              return false;
+            }
+
+            // Update the local data
+            params.data[key] = newValue;
+
+            // Capture the edit for undo
+            const rowId = params.data[`${resource}.id`];
+            const change: EditChange = {
+              type: 'edit',
+              timestamp: Date.now(),
+              data: { rowId, columnKey: key, oldValue, newValue },
+            };
+            pushToUndoStack(change);
+
+            // Prepare data for server update
+            const allEditableFieldsData: Record<string, any> = {};
+            Object.keys(params.data).forEach((fieldKey) => {
+              const [fieldParent] = fieldKey.split('.');
+              if (fieldParent === resource) {
+                allEditableFieldsData[fieldKey] = params.data[fieldKey];
+              }
+            });
+
+            // Send update to server
+            setProcessing(true);
+            updateData(resource, allEditableFieldsData)
+              .then((response) => {
+                if (!response.success) {
+                  // Revert on failure
+                  params.data[key] = oldValue;
+                  params.api.refreshCells({
+                    force: true,
+                    rowNodes: params.node ? [params.node] : undefined,
+                    columns: [key],
+                  });
+                  setUndoStack((prev) => prev.slice(0, -1));
+                  toast({
+                    variant: 'destructive',
+                    title: 'Update Failed',
+                    description: 'Failed to save changes to server.',
+                  });
+                }
+              })
+              .catch((error) => {
+                console.error('Error updating data:', error);
+                params.data[key] = oldValue;
+                params.api.refreshCells({
+                  force: true,
+                  rowNodes: params.node ? [params.node] : undefined,
+                  columns: [key],
+                });
+                setUndoStack((prev) => prev.slice(0, -1));
+                toast({
+                  variant: 'destructive',
+                  title: 'Error',
+                  description: 'Failed to update data',
+                });
+              })
+              .finally(() => {
+                setProcessing(false);
+              });
+
+            return true; // Indicate the value was successfully set
+          },
+        };
+        columnDefs.push(colDef);
+        return;
+      }
 
       const colDef: ColDef = {
         headerClass: 'font-bold cursor-pointer',
@@ -441,29 +849,45 @@ const DataGrid: React.FC<DataGridProps> = ({
           valueSetter: (params) => {
             const oldValue = params.data[key];
             const newValue = params.newValue;
-            if (oldValue === newValue) {
-              return false;
-            }
+            if (oldValue === newValue) return false;
+
+            // Capture the edit for undo
+            const rowId = params.data[`${resource}.id`];
+            const change: EditChange = {
+              type: 'edit',
+              timestamp: Date.now(),
+              data: { rowId, columnKey: key, oldValue, newValue },
+            };
+            pushToUndoStack(change);
+
+            // Proceed with the update
             const updatedData = { ...params.data };
             updatedData[key] = newValue;
+
             const allEditableFieldsData: Record<string, any> = {};
-            Object.keys(updatedData).forEach(fieldKey => {
+            Object.keys(updatedData).forEach((fieldKey) => {
               const [fieldParent] = fieldKey.split('.');
               if (fieldParent === resource) {
                 allEditableFieldsData[fieldKey] = updatedData[fieldKey];
               }
             });
+
             setProcessing(true);
             updateData(resource, allEditableFieldsData)
-              .then(response => {
+              .then((response) => {
                 if (!response.success) {
-                  Object.keys(allEditableFieldsData).forEach(fieldKey => {
-                    params.data[fieldKey] = oldValue;
+                  // Revert the cell on server failure
+                  params.data[key] = oldValue;
+                  params.api.refreshCells({
+                    force: true,
+                    rowNodes: params.node ? [params.node] : undefined,
+                    columns: [key],
                   });
-                  params.api.refreshCells({ force: true });
+                  // Remove the failed change from undo stack
+                  setUndoStack((prev) => prev.slice(0, -1));
                 }
               })
-              .catch(error => {
+              .catch((error) => {
                 toast({
                   variant: 'destructive',
                   title: 'Error',
@@ -471,19 +895,21 @@ const DataGrid: React.FC<DataGridProps> = ({
                   duration: 5000,
                 });
                 console.error('Error updating data:', error);
-                Object.keys(allEditableFieldsData).forEach(fieldKey => {
-                  params.data[fieldKey] = oldValue;
+                params.data[key] = oldValue;
+                params.api.refreshCells({
+                  force: true,
+                  rowNodes: params.node ? [params.node] : undefined,
+                  columns: [key],
                 });
-                params.api.refreshCells({ force: true });
+                setUndoStack((prev) => prev.slice(0, -1));
               })
               .finally(() => {
                 setProcessing(false);
               });
-            Object.keys(allEditableFieldsData).forEach(fieldKey => {
-              params.data[fieldKey] = updatedData[fieldKey];
-            });
+
+            params.data[key] = updatedData[key];
             return true;
-          }
+          },
         }),
         cellEditor: (() => {
           if (!columnType) return 'agTextCellEditor';
@@ -507,7 +933,6 @@ const DataGrid: React.FC<DataGridProps> = ({
         })(),
         cellEditorPopup: (() => {
           if (!columnType) return true;
-
           return columnType === 'DateTime?' || columnType === 'DateTime' || largeTextEditorColumns.includes(key);
         })(),
         cellEditorParams: (() => {
@@ -524,43 +949,56 @@ const DataGrid: React.FC<DataGridProps> = ({
           return undefined;
         })(),
         flex: 1,
-        minWidth: getTextWidth((key), 'bold 12px Arial') + 20,
+        minWidth: (() => {
+          if (key === 'site.website')
+            return 350;
+          else {
+          const width = getTextWidth((key), 'bold 12px Arial') + 20; 
+        return width;}
+
+        })(),
         initialWidth: getTextWidth((key), 'bold 12px Arial') + 20,
         resizable: true,
         editable: isEditable,
         cellStyle: filteredColumns.includes(key) ? { backgroundColor: '#ddebfc' } : sortedColumns.includes(key) ? { backgroundColor: '#e1fbe9' } : {},
-        ...(columnType === 'Boolean?' || columnType === 'Boolean'
+        ...(key === 'order.orderNumber' && resource === 'order' ? { minWidth: 179 } : {}),
+        ...(key === 'order.orderNumber' && resource === 'order'
           ? {
-            cellRenderer: 'agCheckboxCellRenderer',
-            cellRendererParams: {
-              disabled: !isEditable,
-            }
+            cellRenderer: OrderNumberCellRenderer,
+            cellRendererParams: { context: { availableColumnTypes } }
           }
-          : formatNumberColumns.includes(key)
+          : columnType === 'Boolean?' || columnType === 'Boolean'
             ? {
-              cellRenderer: (params: CustomCellRendererProps) => {
-                return new Intl.NumberFormat('en-IN').format(params.value);
+              cellRenderer: 'agCheckboxCellRenderer',
+              cellRendererParams: {
+                disabled: !isEditable,
               }
             }
-            : (columnType === 'DateTime?' || columnType === 'DateTime')
+            : formatNumberColumns.includes(key)
               ? {
                 cellRenderer: (params: CustomCellRendererProps) => {
-                  if (!params.value) return '';
-                  return new Date(params.data[key]).toLocaleDateString();
+                  return new Intl.NumberFormat('en-IN').format(params.value);
                 }
               }
-              : {
-                cellRenderer: (params: CustomCellRendererProps) => {
-                  if (!columnType) return params.value;
-                  const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
-                  if (enumMatch) {
-                    const enumName = enumMatch[1];
-                    const value = params.data[key];
-                    return <EnumBadge enum={enumName as EnumBadgeProps['enum']} value={value} />;
+              : (columnType === 'DateTime?' || columnType === 'DateTime')
+                ? {
+                  cellRenderer: (params: CustomCellRendererProps) => {
+                    if (!params.value) return '';
+                    return new Date(params.data[key]).toLocaleDateString();
                   }
-                  return params.value;
                 }
-              }
+                : {
+                  cellRenderer: (params: CustomCellRendererProps) => {
+                    if (!columnType) return params.value;
+                    const enumMatch = columnType.match(/^Enum\((.+?)\)\??$/);
+                    if (enumMatch) {
+                      const enumName = enumMatch[1];
+                      const value = params.data[key];
+                      return <EnumBadge enum={enumName as EnumBadgeProps['enum']} value={value} />;
+                    }
+                    return params.value;
+                  }
+                }
         )
       };
       columnDefs.push(colDef);
@@ -599,7 +1037,26 @@ const DataGrid: React.FC<DataGridProps> = ({
   }
 
   if (filteredCount === 0) {
-    return <NoDataTable hasFilters />;
+    return (
+      <div> <NoDataTable hasFilters />
+        {hasCreatePermission && showFab && !isCreateSheetOpen && (
+          <Fab
+            mainButtonStyles={fabStyles.mainButtonStyles}
+            style={fabStyles.position}
+            icon={<Plus size={24} />}
+            event='click'
+          >
+            <Action
+              text="Add Record"
+              style={fabStyles.actionButtonStyles}
+              onClick={() => setIsCreateSheetOpen(true)}
+            >
+              <FilePlus size={20} />
+            </Action>
+          </Fab>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -613,9 +1070,10 @@ const DataGrid: React.FC<DataGridProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel
+              className="bg-white border border-black t font-bold  rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-white border border-brand text-brand font-bold hover:bg-brand-light/20 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out"
+              className="bg-white border border-red-800 text-red-800 font-bold hover:bg-red-100 rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out"
               onClick={async () => {
                 setProcessing(true);
                 const idsToDelete = selectedRowsForDelete.map(row => Number(row[`${resource}.id`]));
@@ -651,8 +1109,9 @@ const DataGrid: React.FC<DataGridProps> = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="w-screen h-lvh">
+      <div className="w-full h-[87vh] inline-block">
         <AgGridReact
+          suppressClipboardApi={true}
           rowSelection={{
             mode: 'multiRow',
             enableClickSelection: false,
@@ -663,21 +1122,29 @@ const DataGrid: React.FC<DataGridProps> = ({
           rowData={data}
           columnDefs={generateColumnDefs()}
           defaultColDef={defaultColDef}
-          onCellKeyDown={onCellKeyDown}
           onRowSelected={onRowSelected}
           onGridReady={onGridReady}
+          maintainColumnOrder={true}
+          onDragStopped={onDragStopped}
           enableBrowserTooltips={false}
           components={{
             largeTextEditor: LargeTextEditor,
             dateEditor: DateEditor,
             HyperlinkTooltip: HyperlinkTooltip,
-            CustomHeaderWithContextMenu: CustomHeaderWithContextMenu
+            CustomHeaderWithContextMenu: CustomHeaderWithContextMenu,
+            orderNumberCellRenderer: OrderNumberCellRenderer,
+            categoryCellRenderer: CategoryCellRenderer,
+            categoryCellEditor: CategoryCellEditor,
+            categoryTooltip: CategoryTooltip,
           }}
           tooltipShowDelay={500}
           tooltipHideDelay={1000}
           tooltipInteraction={true}
+          suppressDragLeaveHidesColumns={true}
           ref={gridRef}
+          getRowId={(params) => params.data[`${resource}.id`].toString()} // Add this line
         />
+
       </div>
 
       {hasCreatePermission && showFab && !isCreateSheetOpen && (
@@ -708,4 +1175,42 @@ const DataGrid: React.FC<DataGridProps> = ({
   );
 };
 
-export default DataGrid;
+export default React.memo(DataGrid, (prevProps, nextProps) => {
+
+  // data,
+  // availableColumnTypes,
+  // columnDescriptions,
+  // loading,
+  // resource,
+  // filteredColumns,
+  // sortedColumns,
+  // setProcessing,
+  // totalCount,
+  // setTotalCount,
+  // filteredCount,
+  // refreshRecords,
+  // filterConfig,
+  // handleFilterChange,
+  // setColumnOrder,
+  // viewId,
+  // viewName
+
+
+  return (
+    prevProps.data === nextProps.data &&
+    prevProps.availableColumnTypes === nextProps.availableColumnTypes &&
+    prevProps.columnDescriptions === nextProps.columnDescriptions &&
+    prevProps.loading === nextProps.loading &&
+    prevProps.totalCount === nextProps.totalCount &&
+    prevProps.filteredCount === nextProps.filteredCount &&
+    prevProps.resource === nextProps.resource &&
+    prevProps.viewId === nextProps.viewId &&
+    prevProps.viewName === nextProps.viewName &&
+    prevProps.sortedColumns.length === nextProps.sortedColumns.length &&
+    prevProps.sortedColumns.every((col, index) => col === nextProps.sortedColumns[index]) &&
+    prevProps.filteredColumns.length === nextProps.filteredColumns.length &&
+    prevProps.filteredColumns.every((col, index) => col === nextProps.filteredColumns[index]
+    )
+  )
+}
+);

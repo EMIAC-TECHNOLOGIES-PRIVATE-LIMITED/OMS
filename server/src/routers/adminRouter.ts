@@ -1,6 +1,6 @@
 import express from "express";
 import { adminMiddleware } from "../middlewares/adminMiddleware";
-import { createUser, getAllAccess, getRoleAccess, getRoles, getUserAccess, getUsers, manageRoleAccess, manageUserAccess, revokeUser, suspendUser } from "../controllers/adminController";
+import { createUser, getAllAccess, getRoleAccess, getRoles, getUserAccess, getUsers, manageRoleAccess, manageUserAccess, revokeUser, suspendUser, updatePassword } from "../controllers/adminController";
 
 const router = express.Router();
 
@@ -16,4 +16,5 @@ router.post('/manage/revoke', adminMiddleware, revokeUser);
 router.post('/manage/access/role', adminMiddleware, manageRoleAccess);
 router.post('/manage/access/user', adminMiddleware, manageUserAccess);
 router.post('/manage/createuser', adminMiddleware, createUser);
+router.post('/manage/updatePassword', adminMiddleware, updatePassword)
 export default router;

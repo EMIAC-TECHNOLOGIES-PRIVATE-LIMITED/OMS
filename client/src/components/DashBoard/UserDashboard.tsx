@@ -18,22 +18,17 @@ function UserDashboard() {
   const announcements = [
     {
       quote:
-        "🚀 New Analytics Dashboard Launched! Explore deeper insights into website performance and traffic data with our new analytics dashboard.",
+        "🚀 New OMS Platform Launched! Explore deeper insights into the SEO data and work around your tasks efficiently.",
       name: "System Update",
-      title: "January 2025",
+      title: "April 2025",
     },
     {
       quote:
-        "📢 Maintenance Scheduled: On Jan 20, 2025, scheduled maintenance may cause temporary unavailability of some features.",
-      name: "Maintenance Alert",
-      title: "January 2025",
+        "Drag and Drop columns in data tables to re-arrange them according to your specific needs. The order will be saved automaically in your views.",
+      name: "🚀New Feature🚀",
+      title: "April 2025",
     },
-    {
-      quote:
-        "🎉 New Vendor Partnerships: We are excited to announce collaborations with premium guest posting platforms, expanding your options.",
-      name: "Vendor Update",
-      title: "January 2025",
-    },
+    
   ];
 
   return (

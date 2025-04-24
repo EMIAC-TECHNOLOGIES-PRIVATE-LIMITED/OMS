@@ -2,13 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
-import { ClipboardCopy, AlertCircle, Eraser } from "lucide-react";
+import { ClipboardCopy, AlertCircle, Eraser, Check } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 function URLSanitizer() {
     const [enteredText, setEnteredText] = useState<string>("");
     const [sanitizedURLs, setSanitizedURLs] = useState<string>("");
     const [invalidEntries, setInvalidEntries] = useState<string>("");
+    const [copiedState, setCopiedState] = useState<string | null>(null);
 
     const sanitizeURLs = () => {
         const urls = enteredText
@@ -42,6 +43,12 @@ function URLSanitizer() {
         setInvalidEntries(invalid.join('\n'));
     };
 
+    const handleCopy = (text: string, type: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedState(type);
+        setTimeout(() => setCopiedState(null), 2000); // Reset after 2 seconds
+    };
+
     return (
         <div className="p-8">
             <div className="flex flex-col gap-6">
@@ -72,7 +79,9 @@ function URLSanitizer() {
                                 Enter URLs
                             </label>
                             <Textarea
-                                placeholder="e.g. https://example.com&#10;http://www.domain.co.uk/&#10;subdomain.website.org"
+                                placeholder="e.g. https://example.com
+http://www.domain.co.uk/
+subdomain.website.org"
                                 value={enteredText}
                                 onChange={(e) => setEnteredText(e.target.value)}
                                 className="min-h-[250px] resize-none transition-all duration-200 focus:ring-2 focus:ring-brand/20"
@@ -128,12 +137,21 @@ function URLSanitizer() {
                             />
                             <Button
                                 variant="outline"
-                                onClick={() => navigator.clipboard.writeText(sanitizedURLs)}
+                                onClick={() => handleCopy(sanitizedURLs, "sanitized")}
                                 disabled={!sanitizedURLs}
-                                className="w-full flex items-center gap-2 disabled:opacity-50"
+                                className="w-full flex items-center gap-2 disabled:opacity-50 relative overflow-hidden"
                             >
-                                <ClipboardCopy className="h-4 w-4" />
-                                Copy Sanitized URLs
+                                {copiedState === "sanitized" ? (
+                                    <>
+                                        <Check className="h-4 w-4 text-green-500 transition-all duration-300 ease-in-out" />
+                                        <span className="transition-all duration-300">Copied!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ClipboardCopy className="h-4 w-4 transition-all duration-300" />
+                                        <span className="transition-all duration-300">Copy Sanitized URLs</span>
+                                    </>
+                                )}
                             </Button>
                         </div>
 
@@ -153,12 +171,21 @@ function URLSanitizer() {
                             />
                             <Button
                                 variant="outline"
-                                onClick={() => navigator.clipboard.writeText(invalidEntries)}
+                                onClick={() => handleCopy(invalidEntries, "invalid")}
                                 disabled={!invalidEntries}
-                                className="w-full flex items-center gap-2 disabled:opacity-50"
+                                className="w-full flex items-center gap-2 disabled:opacity-50 relative overflow-hidden"
                             >
-                                <ClipboardCopy className="h-4 w-4" />
-                                Copy Invalid Entries
+                                {copiedState === "invalid" ? (
+                                    <>
+                                        <Check className="h-4 w-4 text-green-500 transition-all duration-300 ease-in-out" />
+                                        <span className="transition-all duration-300">Copied!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ClipboardCopy className="h-4 w-4 transition-all duration-300" />
+                                        <span className="transition-all duration-300">Copy Invalid Entries</span>
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>

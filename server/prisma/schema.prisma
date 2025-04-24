@@ -36,6 +36,7 @@ enum OrderStatus {
   Cancel
   Replacement
   NeedUpdate
+  Order_Replaced
 }
 
 enum VendorInvoiceStatus {
@@ -144,6 +145,7 @@ model View {
 
   tableId      String
   filterConfig Json
+  columnOrder  String[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -198,9 +200,22 @@ model Vendor {
   poc   User? @relation(fields: [pocId], references: [id])
 }
 
+model SiteCategory {
+  id       Int    @id
+  category String @unique
+  sites    Site[] @relation("SiteToSiteCategory")
+}
+
+model TrashSites {
+  id          Int     @id @default(autoincrement())
+  website     String
+  pitchedFrom String?
+}
+
 model Site {
   id                 Int                @id @default(autoincrement())
   website            String
+  categories         SiteCategory[]     @relation("SiteToSiteCategory")
   niche              String
   contentCategories  String
   siteClassification SiteClassification @default(Normal)
@@ -215,6 +230,8 @@ model Site {
   socialMediaPosting Boolean?
 
   costPrice         Int
+  costPriceValidFrom DateTime?
+  costPriceValidTo   DateTime?
   sellingPrice      Int
   discount          Int?
   adultPrice        Int?
@@ -240,7 +257,7 @@ model Site {
   semrushFifthCountryTraffic  Int?
   similarwebTraffic           Int?
 
-  siteUpdateDate   DateTime?    @updatedAt()
+  siteUpdateDate   DateTime?    
   websiteType      WebsiteType? @default(Default)
   language         String?
   disclaimer       String?
@@ -270,6 +287,16 @@ model Site {
   orders Order[] @relation("OrderSite")
 }
 
+model CategoryLinks {
+  id           Int    @id @default(autoincrement())
+  siteId       Int
+  site         String
+  category     String
+  categoryLink String
+
+  @@unique([site, category])
+}
+
 model Client {
   id               Int     @id @default(autoincrement())
   name             String
@@ -282,8 +309,8 @@ model Client {
   clientClientName String?
   projects         String?
 
-  createdAt DateTime? @default(now())
-  updatedAt DateTime? @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   orders Order[]
 
@@ -294,8 +321,9 @@ model Client {
 }
 
 model Order {
-  id        Int       @id @default(autoincrement())
-  orderDate DateTime?
+  id          Int       @id @default(autoincrement())
+  orderNumber Int
+  orderDate   DateTime?
 
   orderStatus           OrderStatus @default(Pending)
   vendorAssignedDate    DateTime?
@@ -333,8 +361,18 @@ model Order {
   client   Client? @relation(fields: [clientId], references: [id])
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([clientId])
   @@index([salesPersonId])
+}
+
+model DispatechDomains {
+  id             Int      @id @default(autoincrement())
+  domain         String
+  costPrice      Int
+  client         String
+  project        String
+  poc            String
+  dispatchedDate DateTime @default(now())
 }

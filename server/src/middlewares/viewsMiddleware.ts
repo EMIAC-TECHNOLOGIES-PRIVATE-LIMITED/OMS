@@ -101,6 +101,18 @@ const populateRequestData = async (
     resource: string,
     viewId: string | undefined
 ): Promise<Response | void> => {
+
+    if (!decoded.userAccess?.length) {
+        const user = await prismaClient.user.findUnique({
+            where: { id: decoded.userId },
+            select: {
+                userAccess: true
+            }
+        });
+
+        decoded.userAccess = user?.userAccess || [];
+    }
+    
     req.modelName = resource.charAt(0).toUpperCase() + resource.slice(1).toLowerCase();
 
     const userPermissions = await getPermissionCached(decoded.userId);

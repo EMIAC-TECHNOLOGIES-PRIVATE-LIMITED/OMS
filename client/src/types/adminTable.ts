@@ -38,3 +38,8 @@ export interface ResourceOverride {
   resourceId: number;
   granted: boolean;
 }
+
+export interface SiteCategory {
+  id: number;
+  category: string;
+}

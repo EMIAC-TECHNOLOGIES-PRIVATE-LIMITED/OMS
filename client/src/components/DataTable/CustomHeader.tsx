@@ -37,7 +37,7 @@ export const CustomHeaderWithContextMenu: React.FC<CustomHeaderProps> = (props) 
     const [filterPanelLocalFilterState, setFilterPanelLocalState] = useRecoilState(filterPanelLocalFiltersAtom);
 
     useEffect(() => {
-        console.log('[CustomHeader] Initial sort state effect - filterConfig:', props.filterConfig, 'columnId:', columnId);
+
         const currentSort = props.filterConfig?.sort || [];
         const columnSortIndex = currentSort.findIndex(sort => columnId in sort);
 
@@ -50,6 +50,10 @@ export const CustomHeaderWithContextMenu: React.FC<CustomHeaderProps> = (props) 
     }, [props.filterConfig, columnId]);
 
     const onSortClicked = () => {
+        if (columnId === 'site.categories') {
+            return;
+        }
+
         const newSortState = (sortState + 1) % 3;
         setSortState(newSortState);
         updateSortConfig(newSortState);
@@ -79,22 +83,22 @@ export const CustomHeaderWithContextMenu: React.FC<CustomHeaderProps> = (props) 
             sort: currentSort.length > 0 ? currentSort : undefined
         };
 
-        console.log('[CustomHeader] Updating sort config:', newConfig);
+
         props.handleFilterChange(newConfig);
     };
 
     const handleFilter = () => {
-        console.log('[CustomHeader] handleFilter called - current local filters:', filterPanelLocalFilterState);
+
         let newLocalFilters = [...filterPanelLocalFilterState, { column: columnId, isComplete: false }];
-        console.log('[CustomHeader] New local filters before set:', newLocalFilters);
+
         setFilterPanelLocalState(newLocalFilters);
-        console.log('[CustomHeader] After setting local filters');
+
     };
 
     useEffect(() => {
-        console.log('[CustomHeader] Filter state effect - current local filters:', filterPanelLocalFilterState);
+
         if (filterPanelLocalFilterState.some(filter => filter.column === columnId && !filter.isComplete)) {
-            console.log('[CustomHeader] Detected new incomplete filter for column:', columnId, 'opening panel');
+
             setTimeout(() => {
                 setFilterPanelOpenState(true);
             }, 500);
@@ -114,11 +118,11 @@ export const CustomHeaderWithContextMenu: React.FC<CustomHeaderProps> = (props) 
             Object.keys(s).some(key => columnId !== key)
         );
 
-        console.log('[CustomHeader] Hiding column - new config:', updatedFilterConfig);
+
         props.handleFilterChange(updatedFilterConfig);
     };
 
-    console.log('[CustomHeader] Rendering with local filters:', filterPanelLocalFilterState);
+    const isHideDesabled = columnId === 'order.id';
 
     return (
         <TooltipProvider>
@@ -149,6 +153,7 @@ export const CustomHeaderWithContextMenu: React.FC<CustomHeaderProps> = (props) 
                         <ContextMenuItem
                             onClick={handleHide}
                             className="flex items-center justify-between px-2 py-1"
+                            disabled={isHideDesabled}
                         >
                             <div className="flex items-center gap-2">
                                 <EyeOff className="w-4 h-4" />

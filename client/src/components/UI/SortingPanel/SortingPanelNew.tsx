@@ -189,20 +189,22 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
       : [{ column: '', hasDirection: false }]
   );
 
-   const filteredColumns = useMemo(() => {
-      return Object.entries(availableColumnsTypes).reduce((acc, [key, value]) => {
-        const [, childField] = key.split('.');
-        if (childField !== 'id' &&
-          childField !== 'siteId' &&
-          childField !== 'salesPersonId' &&
-          childField !== 'clientId' &&
-          childField !== 'pocId' &&
-          childField !== 'vendorId') {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as availableColumnsTypes);
-    }, [availableColumnsTypes]);
+  const filteredColumns = useMemo(() => {
+    return Object.entries(availableColumnsTypes).reduce((acc, [key, value]) => {
+      const [, childField] = key.split('.');
+      if (key !== 'site.id' &&
+        key !== 'vendor.id' &&
+        key !== 'client.id' &&
+        childField !== 'siteId' &&
+        childField !== 'salesPersonId' &&
+        childField !== 'clientId' &&
+        childField !== 'pocId' &&
+        childField !== 'vendorId') {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as availableColumnsTypes);
+  }, [availableColumnsTypes]);
 
   useEffect(() => {
     const validSortingArray = filterConfig.sort || [];
@@ -302,9 +304,10 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
 
   const orderedColumns = React.useMemo(() => {
     const filteredColumns2 = Object.keys(filteredColumns)
-      .filter((col) => {
-        const shouldInclude = !filterConfig.columns || !filterConfig.columns.includes(col);
-        return shouldInclude;
+      .filter(() => {
+        // const shouldInclude = !filterConfig.columns || !filterConfig.columns.includes(col);
+        // return shouldInclude;
+        return true;
       });
 
     const mappedColumns = filteredColumns2.map(col => ({
@@ -352,7 +355,7 @@ const SortingPanelNew: React.FC<SortingPanelNewProps> = ({
                 const sortObj = localSorting[index] || { '': 'asc' };
                 const column = entry.column;
                 const direction = column ? sortObj[column] : 'asc';
-              
+
 
                 return (
                   <div key={index} className="flex items-center gap-2">

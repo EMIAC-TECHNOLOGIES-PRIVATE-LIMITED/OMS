@@ -9,7 +9,7 @@ type StatusColorConfig = {
 // Define mapped types for each enum's possible values
 type ClientPaymentStatusValues = 'Received' | 'PartiallyReceived' | 'Pending' | 'NotReceived';
 type VendorPaymentStatusValues = 'Hold' | 'Unpaid' | 'Paid' | 'PartiallyPaid' | 'Cancel';
-type OrderStatusValues = 'Pending' | 'Given' | 'Publish' | 'NotPublish' | 'Cancel' | 'Replacement' | 'NeedUpdate';
+type OrderStatusValues = 'Pending' | 'Given' | 'Publish' | 'NotPublish' | 'Cancel' | 'Replacement' | 'NeedUpdate' | 'Order_Replaced';
 type VendorInvoiceStatusValues = 'Pending' | 'Ask' | 'Received' | 'Given' | 'Paid';
 type SiteClassificationValues = 'Normal' | 'Casino' | 'Cbd' | 'Adult';
 type linkAttribute = 'DoFollow' | 'NoFollow' | 'Sponsored';
@@ -51,6 +51,7 @@ const useStatusColor = () => {
                     case 'Cancel': return 'bg-gray-600';
                     case 'Replacement': return 'bg-purple-600';
                     case 'NeedUpdate': return 'bg-orange-600';
+                    case 'Order_Replaced': return 'bg-slate-600';
                 }
                 break;
 
@@ -134,7 +135,7 @@ export const getEnumValues = (enumType: string): string[] => {
         case 'VendorPaymentStatus':
             return ['Hold', 'Unpaid', 'Paid', 'PartiallyPaid', 'Cancel'];
         case 'OrderStatus':
-            return ['Pending', 'Given', 'Publish', 'NotPublish', 'Cancel', 'Replacement', 'NeedUpdate'];
+            return ['Pending', 'Given', 'Publish', 'NotPublish', 'Cancel', 'Replacement', 'NeedUpdate', 'Order_Replaced'];
         case 'VendorInvoiceStatus':
             return ['Pending', 'Ask', 'Received', 'Given', 'Paid'];
         case 'SiteClassification':

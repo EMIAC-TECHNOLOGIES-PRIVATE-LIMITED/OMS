@@ -31,22 +31,28 @@ export async function getFilteredData(
     route: string,
     appliedFilters: GetFilteredDataRequest['appliedFilters'],
     page: GetFilteredDataRequest['page'] = 1,
-    pageSize: GetFilteredDataRequest['pageSize'] = 25
+    pageSize: GetFilteredDataRequest['pageSize'] = 25,
+    columnOrder: GetFilteredDataRequest['columnOrder'] = [],
+    globalFilterString : GetFilteredDataRequest['globalFilterString'] = ''
 
 ): Promise<GetFilteredDataResponse> {
     return apiRequest<GetFilteredDataResponse>(`/data/${route}/data?page=${page}&pageSize=${pageSize}`, 'POST', undefined, {
         appliedFilters,
+        columnOrder, 
+        globalFilterString
     });
 }
 
 export async function createView(
     route: string,
     viewName: CreateViewRequest['viewName'],
-    filterConfig: CreateViewRequest['filterConfig']
+    filterConfig: CreateViewRequest['filterConfig'],
+    columnOrder: CreateViewRequest['columnOrder'] = []
 ): Promise<CreateViewResponse> {
     return apiRequest<CreateViewResponse>(`/data/${route}`, 'POST', undefined, {
         viewName,
         filterConfig,
+        columnOrder
     });
 }
 
@@ -54,12 +60,24 @@ export async function updateView(
     route: string,
     viewId: UpdateViewRequest['viewId'],
     viewName: UpdateViewRequest['viewName'],
-    filterConfig: UpdateViewRequest['appliedFilters']
+    filterConfig: UpdateViewRequest['appliedFilters'], 
+    
 ): Promise<UpdateViewResponse> {
     return apiRequest<UpdateViewResponse>(`/data/${route}`, 'PUT', undefined, {
         viewId,
         viewName,
-        filterConfig,
+        filterConfig
+    });
+}
+
+export async function updateColumnOrder(
+    route: string,
+    columnOrder: UpdateViewRequest['columnOrder'],
+    viewId: UpdateViewRequest['viewId']
+): Promise<Response> {
+    return apiRequest<Response>(`/data/${route}/columnOrder`, 'PUT', undefined, {
+        columnOrder,
+        viewId
     });
 }
 
@@ -86,6 +104,12 @@ export async function updateData(
     data: Record<string, any>
 ): Promise<UpdateDataResponse> {
     return apiRequest<UpdateDataResponse>(`/data/${route}/update`, 'PUT', undefined, data);
+}
+
+export async function updateOrder(
+    data: Record<string, any>
+): Promise<UpdateDataResponse> {
+    return apiRequest<UpdateDataResponse>(`/data/updateOrder`, 'PUT', undefined, data);
 }
 
 

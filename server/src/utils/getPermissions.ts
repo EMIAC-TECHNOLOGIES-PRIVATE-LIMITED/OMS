@@ -74,13 +74,16 @@ export const getResourceCached = async function (userId: number): Promise<string
 export const getPermissionCached = async function (
     userId: number
 ): Promise<{ id: number; name: string }[]> {
+
+  
     try {
-        // Attempt to retrieve cached permissions as an array of objects
         const cachedValue = permissionCache.get(`${userId}`) as { id: number; name: string }[];
         if (cachedValue) {
+        
             return cachedValue;
         } else {
             let user;
+         
             try {
                 user = await prismaClient.user.findUnique({
                     where: {
@@ -104,12 +107,12 @@ export const getPermissionCached = async function (
                     },
                 });
             } catch {
-                // Return empty array if fetching user fails
+                
                 return [];
             }
 
             if (user) {
-                // Initialize permissions with role-based permissions
+    
                 let permissionArray: { id: number; name: string }[] = [];
                 try {
                     permissionArray = user.role.permissions.map((p) => ({
@@ -117,11 +120,10 @@ export const getPermissionCached = async function (
                         name: p.key,
                     }));
                 } catch {
-                    // If mapping role permissions fails, proceed with an empty array
+    
                     permissionArray = [];
                 }
 
-                // Apply permission overrides
                 try {
                     user.permissionOverrides.forEach((overRide) => {
                         const overriddenPermission = {
@@ -150,6 +152,7 @@ export const getPermissionCached = async function (
 
                 // Attempt to cache the updated permissions
                 try {
+                  
                     const success = permissionCache.set(
                         `${userId}`,
                         permissionArray,

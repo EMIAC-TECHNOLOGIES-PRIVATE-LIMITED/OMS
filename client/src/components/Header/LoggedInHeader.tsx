@@ -125,35 +125,39 @@ function LoggedInHeader() {
     const formDataToSend = new FormData();
     formDataToSend.append('name', auth.userInfo?.name || '');
     formDataToSend.append('heading', formData.heading);
-    formDataToSend.append('severity', formData.severity); // Append severity to form data
+    formDataToSend.append('severity', formData.severity);
     formDataToSend.append('description', formData.description);
-    formData.screenshots.forEach((file, index) =>
-      formDataToSend.append(`screenshots[${index}]`, file)
-    );
-
+  
+    // Rename and append screenshots
+    formData.screenshots.forEach((file, index) => {
+      const fileExtension = file.name.split('.').pop(); // Get the file extension (e.g., "png", "jpg")
+      const newFileName = `image${index + 1}.${fileExtension}`; // Create new name like "image1.png"
+      const renamedFile = new File([file], newFileName, { type: file.type }); // Create a new File object with the renamed name
+      formDataToSend.append(`screenshots[${index}]`, renamedFile); // Append the renamed file
+    });
+  
     try {
       const response = await fetch(import.meta.env.VITE_FEEDBACK_FLOW_URL, {
         method: 'POST',
         body: formDataToSend,
-        // Remove credentials since they are not needed
       });
-
+  
       if (!response.ok) {
         throw new Error(`Server responded with ${response.status}`);
       }
-
+  
       const result = await response.json();
       console.log('Issue reported successfully:', result);
       setShowFab(false);
-      setTimeout(()=>{
+      setTimeout(() => {
         setShowFab(true);
-      }, 3500)
+      }, 3500);
       toast({
         title: 'Issue Reported Successfully',
         description: "We'll look into this and get back to you soon.",
-        duration : 3000
+        duration: 3000,
       });
-
+  
       // Reset the form state
       setIsIssueDialogOpen(false);
       setFormData({ name: '', heading: '', severity: '', description: '', screenshots: [] });
@@ -192,7 +196,7 @@ function LoggedInHeader() {
 
   return (
     <>
-      <header className="bg-white shadow-premium border-b">
+      <header className="bg-white shadow-premium border-b h-[6vh] scale-75 ">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">

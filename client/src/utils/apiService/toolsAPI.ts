@@ -1,5 +1,5 @@
 import { apiRequest } from './APIService';
-import { PriceCheckerResponse, VendorCheckerResponse, WebsiteCheckerResponse } from '../../../../shared/src/types';
+import { addDispatchedDomainsRequest, addDispatchedDomainsResponse, categoryLinksResponse, getDispatchedDomainsResponse, nicheDomainsResponse, PriceCheckerResponse, VendorCheckerResponse, WebsiteCheckerResponse } from '../../../../shared/src/types';
 
 
 export async function duplicateWebsiteChecker(
@@ -22,4 +22,32 @@ export async function vendorChecker(
     return apiRequest<VendorCheckerResponse>('/tools/vendor-checker', 'POST', undefined, {
         domains
     });
+}
+
+export async function categoryLinkFetcher(domains: string[], category: string): Promise<any> {
+    return apiRequest<categoryLinksResponse>('/tools/category-links', 'POST', undefined, {
+        domains,
+        category
+    });
+}
+
+
+export async function addTrashDomains(domains: string[], pitchedFrom?: string): Promise<any> {
+    return apiRequest('/tools/add-trash-domains', 'POST', undefined, {
+        domains,
+        pitchedFrom
+    });
+}
+
+export async function nicheDomains(): Promise<any> {
+    return apiRequest<nicheDomainsResponse>('/tools/niche-domains', 'GET');
+}
+
+
+export async function getDispatchedDomains(): Promise<any> {
+    return apiRequest<getDispatchedDomainsResponse>('/tools/get-dispatchedDomains', 'GET', undefined, {});
+}
+
+export async function addDispatchedDomains(data: addDispatchedDomainsRequest): Promise<any> {
+    return apiRequest<addDispatchedDomainsResponse>('/tools/add-dispatchedDomains', 'POST', undefined, data);
 }

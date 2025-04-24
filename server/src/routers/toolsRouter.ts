@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { getPermissionCached } from "../utils/getPermissions";
 import { generateAccessToken } from "../utils/generateAccessToken";
 import { toolsController } from "../controllers/toolsController";
+import { userMiddleware } from "../middlewares/userMiddleware";
 
 const router = express.Router();
 const jwtSecret = process.env.JWT_SECRET || 'random@123';
@@ -38,7 +39,7 @@ router.use(async (req, res, next) => {
                 return next();
             }
         }
-      
+
         return res.status(403).json(new APIError(STATUS_CODES.FORBIDDEN, "Invalid access token", [], false));
     }
 })
@@ -47,6 +48,10 @@ router.use(async (req, res, next) => {
 router.post('/website-checker', toolsController.websiteChecker)
 router.post('/price-checker', toolsController.priceChecker)
 router.post('/vendor-checker', toolsController.vendorChecker)
-
+router.post('/category-links', toolsController.categoryLinks)
+router.post('/add-trash-domains', userMiddleware, toolsController.addTrashDomains)
+router.get('/niche-domains', toolsController.nicheDomains)
+router.get('/get-dispatchedDomains', toolsController.getDispatchedDomains)
+router.post('/add-dispatchedDomains', toolsController.addDispatchedDomains)
 
 export default router;

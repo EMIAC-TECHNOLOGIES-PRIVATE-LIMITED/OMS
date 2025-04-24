@@ -194,7 +194,10 @@ const EditRole: React.FC = () => {
     setCurrentOverrides((prev) => {
       let updatedResources = [...prev.resources];
       resources.forEach((resource) => {
-        updatedResources = toggleItem(updatedResources, resource.id, checked);
+        // Only toggle if it's not an 'id' column or if we're selecting (not deselecting)
+        if (resource.column !== 'id' || checked) {
+          updatedResources = toggleItem(updatedResources, resource.id, checked);
+        }
       });
       return {
         ...prev,

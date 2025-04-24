@@ -1,9 +1,9 @@
 import * as React from "react";
-import { ChevronsLeftRightEllipsis } from "lucide-react";
+import { ChevronsLeftRightEllipsis, Notebook, Trash2 } from "lucide-react";
 import { useRecoilValue } from "recoil";
 import { authAtom } from "@/store/atoms/atoms";
 
-import { IndianRupee, Copy, Computer, Link } from 'lucide-react';
+import { IndianRupee, Copy, Computer, Link, Cable } from 'lucide-react';
 
 import {
   Sidebar,
@@ -48,7 +48,7 @@ export function SideBar({ activeToolKey, setActiveToolKey, ...props }: SideBarPr
     if (setActiveToolKey) {
       setActiveToolKey(key);
     }
-    // If you’re using something else like routing with href, you’d do that here
+
   }
 
   return (
@@ -85,6 +85,8 @@ export function SideBar({ activeToolKey, setActiveToolKey, ...props }: SideBarPr
                 const title = (toolObj as unknown as Record<string, string>)[key];
                 const isActive = key === activeToolKey;
 
+
+
                 return (
                   <SidebarMenuItem
                     key={key}
@@ -102,9 +104,14 @@ export function SideBar({ activeToolKey, setActiveToolKey, ...props }: SideBarPr
                         className="flex items-center gap-2 w-full text-left"
                         onClick={() => handleToolClick(key)}
                       >
-                        {/* Replace with whichever icon logic you want */}
-                        {(title === "Price Lookup" && <IndianRupee className="w-5 h-5" />) || title === "Vendor Lookup" && <Computer className="w-5 h-5" /> || title === "Duplicate Domain Lookup" && <Copy className="w-5 h-5" /> || title === "URL Sanitizer" && <Link className="w-5 h-5" />}
 
+                        {(title === "Price Lookup" && <IndianRupee className="w-5 h-5" />) ||
+                          (title === "Vendor Lookup" && <Computer className="w-5 h-5" />) ||
+                          (title === "Duplicate Domain Lookup" && <Copy className="w-5 h-5" />) ||
+                          (title === "URL Sanitizer" && <Link className="w-5 h-5" />) ||
+                          (title === "Category Links Fetcher" && <Cable className="w-5 h-5" />) ||
+                          (title === "Niche Domains" && <Notebook className="w-5 h-5" />) ||
+                          (title === "Add Non-Responsive Domains" && <Trash2 className="w-5 h-5" />)}
                         <span>{title}</span>
                       </button>
                     </SidebarMenuButton>
