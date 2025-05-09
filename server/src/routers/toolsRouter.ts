@@ -53,5 +53,6 @@ router.post('/add-trash-domains', userMiddleware, toolsController.addTrashDomain
 router.get('/niche-domains', toolsController.nicheDomains)
 router.get('/get-dispatchedDomains', toolsController.getDispatchedDomains)
 router.post('/add-dispatchedDomains', toolsController.addDispatchedDomains)
+router.post('/get-live-matrics', toolsController.getLatestMatrics)
 
 export default router;

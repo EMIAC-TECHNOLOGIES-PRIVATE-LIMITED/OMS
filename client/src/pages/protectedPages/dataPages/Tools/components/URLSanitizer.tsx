@@ -11,37 +11,146 @@ function URLSanitizer() {
     const [invalidEntries, setInvalidEntries] = useState<string>("");
     const [copiedState, setCopiedState] = useState<string | null>(null);
 
+    
     const sanitizeURLs = () => {
         const urls = enteredText
-            .split("\n")
+            .split(/[\n,;\r]+/)
+            .flatMap(line => line.split(/\s+/))
             .map(url => url.trim())
             .filter(url => url.length > 0);
-
+    
         const sanitized: string[] = [];
-        const invalid: string[] = [];
-
+        const invalid: string[] = [];   
+    
         urls.forEach(url => {
             try {
-                // Remove protocol and any trailing slashes
-                let cleaned = url.toLowerCase()
-                    .replace(/^(https?:\/\/)?(www\.)?/, '')
-                    .replace(/\/+$/, '');
-
-                // Check if it's a valid domain pattern
-                const domainPattern = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/;
-                if (domainPattern.test(cleaned)) {
-                    sanitized.push(`www.${cleaned}`);
+                // Skip obvious non-URLs
+                if (!url || url === '-' || url.startsWith('#')) {
+                    return;
+                }
+    
+                // Handle special protocols
+                if (/^(mailto|tel|ftp|sftp|file):/.test(url)) {
+                    invalid.push(url);
+                    return;
+                }
+    
+                // Clean up common URL input issues
+                let cleanUrl = url
+                    .replace(/[\[\]<>(){}]/g, '') // Remove brackets
+                    .replace(/^["']+|["']+$/g, '') // Remove quotes
+                    .replace(/&amp;/g, '&')        // Fix HTML entities
+                    .replace(/,$/, '');            // Remove trailing commas
+                
+                // Try to parse URL
+                let parsedUrl: URL;
+                try {
+                    // If URL doesn't have protocol, add https:// for parsing
+                    if (!cleanUrl.match(/^[a-zA-Z]+:\/\//)) {
+                        parsedUrl = new URL(`https://${cleanUrl}`);
+                    } else {
+                        parsedUrl = new URL(cleanUrl);
+                    }
+                } catch (e) {
+                    // Try to extract domain from malformed URL as fallback
+                    const domainMatch = cleanUrl.match(/([a-z0-9][-a-z0-9]*\.)+[a-z]{2,}/i);
+                    if (!domainMatch) {
+                        invalid.push(url);
+                        return;
+                    }
+                    try {
+                        parsedUrl = new URL(`https://${domainMatch[0]}`);
+                    } catch {
+                        invalid.push(url);
+                        return;
+                    }
+                }
+    
+                // Extract and normalize hostname
+                let domain = parsedUrl.hostname.toLowerCase();
+                
+                // Handle IP addresses
+                if (isIPAddress(domain)) {
+                    sanitized.push(domain);
+                    return;
+                }
+    
+                // Remove www. prefix for consistent processing
+                let cleanDomain = domain.replace(/^www\./, '');
+                
+                // Validate domain structure
+                const domainPattern = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i;
+                if (domainPattern.test(cleanDomain)) {
+                    // Add www. prefix to main domains but not to subdomains
+                    const parts = cleanDomain.split('.');
+                    
+                    if (parts.length === 2 || 
+                        (parts.length >= 3 && ['co', 'com', 'org', 'net', 'edu', 'gov'].includes(parts[parts.length - 2]))) {
+                        sanitized.push(`www.${cleanDomain}`);
+                    } else {
+                        sanitized.push(cleanDomain);
+                    }
                 } else {
                     invalid.push(url);
                 }
-            } catch {
+            } catch (error) {
                 invalid.push(url);
             }
         });
-
-        setSanitizedURLs(sanitized.join('\n'));
-        setInvalidEntries(invalid.join('\n'));
+    
+        // Helper function to detect IP addresses
+        function isIPAddress(domain: string): boolean {
+            // IPv4 check
+            const ipv4Pattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+            if (ipv4Pattern.test(domain)) {
+                const parts = domain.split('.').map(part => parseInt(part, 10));
+                return parts.every(part => part >= 0 && part <= 255);
+            }
+            
+            // IPv6 check (comprehensive)
+            const ipv6Pattern = /^(([0-9a-f]{1,4}:){7,7}[0-9a-f]{1,4}|([0-9a-f]{1,4}:){1,7}:|([0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}|([0-9a-f]{1,4}:){1,5}(:[0-9a-f]{1,4}){1,2}|([0-9a-f]{1,4}:){1,4}(:[0-9a-f]{1,4}){1,3}|([0-9a-f]{1,4}:){1,3}(:[0-9a-f]{1,4}){1,4}|([0-9a-f]{1,4}:){1,2}(:[0-9a-f]{1,4}){1,5}|[0-9a-f]{1,4}:((:[0-9a-f]{1,4}){1,6})|:((:[0-9a-f]{1,4}){1,7}|:)|fe80:(:[0-9a-f]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-f]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/i;
+            return ipv6Pattern.test(domain);
+        }
+    
+        // Remove duplicates before setting state
+        const uniqueSanitized = [...new Set(sanitized)];
+        const uniqueInvalid = [...new Set(invalid)];
+    
+        setSanitizedURLs(uniqueSanitized.join('\n'));
+        setInvalidEntries(uniqueInvalid.join('\n'));
     };
+
+    // const sanitizeURLs = () => {
+    //     const urls = enteredText
+    //         .split("\n")
+    //         .map(url => url.trim())
+    //         .filter(url => url.length > 0);
+
+    //     const sanitized: string[] = [];
+    //     const invalid: string[] = [];   
+
+    //     urls.forEach(url => {
+    //         try {
+    //             // Remove protocol and any trailing slashes
+    //             let cleaned = url.toLowerCase()
+    //                 .replace(/^(https?:\/\/)?(www\.)?/, '')
+    //                 .replace(/\/+$/, '');
+
+    //             // Check if it's a valid domain pattern
+    //             const domainPattern = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/;
+    //             if (domainPattern.test(cleaned)) {
+    //                 sanitized.push(`www.${cleaned}`);
+    //             } else {
+    //                 invalid.push(url);
+    //             }
+    //         } catch {
+    //             invalid.push(url);
+    //         }
+    //     });
+
+    //     setSanitizedURLs(sanitized.join('\n'));
+    //     setInvalidEntries(invalid.join('\n'));
+    // };
 
     const handleCopy = (text: string, type: string) => {
         navigator.clipboard.writeText(text);

@@ -3,7 +3,7 @@ import { ChevronsLeftRightEllipsis, Notebook, Trash2 } from "lucide-react";
 import { useRecoilValue } from "recoil";
 import { authAtom } from "@/store/atoms/atoms";
 
-import { IndianRupee, Copy, Computer, Link, Cable } from 'lucide-react';
+import { IndianRupee, Copy, Computer, Link, Cable, Squirrel } from 'lucide-react';
 
 import {
   Sidebar,
@@ -33,6 +33,8 @@ interface SideBarProps extends React.ComponentProps<typeof Sidebar> {
 export function SideBar({ activeToolKey, setActiveToolKey, ...props }: SideBarProps) {
   const authData = useRecoilValue(authAtom);
   const permissions = authData?.userInfo?.permissions?.map((p) => p.name) || [];
+
+ 
 
   // Filter user permissions for those starting with "_tools_"
   const allowedTools = permissions.filter((perm) => perm.startsWith("_tools_"));
@@ -111,11 +113,11 @@ export function SideBar({ activeToolKey, setActiveToolKey, ...props }: SideBarPr
                           (title === "URL Sanitizer" && <Link className="w-5 h-5" />) ||
                           (title === "Category Links Fetcher" && <Cable className="w-5 h-5" />) ||
                           (title === "Niche Domains" && <Notebook className="w-5 h-5" />) ||
-                          (title === "Add Non-Responsive Domains" && <Trash2 className="w-5 h-5" />)}
+                          (title === "Add Non-Responsive Domains" && <Trash2 className="w-5 h-5" />) ||
+                          (title === "Live Domain Metrics Fetcher" && <Squirrel className="w-5 h-5" />)}
                         <span>{title}</span>
                       </button>
                     </SidebarMenuButton>
-
                   </SidebarMenuItem>
                 );
               })}

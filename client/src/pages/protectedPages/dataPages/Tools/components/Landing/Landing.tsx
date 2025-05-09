@@ -2,7 +2,8 @@ import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { IndianRupee, Copy, Computer, Link, MailIcon, Cable, Trash2 } from "lucide-react";
+import { IndianRupee, Copy, Computer, Link, MailIcon, Cable, Trash2 , Squirrel} from "lucide-react";
+
 
 
 const tools = [
@@ -46,7 +47,16 @@ const tools = [
         link: "/tools/add-trash-domains",
         icon: Trash2,
         activeToolKey: "_tools_6"
+    }, 
+    {
+        title : 'Live Domain Metrics Fetcher',
+        description : "Get lastest values from semrush, DA-PA etc." ,
+        link : 'tools/live-domain-metrics-fetcher',
+        icon : Squirrel,
+        activeToolKey: "_tools_8"
+        
     }
+
 ];
 
 export function Landing(props: {

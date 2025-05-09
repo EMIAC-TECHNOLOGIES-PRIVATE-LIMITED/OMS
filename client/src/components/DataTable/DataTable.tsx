@@ -375,119 +375,6 @@ const DataGrid: React.FC<DataGridProps> = ({
     [auth.userInfo.permissions, resource]
   );
 
-
-  // useEffect(() => {
-  //   const handleKeyDown = (event: KeyboardEvent) => {
-  //     if (!gridApi) return;
-
-  //     if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
-  //       event.preventDefault();
-  //       const selectedRows: Record<string, any>[] = gridApi.getSelectedRows();
-  //       if (selectedRows && selectedRows.length > 0) {
-  //         if (resource !== 'site') return;
-  //         const visibleColumns: Column[] = gridApi.getAllDisplayedColumns();
-  //         const safeColumnIds: string[] = visibleColumns
-  //           .map((col: Column) => col.getColId())
-  //           .filter(
-  //             (id: string) =>
-  //               !id.includes('password') &&
-  //               !id.includes('secret') &&
-  //               !id.includes('token') &&
-  //               id !== 'rowNumberSelect'
-  //           );
-
-  //         const headers: string = safeColumnIds
-  //           .map((colId: string) => {
-  //             const col = visibleColumns.find((c: Column) => c.getColId() === colId);
-  //             return col ? (col.getColDef().headerName || colId) : colId;
-  //           })
-  //           .join('\t');
-
-  //         const rowData: string = selectedRows
-  //           .map((row: Record<string, any>) => {
-  //             return safeColumnIds
-  //               .map((colId: string) => {
-  //                 let value: any = row[colId];
-  //                 if (typeof value === 'object' && value !== null) return '';
-  //                 return value !== null && value !== undefined
-  //                   ? String(value).replace(/[\t\n\r:]/g, ' ')
-  //                   : '';
-  //               })
-  //               .join('\t');
-  //           })
-  //           .join('\n');
-
-  //         const clipboardContent: string = `${headers}\n${rowData}`;
-  //         navigator.clipboard.writeText(clipboardContent);
-  //         showCopiedToast(selectedRows.length);
-  //       }
-  //       else {
-  //         // Single-cell copying logic
-  //         const focusedCell = gridApi.getFocusedCell();
-  //         if (focusedCell) {
-  //           const { rowIndex, column } = focusedCell;
-  //           const rowNode = gridApi.getDisplayedRowAtIndex(rowIndex);
-  //           if (rowNode && rowNode.data) {
-  //             const colId = column.getColId();
-  //             const colDef = gridApi.getColumnDef(colId);
-  //             let value;
-
-  //             // Use valueGetter if defined, otherwise access data directly
-  //             if (colDef?.valueGetter) {
-  //               value = colDef.valueGetter({
-  //                 data: rowNode.data,
-  //                 node: rowNode,
-  //                 column,
-  //                 api: gridApi,
-  //                 context: gridApi.context,
-  //                 colDef,
-  //               });
-  //             } else {
-  //               value = rowNode.data[colId];
-  //             }
-
-  //             const formattedValue =
-  //               value !== null && value !== undefined ? String(value) : '';
-  //             navigator.clipboard.writeText(formattedValue).then(() => {
-  //               setShowFab(false);
-  //               setTimeout(() => setShowFab(true), 2000);
-  //               toast({
-  //                 variant: 'default',
-  //                 title: 'Copied',
-  //                 description: 'Cell content copied to clipboard',
-  //                 duration: 1500,
-  //               });
-  //             });
-  //           }
-  //         }
-  //       }
-  //     }
-
-
-  //     if (
-  //       event.key === 'Delete' &&
-  //       auth.userInfo.permissions.some((permission: any) => permission.name === `_delete_${resource}`)
-  //     ) {
-  //       const selectedRows = gridApi.getSelectedRows();
-  //       if (selectedRows && selectedRows.length > 0) {
-  //         setSelectedRowsForDelete(selectedRows);
-  //         setGridApi(gridApi);
-  //         setIsDeleteDialogOpen(true);
-  //       }
-  //     }
-
-
-  //     if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
-  //       event.preventDefault(); // Prevent browser undo
-  //       undo();
-  //     }
-  //   };
-
-  //   document.addEventListener('keydown', handleKeyDown);
-  //   return () => document.removeEventListener('keydown', handleKeyDown);
-  // }, [gridApi, auth.userInfo.permissions, resource]); 
-
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!gridApi) return;
@@ -496,7 +383,7 @@ const DataGrid: React.FC<DataGridProps> = ({
         event.preventDefault();
         const selectedRows: Record<string, any>[] = gridApi.getSelectedRows();
         if (selectedRows && selectedRows.length > 0) {
-          if (resource !== 'site') return;
+          if (!(resource === 'site' || resource === 'order')) return;
           const visibleColumns: Column[] = gridApi.getAllDisplayedColumns();
           const safeColumnIds: string[] = visibleColumns
             .map((col: Column) => col.getColId())
@@ -507,14 +394,22 @@ const DataGrid: React.FC<DataGridProps> = ({
                 !id.includes('token') &&
                 id !== 'rowNumberSelect'
             );
-  
-          const headers: string = safeColumnIds
-            .map((colId: string) => {
-              const col = visibleColumns.find((c: Column) => c.getColId() === colId);
-              return col ? (col.getColDef().headerName || colId) : colId;
-            })
-            .join('\t');
-  
+      
+          // Check if all rows are selected
+          const allRowsSelected = selectedRows.length === gridApi.getDisplayedRowCount();
+      
+          // Only include headers if all rows are selected
+          let clipboardContent: string = '';
+          if (allRowsSelected) {
+            const headers: string = safeColumnIds
+              .map((colId: string) => {
+                const col = visibleColumns.find((c: Column) => c.getColId() === colId);
+                return col ? (col.getColDef().headerName || colId) : colId;
+              })
+              .join('\t');
+            clipboardContent += `${headers}\n`;
+          }
+      
           const rowData: string = selectedRows
             .map((row: Record<string, any>) => {
               return safeColumnIds
@@ -526,19 +421,23 @@ const DataGrid: React.FC<DataGridProps> = ({
                     return new Date(value).toLocaleDateString('en-CA');
                   }
                   if (typeof value === 'object' && value !== null) return '';
+                  
+                  const mightContainUrl = hyperLinkToolTipColumns.includes(colId);
+                  
                   return value !== null && value !== undefined
-                    ? String(value).replace(/[\t\n\r:]/g, ' ')
+                    ? String(value).replace(mightContainUrl ? /[\t\n\r]/g : /[\t\n\r:]/g, ' ')
                     : '';
                 })
                 .join('\t');
             })
             .join('\n');
-  
-          const clipboardContent: string = `${headers}\n${rowData}`;
+      
+          clipboardContent += rowData;
+      
           navigator.clipboard.writeText(clipboardContent);
           showCopiedToast(selectedRows.length);
         } else {
-          // Single-cell copying logic
+          // Single-cell copying logic (unchanged)
           const focusedCell = gridApi.getFocusedCell();
           if (focusedCell) {
             const { rowIndex, column } = focusedCell;
@@ -547,7 +446,7 @@ const DataGrid: React.FC<DataGridProps> = ({
               const colId = column.getColId();
               const colDef = gridApi.getColumnDef(colId);
               let value;
-  
+      
               // Use valueGetter if defined, otherwise access data directly
               if (colDef?.valueGetter) {
                 value = colDef.valueGetter({
@@ -561,7 +460,7 @@ const DataGrid: React.FC<DataGridProps> = ({
               } else {
                 value = rowNode.data[colId];
               }
-  
+      
               // Format DateTime columns as YYYY-MM-DD
               const formattedValue =
                 colDef?.cellDataType === 'date' && value

@@ -52,6 +52,8 @@ enum SiteClassification {
   Casino
   Cbd
   Adult
+  Organic
+  Crypto
 }
 
 enum linkAttribute {
@@ -69,6 +71,8 @@ enum PriceCategory {
 enum WebsiteType {
   Default
   PR
+  PR_Brand
+  PR_NonBrand
   Language
 }
 
@@ -229,22 +233,24 @@ model Site {
   domainRating       Int?
   socialMediaPosting Boolean?
 
-  costPrice         Int
+  sampleURL String?
+
+  costPrice          Int
   costPriceValidFrom DateTime?
   costPriceValidTo   DateTime?
-  sellingPrice      Int
-  discount          Int?
-  adultPrice        Int?
-  casinoAdultPrice  Int?
-  cbdPrice          Int?
-  linkInsertionCost Int?
+  sellingPrice       Int?
+  discount           Int?
+  adultPrice         Int?
+  casinoAdultPrice   Int?
+  cbdPrice           Int?
+  linkInsertionCost  Int?
 
   websiteRemark  String?
   webIP          String?
   webCountry     String?
   turnAroundTime String?
 
-  semrushTraffic              Int
+  semrushTraffic              BigInt
   semrushFirstCountryName     String?
   semrushSecondCountryName    String?
   semrushFirstCountryTraffic  Int?
@@ -257,12 +263,13 @@ model Site {
   semrushFifthCountryTraffic  Int?
   similarwebTraffic           Int?
 
-  siteUpdateDate   DateTime?    
-  websiteType      WebsiteType? @default(Default)
-  language         String?
-  disclaimer       String?
-  anchorText       Boolean?
-  bannerImagePrice Int?
+  siteUpdateDate            DateTime?
+  domainAuthorityUpdateDate DateTime?
+  websiteType               WebsiteType? @default(Default)
+  language                  String?
+  disclaimer                String?
+  anchorText                Boolean?
+  bannerImagePrice          Int?
 
   costPriceUpdateDate              DateTime?
   pureCategory                     String?
@@ -307,6 +314,7 @@ model Client {
   website          String?
   source           String?
   clientClientName String?
+  companyName      String?
   projects         String?
 
   createdAt DateTime @default(now())
@@ -321,9 +329,10 @@ model Client {
 }
 
 model Order {
-  id          Int       @id @default(autoincrement())
-  orderNumber Int
-  orderDate   DateTime?
+  id             Int       @id @default(autoincrement())
+  orderNumber    Int
+  orderDate      DateTime?
+  orderCostPrice Int?
 
   orderStatus           OrderStatus @default(Pending)
   vendorAssignedDate    DateTime?

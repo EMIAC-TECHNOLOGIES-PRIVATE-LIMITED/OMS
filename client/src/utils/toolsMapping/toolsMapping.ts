@@ -6,7 +6,9 @@ export const toolsMapping = [
     { "_tools_4": "URL Sanitizer" },
     { "_tools_5": "Category Links Fetcher" },
     { "_tools_6": "Add Non-Responsive Domains" },
-    { "_tools_7": "Niche Domains" }
+    { "_tools_7": "Niche Domains" }, 
+    { "_tools_8": "Live Domain Metrics Fetcher" }
+
 ];
 
 export function getTitleFromKey(key: string): string | null {

@@ -35,7 +35,7 @@ export const columnDescriptions = {
   "site.semrushFifthCountryName": "Name of fifth country by traffic",
   "site.semrushFifthCountryTraffic": "Traffic from fifth country",
   "site.similarwebTraffic": "Traffic estimate from SimilarWeb",
-  "site.siteUpdateDate": "Date of last site update",
+  "site.domainAuthorityUpdateDate": "Date of Domain Authority update",
   "site.websiteType": "Type of website",
   "site.language": "Primary language of the site",
   "site.disclaimer": "Disclaimer text for the site",
@@ -111,6 +111,7 @@ export const columnDescriptions = {
   "order.clientId": "Identifier of associated client",
   "order.createdAt": "Creation date of order record",
   "order.updatedAt": "Last update date of order record",
+  "order.orderCostPrice" : "Latest cost price of the Site at the time of order placement",
   "poc.name": "Name of the point of contact",
   "salesPerson.name": "Name of the sales person"
 };

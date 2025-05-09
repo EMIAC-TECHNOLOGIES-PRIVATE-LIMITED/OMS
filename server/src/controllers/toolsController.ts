@@ -14,9 +14,6 @@ interface CategoryLinkItem {
     categoryLink: string;
 }
 
-
-
-
 export const toolsController = {
     websiteChecker: async (req: AuthRequest, res: Response): Promise<Response> => {
         try {
@@ -738,6 +735,55 @@ export const toolsController = {
             );
         } catch (error: any) {
 
+            return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
+                new APIError(
+                    STATUS_CODES.INTERNAL_SERVER_ERROR,
+                    "An error occurred while processing your request",
+                    [],
+                    false
+                )
+            );
+        }
+    },
+
+    getLatestMatrics: async (req: AuthRequest, res: Response): Promise<Response> => {
+        try {
+            const domains = req.body.domains;
+            if (!domains || !Array.isArray(domains) || domains.length === 0) {
+                return res.status(STATUS_CODES.BAD_REQUEST).json(
+                    new APIError(STATUS_CODES.BAD_REQUEST, "Domains are required in the request body and must be a non-empty array", [], false)
+                );
+            }
+            
+            try {
+                // Use either await or then/catch, but not both together
+                const response = await httpClient.post(
+                    `${process.env.LATEST_SITE_STATS_URL}`,
+                    {
+                        domains: domains,
+                    }
+                );
+                
+                console.log('Latest Matrics data sent successfully:', response);
+                console.log('Latest Matrics data sent successfully:', JSON.stringify(response.data.newData));
+                
+                return res.status(STATUS_CODES.OK).json(
+                    new APIResponse(STATUS_CODES.OK, "Latest Matrics fetched successfully", response.data.newData, true)
+                );
+                
+            } catch (error) {
+                console.error('Error fetching latest metrics:', error);
+                return res.status(STATUS_CODES.SERVICE_UNAVAILABLE).json(
+                    new APIError(
+                        STATUS_CODES.SERVICE_UNAVAILABLE,
+                        "Failed to fetch latest metrics from external service",
+                        [],
+                        false
+                    )
+                );
+            }
+        } catch (error: any) {
+            console.error("Error in getLatestMatrics:", error);
             return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
                 new APIError(
                     STATUS_CODES.INTERNAL_SERVER_ERROR,

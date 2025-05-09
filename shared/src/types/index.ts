@@ -530,3 +530,26 @@ export interface addDispatchedDomainsResponse {
     success: boolean;
     data: {}
 }
+
+export interface DomainMetrics {
+    da: number;
+    pa: number;
+    ss: number
+    semrushTraffic: number;
+    organic_semrush: number;
+    domain_ranking: number;
+
+}
+
+export interface DomainEntry {
+    [domain: string]: DomainMetrics;
+}
+
+export interface liveMatricsResponse {
+    status: number;
+    message: string;
+    success: boolean;
+    data:
+    DomainEntry[];
+
+}

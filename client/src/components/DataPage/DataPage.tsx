@@ -85,7 +85,6 @@ const DataPage: React.FC<DataPageProps> = ({ resource, pageTitle }) => {
   const [sortedColumns, setSortedColumns] = useState<string[]>([]);
 
   const initialFire = useRef<number>(3);
-
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");

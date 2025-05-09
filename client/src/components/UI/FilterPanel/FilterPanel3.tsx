@@ -378,17 +378,22 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
 
     const getOperatorsByType = useCallback((type: string): { value: string; label: string }[] => {
         const baseOperators = (() => {
+            console.log("getOperatorsByType called with type:", type);
             switch (type) {
                 case 'String':
                 case 'String?':
+
                     return [
                         { value: 'contains', label: 'Contains' },
+                        { value: 'in', label: 'Any of (Comma Separated)' },
                         { value: 'startsWith', label: 'Starts With' },
                         { value: 'endsWith', label: 'Ends With' },
                         { value: 'equals', label: 'Equals' },
                     ];
                 case 'Int':
                 case 'Int?':
+                case 'BigInt':
+                case 'BigInt?':
                     return [
                         { value: 'gte', label: 'Greater Than or Equal To' },
                         { value: 'lte', label: 'Less Than or Equal To' },
@@ -462,7 +467,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     const handleFilterChange = useCallback((
         index: number,
         field: keyof LocalFilter,
-        value: any
+        value: any, 
     ) => {
         setLocalFilters(prev => {
             const newFilters = [...prev];
@@ -521,7 +526,10 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                     }
                 } else if (columnType === 'Boolean' || columnType === 'Boolean?') {
                     processedValue = value === true;
-                } else {
+                } else if ((columnType === 'String' || columnType === 'String?') && newFilters[index].operator === 'in' && typeof value === 'string') {
+                    processedValue = value.split(',').map(item => item.trim()).filter(item => item !== ''); 
+                }
+                else {
                     const enumMatch = columnType?.match(/^Enum\((.+?)\)\??$/);
                     if (enumMatch) {
                         processedValue = value;

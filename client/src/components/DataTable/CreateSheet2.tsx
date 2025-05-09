@@ -81,6 +81,12 @@ interface AutoCompleteData {
   [key: string]: any;
 }
 
+const DEFAULT_VALUES: Record<string, any> = {
+  'order.orderStatus': 'Pending'
+};
+
+
+
 // Utility functions
 const formatHeader = (name: string, resource: string): string => {
   const [parentField, childField] = name.split('.');
@@ -211,13 +217,14 @@ const AutoCompleteEditor: React.FC<AutoCompleteEditorParams> = (props) => {
               ) : (
                 suggestions.map((suggestion) => {
                   const fullKey = `${props.route}.${props.searchColumn}`;
+               
                   return (
                     <CommandItem
                       key={suggestion[`${props.route}.id`]}
                       onSelect={() => handleSelect(suggestion)}
                       className="cursor-pointer hover:bg-blue-50 text-sm py-2 px-2"
                     >
-                      {suggestion[fullKey]}
+                      {fullKey === 'vendor.name' ? `${suggestion[fullKey]} (${suggestion['vendor.email']})` : suggestion[fullKey]}
                     </CommandItem>
                   );
                 })
@@ -248,6 +255,23 @@ const CreateSheet: React.FC<CreateDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const gridRef = useRef<AgGridReact>(null);
+
+  const createNewRowWithDefaults = useCallback(() => {
+    const newRow: Record<string, any> = {};
+    
+    // Apply default values for the current resource type
+    if (resource) {
+      Object.entries(DEFAULT_VALUES).forEach(([key, value]) => {
+        // Only apply default if the column exists in availableColumnTypes
+        if (availableColumnTypes[key]) {
+          newRow[key] = value;
+        }
+      });
+    }
+    
+    return newRow;
+  }, [resource, availableColumnTypes]);
+
   const [rowData, setRowData] = useState<Record<string, any>[]>([{}]);
   const [invalidCells, setInvalidCells] = useState<Set<string>>(new Set());
   const setShowFab = useSetRecoilState(showFabAtom);
@@ -490,15 +514,24 @@ toast({
     return isValid;
   }, [rowData, filteredColumns, resource, toast]);
 
-  const handleAddRow = useCallback(() => {
-    setRowData(prev => [...prev, {}]);
-  }, []);
+    const handleAddRow = useCallback(() => {
+    setRowData(prev => [...prev, createNewRowWithDefaults()]);
+  }, [createNewRowWithDefaults]);
 
   const sanitizeEmptyRows = useCallback(() => {
-    setRowData(prev => prev.filter((row) =>
-      Object.values(row).some(val => val !== undefined && val !== null && val !== '')
-    ));
-  }, []);
+    setRowData(prev => {
+      const filteredRows = prev.filter((row) =>
+        Object.values(row).some(val => val !== undefined && val !== null && val !== '')
+      );
+      
+      // If all rows were empty, add one default row
+      if (filteredRows.length === 0) {
+        return [createNewRowWithDefaults()];
+      }
+      
+      return filteredRows;
+    });
+  }, [createNewRowWithDefaults]);
 
   const handleSubmit = useCallback(async () => {
     if (!validateData()) return;
@@ -571,6 +604,10 @@ toast({
       });
     }
   }, [rowData, resource, validateData, onClose, onSubmit, toast]);
+
+  useEffect(() => {
+    setRowData([createNewRowWithDefaults()]);
+  }, [resource, createNewRowWithDefaults]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

@@ -1,5 +1,5 @@
 import { apiRequest } from './APIService';
-import { addDispatchedDomainsRequest, addDispatchedDomainsResponse, categoryLinksResponse, getDispatchedDomainsResponse, nicheDomainsResponse, PriceCheckerResponse, VendorCheckerResponse, WebsiteCheckerResponse } from '../../../../shared/src/types';
+import { addDispatchedDomainsRequest, addDispatchedDomainsResponse, categoryLinksResponse, getDispatchedDomainsResponse, liveMatricsResponse, nicheDomainsResponse, PriceCheckerResponse, VendorCheckerResponse, WebsiteCheckerResponse } from '../../../../shared/src/types';
 
 
 export async function duplicateWebsiteChecker(
@@ -50,4 +50,10 @@ export async function getDispatchedDomains(): Promise<any> {
 
 export async function addDispatchedDomains(data: addDispatchedDomainsRequest): Promise<any> {
     return apiRequest<addDispatchedDomainsResponse>('/tools/add-dispatchedDomains', 'POST', undefined, data);
+}
+
+export async function getLiveMatrics(data: string[]): Promise<liveMatricsResponse> {
+    return apiRequest<liveMatricsResponse>('/tools/get-live-matrics', 'POST', undefined, {
+        domains: data
+    });
 }

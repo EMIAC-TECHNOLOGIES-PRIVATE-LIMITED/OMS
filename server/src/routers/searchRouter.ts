@@ -16,6 +16,7 @@ const router = express.Router();
 const modelInfo = new PrismaModelInfo();
 
 router.get('/siteWithVendors/', async (req, res) => {
+   
 
     try {
         const site = req.query.site as string;
@@ -129,6 +130,7 @@ router.get('/siteCategories/', async (req, res) => {
 });
 
 router.get('/:model', async (req, res) => {
+    
     try {
         const { model } = req.params;
         const { column, value } = req.query;

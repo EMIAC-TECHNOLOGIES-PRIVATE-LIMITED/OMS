@@ -11,10 +11,10 @@ type ClientPaymentStatusValues = 'Received' | 'PartiallyReceived' | 'Pending' | 
 type VendorPaymentStatusValues = 'Hold' | 'Unpaid' | 'Paid' | 'PartiallyPaid' | 'Cancel';
 type OrderStatusValues = 'Pending' | 'Given' | 'Publish' | 'NotPublish' | 'Cancel' | 'Replacement' | 'NeedUpdate' | 'Order_Replaced';
 type VendorInvoiceStatusValues = 'Pending' | 'Ask' | 'Received' | 'Given' | 'Paid';
-type SiteClassificationValues = 'Normal' | 'Casino' | 'Cbd' | 'Adult';
+type SiteClassificationValues = 'Normal' | 'Casino' | 'Cbd' | 'Adult' | 'Organic' | 'Crypto';
 type linkAttribute = 'DoFollow' | 'NoFollow' | 'Sponsored';
 type PriceCategory = 'Paid' | 'Free' | 'Exchange';
-type WebsiteType = 'Default' | 'PR' | 'Language';
+type WebsiteType = 'Default' | 'PR' | 'Language' | 'PR_Brand' | 'PR_NonBrand';
 type WebsiteStatus = 'Normal' | 'Blacklist' | 'Disqualified';
 type WebsiteQuality = 'Pure' | 'AlmostPure' | 'Multi';
 type VendorCategory = 'Individual' | 'Agency';
@@ -71,6 +71,8 @@ const useStatusColor = () => {
                     case 'Casino': return 'bg-purple-600';
                     case 'Cbd': return 'bg-yellow-600';
                     case 'Adult': return 'bg-red-600';
+                    case 'Organic': return 'bg-green-600';
+                    case 'Crypto': return 'bg-blue-600';
                 }
                 break;
 
@@ -93,6 +95,8 @@ const useStatusColor = () => {
                     case 'Default': return 'bg-green-600';
                     case 'PR': return 'bg-blue-600';
                     case 'Language': return 'bg-yellow-600';
+                    case 'PR_Brand': return 'bg-purple-600';
+                    case 'PR_NonBrand': return 'bg-orange-600';
                 }
 
             case 'WebsiteStatus':
@@ -139,13 +143,13 @@ export const getEnumValues = (enumType: string): string[] => {
         case 'VendorInvoiceStatus':
             return ['Pending', 'Ask', 'Received', 'Given', 'Paid'];
         case 'SiteClassification':
-            return ['Normal', 'Casino', 'Cbd', 'Adult'];
+            return ['Normal', 'Casino', 'Cbd', 'Adult', 'Organic', 'Crypto'];
         case 'linkAttribute':
             return ['DoFollow', 'NoFollow', 'Sponsored'];
         case 'PriceCategory':
             return ['Paid', 'Free', 'Exchange'];
         case 'WebsiteType':
-            return ['Default', 'PR', 'Language'];
+            return ['Default', 'PR', 'Language', 'PR_Brand', 'PR_NonBrand'];
         case 'WebsiteStatus':
             return ['Normal', 'Blacklist', 'Disqualified'];
         case 'WebsiteQuality':

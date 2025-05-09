@@ -53,7 +53,7 @@ const isDateType = (value: any): boolean => {
     if (value instanceof Date) return true;
     if (typeof value === 'string') {
         const date = new Date(value);
-        return !isNaN(date.getTime()) && 
+        return !isNaN(date.getTime()) &&
             /^\d{4}-\d{2}-\d{2}([T ].*)?$/.test(value);
     }
     return false;
@@ -497,20 +497,24 @@ export const secondaryQueryBuilder = (
         query.select = excludeColumnsFromSelect(query.select, filterConfig.columns, model);
     }
 
-    // Initialize where conditions array
-    let whereConditions: any[] = [];
+    // Initialize where conditions
+    let filterConditions: any[] = [];
+    let globalFilterClause: any = null;
 
     // Handle existing filters
     if (filterConfig.filters && filterConfig.filters.length > 0) {
-        whereConditions = filterConfig.filters.map(filter => buildWhereCondition(filter, model));
+        filterConditions = filterConfig.filters.map(filter => buildWhereCondition(filter, model));
     }
 
     // Handle global filter
     if (globalFilter && globalFilter.trim() !== '') {
         const columnTypes = modelInfo.getModelColumns(model);
+        const globalFilterValue = globalFilter.trim();
+        let globalFilterConditions: any[] = [];
+
+        // Process string columns
         const stringColumns = resources.filter(resource => {
             const { table, column } = getTableAndColumn(resource);
-            // Check if resource is valid and column is a string type
             return (
                 shouldProcessResource(model, table) &&
                 (columnTypes[resource] === 'String' || columnTypes[resource] === 'String?') &&
@@ -520,20 +524,68 @@ export const secondaryQueryBuilder = (
         });
 
         if (stringColumns.length > 0) {
-            const globalFilterConditions = stringColumns.map(column =>
+            const stringConditions = stringColumns.map(column =>
                 buildWhereCondition(
-                    { column, operator: 'contains', value: globalFilter },
+                    { column, operator: 'contains', value: globalFilterValue },
                     model
                 )
             );
-            const globalFilterClause = { OR: globalFilterConditions };
-            whereConditions.push(globalFilterClause);
+            globalFilterConditions.push(...stringConditions);
+        }
+
+        // Process integer columns - only if filter is a valid number
+        const numericValue = Number(globalFilterValue);
+        if (!isNaN(numericValue)) {
+            const intColumns = resources.filter(resource => {
+                const { table, column } = getTableAndColumn(resource);
+               
+                return (table === 'order') ? (
+                    shouldProcessResource(model, table) &&
+                    (columnTypes[resource] === 'Int' || columnTypes[resource] === 'Int?' ||
+                        columnTypes[resource] === 'Float' || columnTypes[resource] === 'Float?') &&
+                    !['categories'].includes(column)
+                ) : (
+                    shouldProcessResource(model, table) &&
+                    (columnTypes[resource] === 'Int' || columnTypes[resource] === 'Int?' ||
+                        columnTypes[resource] === 'Float' || columnTypes[resource] === 'Float?') &&
+                    !['id', 'categories'].includes(column)
+                )
+            });
+
+            if (intColumns.length > 0) {
+                const numericConditions = intColumns.map(column =>
+                    buildWhereCondition(
+                        { column, operator: 'equals', value: numericValue },
+                        model
+                    )
+                );
+                globalFilterConditions.push(...numericConditions);
+            }
+        }
+
+        // Only create the OR clause if we have conditions
+        if (globalFilterConditions.length > 0) {
+            globalFilterClause = { OR: globalFilterConditions };
         }
     }
 
-    // Combine all conditions with AND connector
-    if (whereConditions.length > 0) {
-        query.where = { AND: whereConditions };
+    // Construct the where clause
+    if (filterConditions.length > 0 || globalFilterClause) {
+        const conditions: any[] = [];
+
+        // Group filter conditions with the connector from filterConfig
+        if (filterConditions.length > 0) {
+            const connector = filterConfig.connector || 'AND'; // Default to 'AND' if not specified
+            conditions.push({ [connector]: filterConditions });
+        }
+
+        // Add global filter clause if it exists
+        if (globalFilterClause) {
+            conditions.push(globalFilterClause);
+        }
+
+        // Combine all conditions with AND
+        query.where = conditions.length > 0 ? { AND: conditions } : {};
     }
 
     if (filterConfig.sort) {
@@ -547,3 +599,67 @@ export const secondaryQueryBuilder = (
 
     return query;
 };
+
+// export const secondaryQueryBuilder = (
+//     model: string,
+//     resources: string[],
+//     filterConfig: FilterConfig,
+//     forCount: boolean = false,
+//     globalFilter?: string
+// ) => {
+//     let query = primaryQueryBuilder(model, resources);
+
+//     if (filterConfig.columns && filterConfig.columns.length > 0) {
+//         query.select = excludeColumnsFromSelect(query.select, filterConfig.columns, model);
+//     }
+
+//     // Initialize where conditions array
+//     let whereConditions: any[] = [];
+
+//     // Handle existing filters
+//     if (filterConfig.filters && filterConfig.filters.length > 0) {
+//         whereConditions = filterConfig.filters.map(filter => buildWhereCondition(filter, model));
+//     }
+
+//     // Handle global filter
+//     if (globalFilter && globalFilter.trim() !== '') {
+//         const columnTypes = modelInfo.getModelColumns(model);
+//         const stringColumns = resources.filter(resource => {
+//             const { table, column } = getTableAndColumn(resource);
+//             // Check if resource is valid and column is a string type
+//             return (
+//                 shouldProcessResource(model, table) &&
+//                 (columnTypes[resource] === 'String' || columnTypes[resource] === 'String?') &&
+//                 !isEnumField(table, column) &&
+//                 !['id', 'categories'].includes(column)
+//             );
+//         });
+
+//         if (stringColumns.length > 0) {
+//             const globalFilterConditions = stringColumns.map(column =>
+//                 buildWhereCondition(
+//                     { column, operator: 'contains', value: globalFilter },
+//                     model
+//                 )
+//             );
+//             const globalFilterClause = { OR: globalFilterConditions };
+//             whereConditions.push(globalFilterClause);
+//         }
+//     }
+
+//     // Combine all conditions with AND connector
+//     if (whereConditions.length > 0) {
+//         query.where = { AND: whereConditions };
+//     }
+
+//     if (filterConfig.sort) {
+//         query.orderBy = buildOrderByClause(filterConfig.sort, model);
+//     }
+
+//     if (forCount) {
+//         delete query.select;
+//         delete query.orderBy;
+//     }
+
+//     return query;
+// };

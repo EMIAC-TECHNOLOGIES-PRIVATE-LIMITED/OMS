@@ -5,19 +5,18 @@ export const flattenData = (
   ): Record<string, any>[] => {
     const flattenObject = (obj: Object, prefix: string = ''): Record<string, any> => {
       return Object.entries(obj).reduce((acc: Record<string, any>, [key, value]) => {
-        // Get the immediate parent and current key
         const newKey = prefix ? `${prefix}.${key}` : key;
         
         if (value === null) {
-          // For top-level null values, add resource prefix
-          // For nested null values, just use immediate parent
           const finalKey = prefix ? `${prefix.split('.').pop()}.${key}` : `${resource}.${key}`;
           acc[finalKey] = null;
+        } else if (typeof value === 'bigint') {
+          // Convert BigInt to string to make it serializable
+          const finalKey = prefix ? `${prefix.split('.').pop()}.${key}` : `${resource}.${key}`;
+          acc[finalKey] = value.toString();
         } else if (typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
           Object.assign(acc, flattenObject(value, newKey));
         } else {
-          // For nested values, use only the immediate parent
-          // For top-level values, add resource prefix
           const finalKey = prefix ? `${prefix.split('.').pop()}.${key}` : `${resource}.${key}`;
           acc[finalKey] = value;
         }

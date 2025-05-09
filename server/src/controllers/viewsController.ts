@@ -282,6 +282,7 @@ export const viewsController = {
             where: {}
         }
 
+
         if (req.user?.role.name !== 'Admin') {
             const accessIds = [...(req.user?.userAccess || []), req.user?.userId];
             if (modelName === 'Client') {
@@ -328,10 +329,10 @@ export const viewsController = {
 
             }
         }
-      
+
 
         try {
-                const [data, totalRecords] = await Promise.all([
+            const [data, totalRecords] = await Promise.all([
                 (prismaClient as any)[modelName].findMany({
                     ...query,
                     skip,
@@ -408,7 +409,7 @@ export const viewsController = {
                             reorderedItem[key] = item[key];
                         }
                     });
-                    order.forEach((key : string) => {
+                    order.forEach((key: string) => {
                         if (Object.prototype.hasOwnProperty.call(item, key)) {
                             reorderedItem[key] = item[key];
                         }
@@ -453,7 +454,7 @@ export const viewsController = {
                     tableId: resource,
                     viewName,
                     filterConfig: filterConfig || {},
-                    columnOrder : req.body.columnOrder || [],
+                    columnOrder: req.body.columnOrder || [],
                 },
             });
 
@@ -499,7 +500,7 @@ export const viewsController = {
         }
     },
 
-    updateColumnOrder : async (req: AuthRequest, res: Response): Promise<Response> => {
+    updateColumnOrder: async (req: AuthRequest, res: Response): Promise<Response> => {
         const { columnOrder, viewId } = req.body;
         try {
             const updatedView = await prismaClient.view.update({

@@ -1,0 +1,90 @@
+.qz__table,
+.qz__table__header,
+.qz__table__body,
+.qz__table__footer,
+.qz__table__row,
+.qz__table__head,
+.qz__table__data,
+.qz__table__caption {
+  box-sizing: border-box;
+  border: 0 solid hsl(240 5.9% 90%);
+}
+
+.qz__table-wrapper {
+  font-family: var(--font-family);
+  position: relative;
+  width: 100%;
+  overflow: auto;
+}
+
+.qz__table {
+  width: 100%;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  caption-side: bottom;
+  text-indent: 0;
+  border-spacing: 2px;
+  border-color: inherit;
+  border-collapse: collapse;
+}
+
+.qz__table__header tr {
+  border-bottom-width: 1px;
+}
+
+.qz__table__body tr:last-child {
+  border-width: 0px;
+}
+
+.qz__table__footer {
+  border-top-width: 1px;
+  background-color: hsl(240 4.8% 95.9% / 0.5);
+  font-weight: 500;
+}
+
+.qz__table__footer tr:last-child {
+  border-bottom-width: 0;
+}
+
+.qz__table__row {
+  border-bottom-width: 1px;
+  transition-property: color, background-color, border-color,
+    text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+.qz__table__row--hover:hover {
+  background-color: hsl(240 4.8% 95.9% / 0.5);
+}
+
+.qz__table__row[data-state="selected"] {
+  background-color: hsl(240 4.8% 95.9%);
+}
+
+.qz__table__head {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  height: 3rem;
+  font-weight: 500;
+  text-align: left;
+  vertical-align: middle;
+  color: hsl(240 3.8% 46.1%);
+}
+
+.qz__table__data:has([role="checkbox"]),
+.qz__table__head:has([role="checkbox"]) {
+  padding-right: 0;
+}
+
+.qz__table__data {
+  padding: 1rem;
+  vertical-align: middle;
+}
+
+.qz__table__caption {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: hsl(240 3.8% 46.1%);
+}
