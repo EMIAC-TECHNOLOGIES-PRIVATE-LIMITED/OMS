@@ -576,7 +576,7 @@ toast({
         if (resource === 'order') {
           toast({
             title: 'Success',
-            //@ts-ignore
+            //@ts-ignorea
             description: `Order added successfully with Order Number: ${result.data.orderNumber}`,
             duration: 3000,
           });

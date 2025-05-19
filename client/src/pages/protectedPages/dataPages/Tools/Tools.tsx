@@ -20,6 +20,7 @@ import CategoryLinks from "./components/CategoryLinks";
 import TrashDomains from "./components/TrashDomains";
 import NicheDomains from "./components/NicheDomains";
 import LiveMatrics from "./components/LiveMatrics";
+import SitesAi from "./components/SitesAi";
 
 export default function ToolsPage() {
     const [activeToolKey, setActiveToolKey] = useState<string | null>(null);
@@ -70,6 +71,7 @@ export default function ToolsPage() {
                                     {activeToolKey === "_tools_6" && <TrashDomains />}
                                     {activeToolKey === "_tools_7" && <NicheDomains />}
                                     {activeToolKey === "_tools_8" && <LiveMatrics />}
+                                    {activeToolKey === "_tools_9" && <SitesAi />}
                                     
                                 </div>
                             )}

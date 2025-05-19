@@ -66,6 +66,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { toolsMapping } from '@/utils/toolsMapping/toolsMapping';
 
 // Types for the roles returned by getAllRoles()
 interface RoleItem {
@@ -235,6 +236,23 @@ const EditUser: React.FC = () => {
    *  Combine "default" + "override" -> finalPermissions/finalResources for render
    * ----------------------------------------------------------------------------
    */
+
+ const getPermissionDisplayName = (permissionName: string): string => {
+    // Check if this is a tool-related permission
+    if (permissionName.startsWith('_tools_')) {
+      // Find the corresponding tool in the toolsMapping array
+      const toolEntry = toolsMapping.find(tool => Object.keys(tool)[0] === permissionName);
+      
+      if (toolEntry) {
+        // Return the value (display name) from the tool mapping
+        return `Tool <> ${Object.values(toolEntry)[0] as string}`
+      }
+    }
+    
+    // If not a tool or not found in mapping, return the capitalized permission name
+    return permissionName.charAt(0).toUpperCase() + permissionName.slice(1);
+  };
+
   const computeFinalPermissionsAndResources = () => {
     const newFinalPermissions = allPermissions.map((perm) => {
       const userHasDefault = userDefaultPermissions.some((defPerm) => defPerm.id === perm.id);
@@ -1006,7 +1024,7 @@ const EditUser: React.FC = () => {
                         htmlFor={`permission-${permission.id}`}
                         className="font-medium text-gray-700"
                       >
-                        {permission.name.charAt(0).toUpperCase() + permission.name.slice(1)}
+                       {getPermissionDisplayName(permission.name)}
                       </Label>
                       <span className="text-sm text-gray-500">
                         {totalCount > 0 && `${selectedCount}/${totalCount} selected`}

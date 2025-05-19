@@ -18,15 +18,36 @@ const getTableAndColumn = (resource: string): { table: string; column: string } 
 };
 
 const shouldProcessResource = (model: string, resourceTable: string): boolean => {
+    // console.log(`[shouldProcessResource] Called with model: "${model}", resourceTable: "${resourceTable}"`);
+
     const modelLower = model.toLowerCase();
+    // console.log(`[shouldProcessResource] Normalized model name: "${modelLower}"`);
+
     const validTables: { [key: string]: string[] } = {
         client: ['client', 'poc'],
         vendor: ['vendor', 'poc'],
         site: ['site', 'vendor', 'poc'],
-        order: ['order', 'client', 'site', 'vendor', 'salesPerson'],
+        order: ['order', 'client', 'site', 'vendor', 'salesperson'],
     };
+
+    // console.log(`[shouldProcessResource] Valid tables for model "${modelLower}":`, validTables[modelLower] || 'None defined');
+
     const resourceLower = resourceTable.toLowerCase();
-    return validTables[modelLower]?.includes(resourceLower) || false;
+    // console.log(`[shouldProcessResource] Normalized resource table: "${resourceLower}"`);
+
+    const isValid = validTables[modelLower]?.includes(resourceLower) || false;
+
+    if (isValid) {
+        // console.log(`[shouldProcessResource] VALID: "${resourceLower}" is a valid table for model "${modelLower}"`);
+    } else {
+        // console.log(`[shouldProcessResource] INVALID: "${resourceLower}" is NOT a valid table for model "${modelLower}"`);
+
+        if (!validTables[modelLower]) {
+            // console.log(`[shouldProcessResource] ERROR: No valid tables defined for model "${modelLower}"`);
+        }
+    }
+
+    return isValid;
 };
 
 const enumFields: { [key: string]: string[] } = {
@@ -82,7 +103,9 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                         }
                     }
                 },
-                where: {},
+                where: {
+                  
+                },
                 orderBy: {},
             };
             break;
@@ -106,7 +129,9 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                         }
                     }
                 },
-                where: {},
+                where: {
+                 
+                },
                 orderBy: {},
             };
             break;
@@ -139,22 +164,28 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                         }
                     }
                 },
-                where: {},
+                where: {
+       
+                },
                 orderBy: {},
             };
             break;
         default:
-            console.log(`[primaryQueryBuilder] Unknown model "${model}", defaulting to client structure`);
+            // console.log(`[primaryQueryBuilder] Unknown model "${model}", defaulting to client structure`);
             baseQuery = {
                 select: {},
-                where: {},
+                where: {
+             
+                },
                 orderBy: {},
             };
     }
 
     resources.forEach(resource => {
         const { table, column } = getTableAndColumn(resource);
+        // console.log(`[primaryQueryBuilder] Processing resource: ${resource}, table: ${table}, column: ${column}`);
         if (!shouldProcessResource(model, table)) {
+            
             return;
         }
         if (table === modelLower) {
@@ -200,7 +231,8 @@ export const primaryQueryBuilder = (model: string, resources: string[]): QueryOb
                             baseQuery.select.site.select.vendor = { select: {} };
                         }
                         baseQuery.select.site.select.vendor.select[column] = true;
-                    } else if (table === 'salesPerson') {
+                    } else if (table === 'salesperson') {
+                        // console.log(`[primaryQueryBuilder] Adding salesPerson to select`);
                         baseQuery.select.salesPerson.select[column] = true;
                     }
                     break;
@@ -262,7 +294,7 @@ const excludeColumnsFromSelect = (baseSelect: any, excludeColumns: string[], mod
                     } else if (table === 'vendor' && newSelect.site && newSelect.site.select &&
                         newSelect.site.select.vendor && newSelect.site.select.vendor.select) {
                         removeNestedField(newSelect.site.select.vendor.select, [column]);
-                    } else if (table === 'salesPerson' && newSelect.salesPerson && newSelect.salesPerson.select) {
+                    } else if (table === 'salesperson' && newSelect.salesPerson && newSelect.salesPerson.select) {
                         removeNestedField(newSelect.salesPerson.select, [column]);
                     }
                     break;
@@ -278,20 +310,42 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
     const operator = filter.operator || 'equals';
     const modelLower = model.toLowerCase();
 
+    // Map negation operators to their positive counterparts
+    const negationOperatorMap: { [key: string]: string } = {
+        notEquals: 'equals',
+        notContains: 'contains',
+        notStartsWith: 'startsWith',
+        notEndsWith: 'endsWith',
+        notIn: 'in',
+        notGte: 'gte',
+        notLte: 'lte',
+        notGt: 'gt',
+        notLt: 'lt',
+        notSome: 'some',
+    };
+
+    const isNegation = Object.keys(negationOperatorMap).includes(operator);
+    const baseOperator = isNegation ? negationOperatorMap[operator] : operator;
+
+    // Helper to wrap condition in NOT
+    const wrapInNot = (condition: any) => isNegation ? { NOT: condition } : condition;
+
+    // Handle 'name' column (case-insensitive for strings)
     if (column === 'name') {
-        const condition = (isTextBasedOperator(operator) || (operator === 'equals' && isStringType(filter.value)) && !isDateType(filter.value))
-            ? { name: { [operator]: filter.value, mode: 'insensitive' } }
-            : { name: { [operator]: filter.value } };
+        const condition = (isTextBasedOperator(baseOperator) || (baseOperator === 'equals' && isStringType(filter.value)) && !isDateType(filter.value))
+            ? { name: { [baseOperator]: filter.value, mode: 'insensitive' } }
+            : { name: { [baseOperator]: filter.value } };
 
         if (table === modelLower) {
-            return { name: condition.name };
-        } else if (modelLower === 'order' && table === 'salesPerson') {
-            return { salesPerson: condition };
+            return wrapInNot({ name: condition.name });
+        } else if (modelLower === 'order' && table === 'salesperson') {
+            return wrapInNot({ salesPerson: condition });
         } else if (table === 'poc') {
-            return { poc: condition };
+            return wrapInNot({ poc: condition });
         }
     }
 
+    // Handle 'categories' (array fields)
     if (column === 'categories') {
         const idArray = filter.value.map((cat: any) => cat.id);
         const condition = {
@@ -305,17 +359,17 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
         };
 
         if (table === modelLower) {
-            return condition;
+            return wrapInNot(condition);
         } else if (modelLower === 'order' && table === 'site') {
-            return { site: condition };
+            return wrapInNot({ site: condition });
         } else if (modelLower === 'site' && table === 'vendor') {
-            return { vendor: condition };
+            return wrapInNot({ vendor: condition });
         }
     }
 
-    if (operator === 'isNull') {
+    // Handle null checks
+    if (baseOperator === 'isNull') {
         const condition = { [column]: null };
-
         if (table === modelLower) {
             return condition;
         } else {
@@ -333,7 +387,7 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
         }
     }
 
-    if (operator === 'isNotNull') {
+    if (baseOperator === 'isNotNull') {
         const condition = { NOT: { [column]: null } };
         if (table === modelLower) {
             return condition;
@@ -352,7 +406,8 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
         }
     }
 
-    if (operator === 'between' && Array.isArray(filter.value)) {
+    // Handle 'between' (no negation support, as it's range-based)
+    if (baseOperator === 'between' && Array.isArray(filter.value)) {
         return {
             [table === modelLower ? column : table]: {
                 gte: filter.value[0],
@@ -361,15 +416,17 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
         };
     }
 
-    if (operator === 'hasSome' && Array.isArray(filter.value)) {
-        return {
+    // Handle 'hasSome'
+    if (baseOperator === 'hasSome' && Array.isArray(filter.value)) {
+        return wrapInNot({
             [table === modelLower ? column : table]: {
                 hasSome: filter.value,
             },
-        };
+        });
     }
 
-    if (operator === 'isEmpty') {
+    // Handle 'isEmpty'
+    if (baseOperator === 'isEmpty') {
         return {
             [table === modelLower ? column : table]: {
                 isEmpty: true,
@@ -377,54 +434,208 @@ const buildWhereCondition = (filter: { column: string; operator: string; value: 
         };
     }
 
+    // Handle standard operators
     const isEnum = isEnumField(table, column);
-    const operatorConfig = (isTextBasedOperator(operator) || (operator === 'equals' && isStringType(filter.value) && !isEnum && !isDateType(filter.value)))
-        ? { [operator]: filter.value, mode: 'insensitive' }
-        : { [operator]: filter.value };
+    const operatorConfig = (isTextBasedOperator(baseOperator) || (baseOperator === 'equals' && isStringType(filter.value) && !isEnum && !isDateType(filter.value)))
+        ? { [baseOperator]: filter.value, mode: 'insensitive' }
+        : { [baseOperator]: filter.value };
 
     if (table === modelLower) {
-        return {
+        return wrapInNot({
             [column]: operatorConfig,
-        };
+        });
     }
 
     switch (modelLower) {
         case 'site':
             if (table === 'vendor') {
-                return {
+                return wrapInNot({
                     vendor: {
                         [column]: operatorConfig,
                     },
-                };
+                });
             }
             break;
         case 'order':
             if (table === 'client') {
-                return {
+                return wrapInNot({
                     client: {
                         [column]: operatorConfig,
                     },
-                };
+                });
             } else if (table === 'site') {
-                return {
+                return wrapInNot({
                     site: {
                         [column]: operatorConfig,
                     },
-                };
+                });
             } else if (table === 'vendor') {
-                return {
+                return wrapInNot({
                     site: {
                         vendor: {
                             [column]: operatorConfig,
                         },
                     },
-                };
+                });
             }
             break;
     }
 
     return {};
 };
+
+// const buildWhereCondition = (filter: { column: string; operator: string; value: any }, model: string): any => {
+//     const { table, column } = getTableAndColumn(filter.column);
+//     const operator = filter.operator || 'equals';
+//     const modelLower = model.toLowerCase();
+
+//     if (column === 'name') {
+//         const condition = (isTextBasedOperator(operator) || (operator === 'equals' && isStringType(filter.value)) && !isDateType(filter.value))
+//             ? { name: { [operator]: filter.value, mode: 'insensitive' } }
+//             : { name: { [operator]: filter.value } };
+
+//         if (table === modelLower) {
+//             return { name: condition.name };
+//         } else if (modelLower === 'order' && table === 'salesperson') {
+//             return { salesPerson: condition };
+//         } else if (table === 'poc') {
+//             return { poc: condition };
+//         }
+//     }
+
+//     if (column === 'categories') {
+//         const idArray = filter.value.map((cat: any) => cat.id);
+//         const condition = {
+//             categories: {
+//                 some: {
+//                     id: {
+//                         in: idArray,
+//                     }
+//                 }
+//             }
+//         };
+
+//         if (table === modelLower) {
+//             return condition;
+//         } else if (modelLower === 'order' && table === 'site') {
+//             return { site: condition };
+//         } else if (modelLower === 'site' && table === 'vendor') {
+//             return { vendor: condition };
+//         }
+//     }
+
+//     if (operator === 'isNull') {
+//         const condition = { [column]: null };
+
+//         if (table === modelLower) {
+//             return condition;
+//         } else {
+//             switch (modelLower) {
+//                 case 'site':
+//                     return table === 'vendor' ? { vendor: condition } : {};
+//                 case 'order':
+//                     if (table === 'client') return { client: condition };
+//                     if (table === 'site') return { site: condition };
+//                     if (table === 'vendor') return { site: { vendor: condition } };
+//                     return {};
+//                 default:
+//                     return {};
+//             }
+//         }
+//     }
+
+//     if (operator === 'isNotNull') {
+//         const condition = { NOT: { [column]: null } };
+//         if (table === modelLower) {
+//             return condition;
+//         } else {
+//             switch (modelLower) {
+//                 case 'site':
+//                     return table === 'vendor' ? { vendor: condition } : {};
+//                 case 'order':
+//                     if (table === 'client') return { client: condition };
+//                     if (table === 'site') return { site: condition };
+//                     if (table === 'vendor') return { site: { vendor: condition } };
+//                     return {};
+//                 default:
+//                     return {};
+//             }
+//         }
+//     }
+
+//     if (operator === 'between' && Array.isArray(filter.value)) {
+//         return {
+//             [table === modelLower ? column : table]: {
+//                 gte: filter.value[0],
+//                 lte: filter.value[1],
+//             },
+//         };
+//     }
+
+//     if (operator === 'hasSome' && Array.isArray(filter.value)) {
+//         return {
+//             [table === modelLower ? column : table]: {
+//                 hasSome: filter.value,
+//             },
+//         };
+//     }
+
+//     if (operator === 'isEmpty') {
+//         return {
+//             [table === modelLower ? column : table]: {
+//                 isEmpty: true,
+//             },
+//         };
+//     }
+
+//     const isEnum = isEnumField(table, column);
+//     const operatorConfig = (isTextBasedOperator(operator) || (operator === 'equals' && isStringType(filter.value) && !isEnum && !isDateType(filter.value)))
+//         ? { [operator]: filter.value, mode: 'insensitive' }
+//         : { [operator]: filter.value };
+
+//     if (table === modelLower) {
+//         return {
+//             [column]: operatorConfig,
+//         };
+//     }
+
+//     switch (modelLower) {
+//         case 'site':
+//             if (table === 'vendor') {
+//                 return {
+//                     vendor: {
+//                         [column]: operatorConfig,
+//                     },
+//                 };
+//             }
+//             break;
+//         case 'order':
+//             if (table === 'client') {
+//                 return {
+//                     client: {
+//                         [column]: operatorConfig,
+//                     },
+//                 };
+//             } else if (table === 'site') {
+//                 return {
+//                     site: {
+//                         [column]: operatorConfig,
+//                     },
+//                 };
+//             } else if (table === 'vendor') {
+//                 return {
+//                     site: {
+//                         vendor: {
+//                             [column]: operatorConfig,
+//                         },
+//                     },
+//                 };
+//             }
+//             break;
+//     }
+
+//     return {};
+// };
 
 type SortDirection = 'asc' | 'desc';
 type SortConfig = { [key: string]: SortDirection } | Array<{ [key: string]: SortDirection }>;
@@ -538,7 +749,7 @@ export const secondaryQueryBuilder = (
         if (!isNaN(numericValue)) {
             const intColumns = resources.filter(resource => {
                 const { table, column } = getTableAndColumn(resource);
-               
+
                 return (table === 'order') ? (
                     shouldProcessResource(model, table) &&
                     (columnTypes[resource] === 'Int' || columnTypes[resource] === 'Int?' ||

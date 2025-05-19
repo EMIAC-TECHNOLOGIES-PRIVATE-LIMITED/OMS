@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from "@/components/ui/input";
 import { Label } from '@/components/ui/label';
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea"; // Added Textarea import
 import debounce from 'lodash.debounce';
 import { useRecoilState } from 'recoil';
 import { filterPanelLocalFiltersAtom, filterPanelOpenStateAtom } from '@/store/atoms/atoms';
@@ -382,13 +383,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             switch (type) {
                 case 'String':
                 case 'String?':
-
                     return [
                         { value: 'contains', label: 'Contains' },
+                        { value: 'notContains', label: 'Not Contains' },
                         { value: 'in', label: 'Any of (Comma Separated)' },
                         { value: 'startsWith', label: 'Starts With' },
                         { value: 'endsWith', label: 'Ends With' },
                         { value: 'equals', label: 'Equals' },
+                        { value: 'notEquals', label: 'Not Equals' }
                     ];
                 case 'Int':
                 case 'Int?':
@@ -400,6 +402,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                         { value: 'gt', label: 'Greater Than' },
                         { value: 'lt', label: 'Less Than' },
                         { value: 'equals', label: 'Equals' },
+                        { value: 'notEquals', label: 'Not Equals' }
                     ];
                 case 'Boolean':
                 case 'Boolean?':
@@ -408,6 +411,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 case 'DateTime?':
                     return [
                         { value: 'equals', label: 'Equals' },
+                        { value: 'notEquals', label: 'Not Equals' },
                         { value: 'gt', label: 'After' },
                         { value: 'lt', label: 'Before' },
                         { value: 'lte', label: 'On or Before' },
@@ -416,7 +420,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 case 'JSON[]':
                     return [
                         { value: 'some', label: 'Contains' }
-
                     ]
                 default:
                     const enumMatch = type.match(/^Enum\((.+?)\)\??$/);
@@ -467,7 +470,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     const handleFilterChange = useCallback((
         index: number,
         field: keyof LocalFilter,
-        value: any, 
+        value: any
     ) => {
         setLocalFilters(prev => {
             const newFilters = [...prev];
@@ -527,9 +530,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 } else if (columnType === 'Boolean' || columnType === 'Boolean?') {
                     processedValue = value === true;
                 } else if ((columnType === 'String' || columnType === 'String?') && newFilters[index].operator === 'in' && typeof value === 'string') {
-                    processedValue = value.split(',').map(item => item.trim()).filter(item => item !== ''); 
-                }
-                else {
+                    processedValue = value.split(/[,\n\r]+/).map(item => item.trim()).filter(item => item !== '');
+                } else {
                     const enumMatch = columnType?.match(/^Enum\((.+?)\)\??$/);
                     if (enumMatch) {
                         processedValue = value;
@@ -595,7 +597,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 });
                 // If no filters remain after cleaning, ensure at least one empty filter exists
                 return cleanedFilters.length > 0 ? cleanedFilters : [{ isComplete: false }];
-                return cleanedFilters.length > 0 ? cleanedFilters : [{ isComplete: false }];
             });
         } else {
             setLocalFilters(prev => {
@@ -649,6 +650,23 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                             value={filter.value}
                             onChange={(value) => handleFilterChange(index, 'value', value)}
                             disabled={!filter.column || !filter.operator}
+                        />
+                    ) : !isNullOperator && (columnType === 'String' || columnType === 'String?') && filter.operator === 'in' ? (
+                        <Textarea
+                            value={filter.value?.toString() ?? ''}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                handleFilterChange(index, 'value', e.target.value);
+                            }}
+                            className="w-[200px] h-[80px] resize-y scrollbar-thin hover:scrollbar-thumb-slate-600/50 dark:hover:scrollbar-thumb-slate-600/50 scrollbar-track-transparent"
+                            placeholder="Enter values (comma or newline separated)"
+                            disabled={!filter.column || !filter.operator}
+                            onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault(); // Prevent default Enter behavior
+                                    // Allow Enter to create new lines without losing focus
+                                }
+                            }}
+                            autoFocus
                         />
                     ) : !isNullOperator ? (
                         <Input

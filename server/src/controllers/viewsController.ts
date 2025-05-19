@@ -163,10 +163,6 @@ export const viewsController = {
             }, {} as Record<string, string>);
 
 
-            // console.log('[getView controller] : permitted columns are : ', permittedColumns)
-            // console.log('[getView controller] : columnTypes are : ', columnTypes)
-            // console.log('[getView controller] : available columns type are : ', availableColumnsType)
-            // console.log('[getView controller] : flat columns are : ', flatCols)
 
             const flatData = flattenData(data, modelName.toLowerCase(), flatCols);
 
@@ -281,6 +277,8 @@ export const viewsController = {
         const query3 = {
             where: {}
         }
+
+      
 
 
         if (req.user?.role.name !== 'Admin') {

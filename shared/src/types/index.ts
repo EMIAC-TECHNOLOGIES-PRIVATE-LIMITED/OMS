@@ -553,3 +553,36 @@ export interface liveMatricsResponse {
     DomainEntry[];
 
 }
+
+interface getSitesAiData {
+    sites: Array<{
+        website: string;
+        niche: string;
+        contentCategories: string;
+        siteClassification: string;
+        domainAuthority: number;
+        pageAuthority: number;
+        linkAttribute: string;
+        ahrefTraffic: number;
+        spamScore: number;
+        domainRating: number;
+
+        semRushTraffic: number;
+        semRushOrganicTraffic: number;
+        numberOfLinks: number;
+    }>,
+    totalCount: number,
+    page: number,
+    pageSize: number,
+    query: JSON,
+    order: JSON
+}
+
+
+
+export interface getSitesAiResponse {
+    status: number;
+    message: string;
+    data: getSitesAiData | string;
+    success: boolean;
+}

@@ -8,6 +8,7 @@ import { getPermissionCached } from "../utils/getPermissions";
 import { transformDates } from "../utils/dateTransformer";
 import { httpClient } from "../utils/httpClient";
 
+
 interface CategoryLinkItem {
     website: string;
     category: string;
@@ -754,7 +755,7 @@ export const toolsController = {
                     new APIError(STATUS_CODES.BAD_REQUEST, "Domains are required in the request body and must be a non-empty array", [], false)
                 );
             }
-            
+
             try {
                 // Use either await or then/catch, but not both together
                 const response = await httpClient.post(
@@ -763,14 +764,13 @@ export const toolsController = {
                         domains: domains,
                     }
                 );
-                
-                console.log('Latest Matrics data sent successfully:', response);
-                console.log('Latest Matrics data sent successfully:', JSON.stringify(response.data.newData));
-                
+
+               
+
                 return res.status(STATUS_CODES.OK).json(
                     new APIResponse(STATUS_CODES.OK, "Latest Matrics fetched successfully", response.data.newData, true)
                 );
-                
+
             } catch (error) {
                 console.error('Error fetching latest metrics:', error);
                 return res.status(STATUS_CODES.SERVICE_UNAVAILABLE).json(
@@ -788,6 +788,150 @@ export const toolsController = {
                 new APIError(
                     STATUS_CODES.INTERNAL_SERVER_ERROR,
                     "An error occurred while processing your request",
+                    [],
+                    false
+                )
+            );
+        }
+    },
+
+    getSites: async (req: AuthRequest, res: Response): Promise<Response> => {
+     
+        const body = req.body;
+       
+        const page = body.page || 1;
+ 
+        const limit = body.pageSize || 25;
+     
+        const skip = (page - 1) * limit;
+ 
+
+        let query = body.query || null;
+
+        let order = body.order || null;
+
+        const userMessage = body.userMessage || '';
+
+
+        try {
+      
+            if (query) {
+        
+                const sites = await prismaClient.site.findMany({
+                    select : {
+                        website: true,
+                        niche: true,
+                        contentCategories: true,
+                        siteClassification: true,
+                        domainAuthority: true,
+                        pageAuthority: true,
+                        linkAttribute: true,
+                        ahrefTraffic: true,
+                        spamScore: true,
+                        domainRating: true,
+                        semrushTraffic: true,
+                        semrushOrganicTraffic: true,
+                        numberOfLinks: true,
+                    },
+                    where: {
+                        ...query
+                    },
+                    orderBy: {
+                        ...order
+                    },
+                    skip: skip,
+                    take: limit
+                });
+
+                const totalCount = await prismaClient.site.count({
+                    where: {
+                        ...query
+                    }
+                });
+         
+                const response = {
+                    sites: sites,
+                    totalCount: totalCount,
+                    page: page,
+                    pageSize: limit,
+                    query: query,
+                    order: order
+                }
+    
+                return res.status(STATUS_CODES.OK).json(
+                    new APIResponse(STATUS_CODES.OK, "Sites fetched successfully", response, true)
+                );
+            } else {
+      
+                const generatedQuery = await httpClient.post(
+                    `${process.env.GET_SITE_QUERY}`,
+                    {
+                        userMessage: userMessage,
+                    }
+                );
+
+    
+                if (generatedQuery.data === 'Error') {
+                    console.log('Error in generated query detected');
+                    return res.status(STATUS_CODES.BAD_REQUEST).json(
+                        new APIError(STATUS_CODES.BAD_REQUEST, "Error in generated query", [], false)
+                    );
+                }
+
+                query = generatedQuery.data.where;
+                order = generatedQuery.data.orderBy ? generatedQuery.data.orderBy : {};
+
+                const sites = await prismaClient.site.findMany({
+                    select : {
+                        website: true,
+                        niche: true,
+                        contentCategories: true,
+                        siteClassification: true,
+                        domainAuthority: true,
+                        pageAuthority: true,
+                        linkAttribute: true,
+                        ahrefTraffic: true,
+                        spamScore: true,
+                        domainRating: true,
+                        semrushTraffic: true,
+                        semrushOrganicTraffic: true,
+                        numberOfLinks: true,
+                    },
+                    where: {
+                        ...query
+                    },
+                    orderBy: {
+                        ...order
+                    },
+                    skip: skip,
+                    take: limit
+                });
+              
+                const totalCount = await prismaClient.site.count({
+                    where: {
+                        ...query
+                    }
+                });
+           
+                const response = {
+                    sites: sites,
+                    totalCount: totalCount,
+                    page: page,
+                    pageSize: limit,
+                    query: query,
+                    order: order
+                }
+              
+                return res.status(STATUS_CODES.OK).json(
+                    new APIResponse(STATUS_CODES.OK, "Sites fetched successfully", response, true)
+                );
+            }
+        } catch (error) {
+       
+            return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
+                new APIError(
+                    STATUS_CODES.INTERNAL_SERVER_ERROR,
+                    "An error occurred while fetching sites",
                     [],
                     false
                 )

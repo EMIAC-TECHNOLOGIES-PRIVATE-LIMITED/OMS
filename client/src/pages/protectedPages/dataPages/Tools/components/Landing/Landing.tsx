@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { IndianRupee, Copy, Computer, Link, MailIcon, Cable, Trash2 , Squirrel} from "lucide-react";
+import { IndianRupee, Copy, Computer, Link, MailIcon, Cable, Trash2 , Squirrel, Bot} from "lucide-react";
 
 
 
@@ -55,6 +55,12 @@ const tools = [
         icon : Squirrel,
         activeToolKey: "_tools_8"
         
+    }, {
+        title : 'AI Query Assistant',
+        description : "Fetch Sites with Ai chatBot",
+        link : 'tools/sites-ai',
+        icon : Bot, 
+        activeToolKey: "_tools_9"
     }
 
 ];

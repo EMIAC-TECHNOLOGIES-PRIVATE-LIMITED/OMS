@@ -31,6 +31,7 @@ import { CustomHeaderWithContextMenu } from "./CustomHeader";
 import { FilterConfig } from "../../../../shared/src/types";
 import CategoryTooltip from "./CustomTooltips";
 
+
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface DataGridProps {
@@ -378,7 +379,7 @@ const DataGrid: React.FC<DataGridProps> = ({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!gridApi) return;
-  
+
       if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
         event.preventDefault();
         const selectedRows: Record<string, any>[] = gridApi.getSelectedRows();
@@ -394,10 +395,10 @@ const DataGrid: React.FC<DataGridProps> = ({
                 !id.includes('token') &&
                 id !== 'rowNumberSelect'
             );
-      
+
           // Check if all rows are selected
           const allRowsSelected = selectedRows.length === gridApi.getDisplayedRowCount();
-      
+
           // Only include headers if all rows are selected
           let clipboardContent: string = '';
           if (allRowsSelected) {
@@ -409,7 +410,7 @@ const DataGrid: React.FC<DataGridProps> = ({
               .join('\t');
             clipboardContent += `${headers}\n`;
           }
-      
+
           const rowData: string = selectedRows
             .map((row: Record<string, any>) => {
               return safeColumnIds
@@ -421,9 +422,9 @@ const DataGrid: React.FC<DataGridProps> = ({
                     return new Date(value).toLocaleDateString('en-CA');
                   }
                   if (typeof value === 'object' && value !== null) return '';
-                  
+
                   const mightContainUrl = hyperLinkToolTipColumns.includes(colId);
-                  
+
                   return value !== null && value !== undefined
                     ? String(value).replace(mightContainUrl ? /[\t\n\r]/g : /[\t\n\r:]/g, ' ')
                     : '';
@@ -431,9 +432,9 @@ const DataGrid: React.FC<DataGridProps> = ({
                 .join('\t');
             })
             .join('\n');
-      
+
           clipboardContent += rowData;
-      
+
           navigator.clipboard.writeText(clipboardContent);
           showCopiedToast(selectedRows.length);
         } else {
@@ -446,7 +447,7 @@ const DataGrid: React.FC<DataGridProps> = ({
               const colId = column.getColId();
               const colDef = gridApi.getColumnDef(colId);
               let value;
-      
+
               // Use valueGetter if defined, otherwise access data directly
               if (colDef?.valueGetter) {
                 value = colDef.valueGetter({
@@ -460,14 +461,14 @@ const DataGrid: React.FC<DataGridProps> = ({
               } else {
                 value = rowNode.data[colId];
               }
-      
+
               // Format DateTime columns as YYYY-MM-DD
               const formattedValue =
                 colDef?.cellDataType === 'date' && value
                   ? new Date(value).toLocaleDateString('en-CA')
                   : value !== null && value !== undefined
-                  ? String(value)
-                  : '';
+                    ? String(value)
+                    : '';
               navigator.clipboard.writeText(formattedValue).then(() => {
                 setShowFab(false);
                 setTimeout(() => setShowFab(true), 2000);
@@ -482,7 +483,7 @@ const DataGrid: React.FC<DataGridProps> = ({
           }
         }
       }
-  
+
       if (
         event.key === 'Delete' &&
         auth.userInfo.permissions.some((permission: any) => permission.name === `_delete_${resource}`)
@@ -494,17 +495,17 @@ const DataGrid: React.FC<DataGridProps> = ({
           setIsDeleteDialogOpen(true);
         }
       }
-  
+
       if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
         event.preventDefault(); // Prevent browser undo
         undo();
       }
     };
-  
+
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [gridApi, auth.userInfo.permissions, resource]);
-  
+
   const onRowSelected = (event: RowSelectedEvent) => {
     if (event.api) {
       event.api.refreshCells({
@@ -852,8 +853,9 @@ const DataGrid: React.FC<DataGridProps> = ({
           if (key === 'site.website')
             return 350;
           else {
-          const width = getTextWidth((key), 'bold 12px Arial') + 20; 
-        return width;}
+            const width = getTextWidth((key), 'bold 12px Arial') + 20;
+            return width;
+          }
 
         })(),
         initialWidth: getTextWidth((key), 'bold 12px Arial') + 20,
@@ -1063,9 +1065,11 @@ const DataGrid: React.FC<DataGridProps> = ({
         </Fab>
       )}
 
+   
+
       <CreateSheet
         resource={resource}
-        isOpen={isCreateSheetOpen}
+        isOpen={isCreateSheetOpen }
         onClose={() => setIsCreateSheetOpen(false)}
         onSubmit={refreshRecords}
         availableColumnTypes={availableColumnTypes}
@@ -1075,24 +1079,6 @@ const DataGrid: React.FC<DataGridProps> = ({
 };
 
 export default React.memo(DataGrid, (prevProps, nextProps) => {
-
-  // data,
-  // availableColumnTypes,
-  // columnDescriptions,
-  // loading,
-  // resource,
-  // filteredColumns,
-  // sortedColumns,
-  // setProcessing,
-  // totalCount,
-  // setTotalCount,
-  // filteredCount,
-  // refreshRecords,
-  // filterConfig,
-  // handleFilterChange,
-  // setColumnOrder,
-  // viewId,
-  // viewName
 
 
   return (
