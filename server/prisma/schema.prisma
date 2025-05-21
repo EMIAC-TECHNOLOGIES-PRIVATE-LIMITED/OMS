@@ -216,6 +216,7 @@ model TrashSites {
   pitchedFrom String?
 }
 
+
 model Site {
   id                 Int                @id @default(autoincrement())
   website            String
