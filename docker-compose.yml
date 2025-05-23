@@ -1,24 +1,32 @@
 services:
   client:
-    image: emiactech/client:dev
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    image: emiactech/client:prod
     ports:
       - "3000:80"
-  
+    env_file:
+      - ./client/.env
+
   server:
-    image: emiactech/server:dev
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    image: emiactech/server:prod
     ports:
       - "3001:3000"
     env_file:
       - ./server/.env
-  
+
   loki:
     image: grafana/loki:2.9.10
     ports:
       - "3100:3100"
     volumes:
-      - loki_data:/loki 
+      - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
-    
+
   grafana:
     image: grafana/grafana:latest
     ports:
@@ -26,7 +34,7 @@ services:
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-adminpassword}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-emi@c1716}
     volumes:
       - ./grafana-provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
