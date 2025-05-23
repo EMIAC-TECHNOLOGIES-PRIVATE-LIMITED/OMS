@@ -54,6 +54,7 @@ export const viewsController = {
         }
 
 
+
         if (req.user?.role.name !== 'Admin') {
             const accessIds = [...(req.user?.userAccess || []), req.user?.userId];
             if (modelName === 'Client') {

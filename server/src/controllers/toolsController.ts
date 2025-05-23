@@ -545,13 +545,14 @@ export const toolsController = {
             const domains = data.domains;
             const pitchedFrom = data.pitchedFrom ? data.pitchedFrom : null;
 
-            const newData = await prismaClient.trashSites.createMany({
-                data: domains.map((domain: string) => ({
-                    website: domain,
-                    pitchedFrom: pitchedFrom,
-                })),
-                skipDuplicates: true,
-            });
+            for (const domain of domains) {
+                const data = await prismaClient.trashSites.create({
+                    data: {
+                        website: domain,
+                        pitchedFrom: pitchedFrom
+                    }
+                });
+            }
 
             return res.status(STATUS_CODES.OK).json(
                 new APIResponse(STATUS_CODES.OK, "Trash domains added successfully", {}, true)
@@ -765,7 +766,7 @@ export const toolsController = {
                     }
                 );
 
-               
+
 
                 return res.status(STATUS_CODES.OK).json(
                     new APIResponse(STATUS_CODES.OK, "Latest Matrics fetched successfully", response.data.newData, true)
@@ -796,15 +797,15 @@ export const toolsController = {
     },
 
     getSites: async (req: AuthRequest, res: Response): Promise<Response> => {
-     
+
         const body = req.body;
-       
+
         const page = body.page || 1;
- 
+
         const limit = body.pageSize || 25;
-     
+
         const skip = (page - 1) * limit;
- 
+
 
         let query = body.query || null;
 
@@ -814,11 +815,11 @@ export const toolsController = {
 
 
         try {
-      
+
             if (query) {
-        
+
                 const sites = await prismaClient.site.findMany({
-                    select : {
+                    select: {
                         website: true,
                         niche: true,
                         contentCategories: true,
@@ -848,7 +849,7 @@ export const toolsController = {
                         ...query
                     }
                 });
-         
+
                 const response = {
                     sites: sites,
                     totalCount: totalCount,
@@ -857,12 +858,12 @@ export const toolsController = {
                     query: query,
                     order: order
                 }
-    
+
                 return res.status(STATUS_CODES.OK).json(
                     new APIResponse(STATUS_CODES.OK, "Sites fetched successfully", response, true)
                 );
             } else {
-      
+
                 const generatedQuery = await httpClient.post(
                     `${process.env.GET_SITE_QUERY}`,
                     {
@@ -870,7 +871,7 @@ export const toolsController = {
                     }
                 );
 
-    
+
                 if (generatedQuery.data === 'Error') {
                     console.log('Error in generated query detected');
                     return res.status(STATUS_CODES.BAD_REQUEST).json(
@@ -882,7 +883,7 @@ export const toolsController = {
                 order = generatedQuery.data.orderBy ? generatedQuery.data.orderBy : {};
 
                 const sites = await prismaClient.site.findMany({
-                    select : {
+                    select: {
                         website: true,
                         niche: true,
                         contentCategories: true,
@@ -906,13 +907,13 @@ export const toolsController = {
                     skip: skip,
                     take: limit
                 });
-              
+
                 const totalCount = await prismaClient.site.count({
                     where: {
                         ...query
                     }
                 });
-           
+
                 const response = {
                     sites: sites,
                     totalCount: totalCount,
@@ -921,13 +922,13 @@ export const toolsController = {
                     query: query,
                     order: order
                 }
-              
+
                 return res.status(STATUS_CODES.OK).json(
                     new APIResponse(STATUS_CODES.OK, "Sites fetched successfully", response, true)
                 );
             }
         } catch (error) {
-       
+
             return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json(
                 new APIError(
                     STATUS_CODES.INTERNAL_SERVER_ERROR,

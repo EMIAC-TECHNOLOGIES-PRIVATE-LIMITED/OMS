@@ -402,7 +402,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                         { value: 'gt', label: 'Greater Than' },
                         { value: 'lt', label: 'Less Than' },
                         { value: 'equals', label: 'Equals' },
-                        { value: 'notEquals', label: 'Not Equals' }
+                        { value: 'notEquals', label: 'Not Equals' },
+                        { value: 'in', label: 'Any of (Comma Separated)' }
                     ];
                 case 'Boolean':
                 case 'Boolean?':
@@ -440,7 +441,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
 
         return baseOperators;
     }, []);
-
     const updateGlobalFilterState = useCallback((filters: LocalFilter[], connector?: 'AND' | 'OR') => {
         const completeFilters = filters.filter(f => f.isComplete);
         const newFilterConfig: FilterConfig = {
@@ -498,14 +498,33 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 }
             }
 
-            if (field === 'value' && value === '') {
-                newFilters[index] = {
-                    ...newFilters[index],
-                    value: undefined,
-                    isComplete: false
-                };
-                debouncedUpdateGlobalState(newFilters);
-                return newFilters;
+            if (field === 'value' && newFilters[index].column) {
+                const columnType = availableColumnTypes[newFilters[index].column];
+                if (columnType === 'DateTime' || columnType === 'DateTime?') {
+                    if (value instanceof Date) {
+                        processedValue = formatDateForPrisma(value);
+                    } else if (value === '') {
+                        processedValue = undefined;
+                    }
+                } else if (columnType === 'Boolean' || columnType === 'Boolean?') {
+                    processedValue = value === true;
+                } else if ((columnType === 'String' || columnType === 'String?') && newFilters[index].operator === 'in' && typeof value === 'string') {
+                    processedValue = value.split(/[,\n\r]+/).map(item => item.trim()).filter(item => item !== '');
+                } else if ((columnType === 'Int' || columnType === 'Int?' || columnType === 'BigInt' || columnType === 'BigInt?') && newFilters[index].operator === 'in' && typeof value === 'string') {
+                    processedValue = value.split(/[,\n\r]+/)
+                        .map(item => item.trim())
+                        .filter(item => item !== '')
+                        .map(item => {
+                            const num = Number(item);
+                            return isNaN(num) ? null : num;
+                        })
+                        .filter(item => item !== null);
+                } else {
+                    const enumMatch = columnType?.match(/^Enum\((.+?)\)\??$/);
+                    if (enumMatch) {
+                        processedValue = value;
+                    }
+                }
             }
 
             if (field === 'operator' && (value === 'isNull' || value === 'isNotNull')) {
@@ -651,14 +670,20 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                             onChange={(value) => handleFilterChange(index, 'value', value)}
                             disabled={!filter.column || !filter.operator}
                         />
-                    ) : !isNullOperator && (columnType === 'String' || columnType === 'String?') && filter.operator === 'in' ? (
+                    ) : !isNullOperator && ((columnType === 'String' || columnType === 'String?') ||
+                        (columnType === 'Int' || columnType === 'Int?' || columnType === 'BigInt' || columnType === 'BigInt?')) &&
+                        filter.operator === 'in' ? (
                         <Textarea
                             value={filter.value?.toString() ?? ''}
                             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                                 handleFilterChange(index, 'value', e.target.value);
                             }}
                             className="w-[200px] h-[80px] resize-y scrollbar-thin hover:scrollbar-thumb-slate-600/50 dark:hover:scrollbar-thumb-slate-600/50 scrollbar-track-transparent"
-                            placeholder="Enter values (comma or newline separated)"
+                            placeholder={
+                                (columnType === 'Int' || columnType === 'Int?' || columnType === 'BigInt' || columnType === 'BigInt?')
+                                    ? "Enter numbers (comma or newline separated)"
+                                    : "Enter values (comma or newline separated)"
+                            }
                             disabled={!filter.column || !filter.operator}
                             onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
