@@ -87,7 +87,7 @@ const LoginForm = React.memo(({ onLogin, error }: LoginFormProps) => {
           <Button
             type="submit" // Change to type="submit" for form submission
             variant="brand"
-            className="w-full"
+            className="w-full bg-red-600"
           >
             Login
           </Button>
